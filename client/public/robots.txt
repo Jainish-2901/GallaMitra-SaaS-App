@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /privacy
+Allow: /terms
+Disallow: /public-portal/
+
+# Sitemap Link
+Sitemap: https://gallamitra.vercel.app/sitemap.xml
