@@ -56,12 +56,12 @@ export default function SupplierManagement({ openTxModal }) {
   };
 
   const handleShare = async (id, name) => {
-    const res = await fetchPortalShareLink(id, 'supplier');
-    if (res.success && res.portalUrl) {
-      navigator.clipboard.writeText(res.portalUrl);
-      toast.info(`Public portal link for "${name}" copied to clipboard!`);
+    const res = await generateShortShareLink({ partyId: id, role: 'supplier' });
+    if (res.success && res.shortUrl) {
+      navigator.clipboard.writeText(res.shortUrl);
+      toast.info(`Short share link for "${name}" copied to clipboard!`);
     } else {
-      toast.error(res.error || 'Failed to generate portal link.');
+      toast.error(res.error || 'Failed to generate share link.');
     }
   };
 

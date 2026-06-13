@@ -57,12 +57,12 @@ export default function CustomerManagement({ openTxModal }) {
   };
 
   const handleShare = async (id, name) => {
-    const res = await fetchPortalShareLink(id, 'customer');
-    if (res.success && res.portalUrl) {
-      navigator.clipboard.writeText(res.portalUrl);
-      toast.info(`Public ledger link for "${name}" copied to clipboard!`);
+    const res = await generateShortShareLink({ partyId: id, role: 'customer' });
+    if (res.success && res.shortUrl) {
+      navigator.clipboard.writeText(res.shortUrl);
+      toast.info(`Short share link for "${name}" copied to clipboard!`);
     } else {
-      toast.error(res.error || 'Failed to generate portal link.');
+      toast.error(res.error || 'Failed to generate share link.');
     }
   };
 

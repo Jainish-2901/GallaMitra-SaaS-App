@@ -6,7 +6,7 @@ import { translations } from '../utils/translations.js';
 import { History, PlusCircle, Plus, Loader2, Edit2, Trash2, X } from 'lucide-react';
 
 export default function SaleLedger() {
-  const { activeShop, customers, ledgerHistory, postManualLedgerEntry, editManualLedgerEntry, deleteManualLedgerEntry, fetchPortalShareLink, loading } = useContext(AppContext);
+  const { activeShop, customers, ledgerHistory, postManualLedgerEntry, editManualLedgerEntry, deleteManualLedgerEntry, generateShortShareLink, loading } = useContext(AppContext);
   const toast = useToast();
   const activeLang = activeShop?.language || 'gu';
   const t = translations[activeLang] || translations.en;
@@ -63,30 +63,15 @@ export default function SaleLedger() {
   const customerLedger = ledgerHistory.filter(l => l.customerId !== null);
 
   const handleShareWhatsApp = async (log) => {
-
-    const linkRes = await fetchPortalShareLink(log.customerId, 'customer');
-    if (!linkRes.success || !linkRes.portalUrl) {
+    const linkRes = await generateShortShareLink({ partyId: log.customerId, role: 'customer', tab: 'ledger' });
+    if (!linkRes.success || !linkRes.shortUrl) {
       toast.error(linkRes.error || 'Failed to generate portal link.');
       return;
     }
 
-    const fullUrlWithTab = `${linkRes.portalUrl}&tab=ledger`;
-
-    const shortId = Math.random().toString(36).substring(2, 9);
-
-    try {
-      await fetch(`${import.meta.env.VITE_API_URL || ''}/api/share/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: shortId, fullUrl: fullUrlWithTab })
-      });
-    } catch (err) {
-      console.warn("Could not save short link, using raw link instead.");
-    }
-
     const customer = customers.find(c => c.id === log.customerId);
     const dateStr = new Date(log.date).toLocaleDateString('en-IN');
-    const shortUrl = `${window.location.origin}/s/${shortId}`;
+    const shortUrl = linkRes.shortUrl;
 
     let text = `*GallaMitra Ledger Update*\n`;
     text += `🏢 Shop: *${activeShop?.businessName}*\n`;

@@ -536,7 +536,8 @@ export const AppProvider = ({ children }) => {
             });
 
             if (createRes.ok) {
-                const shortUrl = `${apiBase}/s/${shortId}`;
+                const frontendBase = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
+                const shortUrl = `${frontendBase}/s/${shortId}`;
                 return { success: true, shortUrl, fullUrl };
             }
             return { success: true, shortUrl: fullUrl, fullUrl };

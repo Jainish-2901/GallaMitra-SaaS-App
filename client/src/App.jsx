@@ -94,6 +94,14 @@ export default function App() {
   }, [activeTab, activeShop]);
 
   // ─── URL Route Intercepts ───────────────────────────────────────────────
+  if (window.location.pathname.startsWith('/s/')) {
+    const parts = window.location.pathname.split('/');
+    const shortId = parts[parts.length - 1];
+    const backendBase = (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api').replace('/api', '');
+    window.location.href = `${backendBase}/s/${shortId}`;
+    return null;
+  }
+
   if (window.location.pathname.includes('/public-portal') || window.location.search.includes('type=')) {
     return <PublicPortal />;
   }

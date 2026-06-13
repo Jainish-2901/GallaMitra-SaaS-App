@@ -17,9 +17,12 @@ export default function PublicPortal() {
   const portalType = urlParams.get('type') || 'customer';
   const entityId = urlParams.get('id');
   const portalToken = urlParams.get('token');
+  const urlTab = urlParams.get('tab');
 
   const [portalData, setPortalData] = useState(null);
-  const [activeTab, setActiveTab] = useState('dash');
+  const [activeTab, setActiveTab] = useState(
+    ['dash', 'ledger', 'receipts', 'invoices'].includes(urlTab) ? urlTab : 'dash'
+  );
   const [loading, setLoading] = useState(true);
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
@@ -1215,24 +1218,31 @@ export default function PublicPortal() {
       {/* ─── Receipt View Modal ──────────────────────────────────────────────── */}
       {selectedReceipt && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedReceipt(null)}>
-          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden flex flex-col max-h-[90vh] relative" onClick={e => e.stopPropagation()}>
+            {/* Subtle accent bar at top */}
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-slate-900" />
+
             {/* Modal Header */}
-            <div className="px-5 py-4 flex items-center justify-between" style={{ background: 'linear-gradient(135deg,#064e3b,#065f46)' }}>
+            <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100 mt-1.5">
               <div>
-                <h3 className="font-black text-white text-sm">Payment Receipt</h3>
-                <p className="text-emerald-300 text-[10px] font-mono">Voucher #{selectedReceipt.receiptNo}</p>
+                <span className="text-[9px] font-black tracking-widest text-slate-400 uppercase leading-none font-mono">
+                  Payment Receipt
+                </span>
+                <h3 className="font-black text-slate-900 text-base mt-1">
+                  Voucher #{selectedReceipt.receiptNo}
+                </h3>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => handlePrintRef(receiptPrintRef, `Receipt #${selectedReceipt.receiptNo}`)}
-                  className="p-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl transition-all">
+                  className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all">
                   <Printer size={12} />
                 </button>
                 <button onClick={() => handleSaveRefAsPDF(receiptPrintRef, `Receipt_${selectedReceipt.receiptNo}.pdf`)}
-                  className="p-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl transition-all">
+                  className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all">
                   <FileDown size={12} />
                 </button>
                 <button onClick={() => setSelectedReceipt(null)}
-                  className="p-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/30 text-rose-300 rounded-xl transition-all">
+                  className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all">
                   <X size={12} />
                 </button>
               </div>
@@ -1264,9 +1274,9 @@ export default function PublicPortal() {
                 ))}
               </div>
               {/* Amount */}
-              <div className="rounded-2xl p-5 text-center" style={{ background: 'linear-gradient(135deg,#064e3b,#065f46)' }}>
-                <p className="text-emerald-300 text-[10px] font-mono uppercase tracking-wider font-bold">Amount Received</p>
-                <p className="text-white font-black text-3xl font-mono mt-1 font-bold">₹{parseFloat(selectedReceipt.amount).toFixed(2)}</p>
+              <div className="rounded-2xl p-5 text-center bg-slate-50 border border-slate-200">
+                <p className="text-slate-500 text-[10px] font-mono uppercase tracking-wider font-bold">Amount Received</p>
+                <p className="text-slate-900 font-black text-3xl font-mono mt-1 font-bold">₹{parseFloat(selectedReceipt.amount).toFixed(2)}</p>
               </div>
               {/* Signature */}
               {profile?.shopSignatureUrl && (

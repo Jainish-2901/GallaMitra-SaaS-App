@@ -6,7 +6,7 @@ import { translations } from '../utils/translations.js';
 import { History, PlusCircle, Plus, Loader2, Edit2, Trash2, X } from 'lucide-react';
 
 export default function PurchaseLedger() {
-  const { activeShop, suppliers, ledgerHistory, postManualLedgerEntry, editManualLedgerEntry, deleteManualLedgerEntry, fetchPortalShareLink, loading } = useContext(AppContext);
+  const { activeShop, suppliers, ledgerHistory, postManualLedgerEntry, editManualLedgerEntry, deleteManualLedgerEntry, generateShortShareLink, loading } = useContext(AppContext);
   const toast = useToast();
   const activeLang = activeShop?.language || 'gu';
   const t = translations[activeLang] || translations.en;
@@ -63,13 +63,14 @@ export default function PurchaseLedger() {
   const supplierLedger = ledgerHistory.filter(l => l.supplierId !== null);
 
   const handleShareWhatsApp = async (log) => {
-    const linkRes = await fetchPortalShareLink(log.supplierId, 'supplier');
-    if (!linkRes.success || !linkRes.portalUrl) {
+    const linkRes = await generateShortShareLink({ partyId: log.supplierId, role: 'supplier', tab: 'ledger' });
+    if (!linkRes.success || !linkRes.shortUrl) {
       toast.error(linkRes.error || 'Failed to generate portal link.');
       return;
     }
     const supplier = suppliers.find(s => s.id === log.supplierId);
     const dateStr = new Date(log.date).toLocaleDateString();
+    const shortUrl = linkRes.shortUrl;
     let text = `*GallaMitra Supplier Ledger Entry Update*\n`;
     text += `Shop: *${activeShop?.businessName}*\n`;
     text += `Supplier: *${supplier?.name || 'Supplier'}*\n`;
@@ -77,7 +78,7 @@ export default function PurchaseLedger() {
     text += `Particulars: *${log.particulars || '—'}*\n`;
     text += `Type: *${log.type === 'DEBIT' ? 'You Gave (Debit)' : 'You Got (Credit)'}*\n`;
     text += `Amount: *₹${parseFloat(log.amount).toFixed(2)}*\n\n`;
-    text += `View full ledger statement & receipts: ${linkRes.portalUrl}`;
+    text += `View full ledger statement & receipts: ${shortUrl}`;
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
