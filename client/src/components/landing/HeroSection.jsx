@@ -1,8 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Star, UserPlus, LogIn, Laptop, Smartphone } from 'lucide-react';
 
 export default function HeroSection({ onOpenRegister, onOpenLogin }) {
+  const [stats, setStats] = useState({
+    totalFirms: '500+',
+    totalTransactions: '10K+',
+    uptime: '99.9%'
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api';
+        const res = await fetch(`${backendUrl}/shops/public-stats`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            setStats({
+              totalFirms: data.totalFirms > 0 ? `${data.totalFirms}` : '0',
+              totalTransactions: data.totalTransactions > 0 ? `${data.totalTransactions}` : '0',
+              uptime: data.uptime || '99.9%'
+            });
+          }
+        }
+      } catch (err) {
+        console.error('🚨 Error fetching live statistics:', err);
+      }
+    };
+    fetchStats();
+  }, []);
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50 py-20 md:py-32 px-6 text-left">
       {/* Premium Ambient Light Flares */}
@@ -79,9 +106,9 @@ export default function HeroSection({ onOpenRegister, onOpenLogin }) {
             className="flex items-center gap-8 pt-6 border-t border-slate-200"
           >
             {[
-              { label: 'Active Firms Connected', value: '500+' },
-              { label: 'Transactions Daily', value: '10K+' },
-              { label: 'System Live Uptime', value: '99.9%' },
+              { label: 'Active Firms Connected', value: stats.totalFirms },
+              { label: 'Total Live Transactions', value: stats.totalTransactions },
+              { label: 'System Live Uptime', value: stats.uptime },
             ].map(stat => (
               <div key={stat.label}>
                 <p className="text-xl font-black text-slate-900 font-mono tracking-tight">{stat.value}</p>

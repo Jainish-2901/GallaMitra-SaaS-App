@@ -9,6 +9,7 @@ import LandingFooter from '../components/landing/LandingFooter.jsx';
 import HeroSection from '../components/landing/HeroSection.jsx';
 import FeaturesGrid from '../components/landing/FeaturesGrid.jsx';
 import AboutSection from '../components/landing/AboutSection.jsx';
+import TestimonialsSection from '../components/landing/TestimonialsSection.jsx';
 import LoginForm from '../components/landing/LoginForm.jsx';
 import RegisterForm from '../components/landing/RegisterForm.jsx';
 import PWAInstallationSection from '../components/landing/PWAInstallationSection.jsx'; // Fixed import routing reference
@@ -48,6 +49,7 @@ export default function LandingPage() {
             <HeroSection onOpenRegister={openRegister} onOpenLogin={openLogin} />
             <FeaturesGrid />
             <AboutSection />
+            <TestimonialsSection />
 
             {/* 🚀 INTEGRATED NATIVE PWA ACCESS TRIGGER MODULE CONTAINER */}
             <PWAInstallationSection />

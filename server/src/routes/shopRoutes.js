@@ -34,6 +34,7 @@ import {
     getAdminSettings,
     updateAdminSettings,
     getPublicConfig,
+    getPublicStats,
     deleteShopWorkspace
 } from '../controllers/shopController.js';
 import { shopAuth, requireBodyShopId, requireParamShopIdAsId, requireMatchingEmail } from '../middleware/shopAuth.js';
@@ -41,6 +42,7 @@ import { shopAuth, requireBodyShopId, requireParamShopIdAsId, requireMatchingEma
 const router = express.Router();
 
 router.get('/public-config', getPublicConfig);
+router.get('/public-stats', getPublicStats);
 router.get('/plans', getPlans);
 
 router.post('/register', registerShop);

@@ -1470,3 +1470,33 @@ export const deleteShopWorkspace = async (req, res) => {
         client.release();
     }
 };
+
+// ─── PUBLIC: GET SYSTEM STATUS STATISTICS ──────────────────────────────────────
+export const getPublicStats = async (req, res) => {
+    try {
+        const [activeShopsRes, ledgerRes, invoiceRes, purchaseRes, receiptRes] = await Promise.all([
+            db.query(`SELECT COUNT(*) FROM "Shop" WHERE "status" = 'active'`),
+            db.query('SELECT COUNT(*) FROM "LedgerEntry"'),
+            db.query('SELECT COUNT(*) FROM "Invoice"'),
+            db.query('SELECT COUNT(*) FROM "PurchaseBill"'),
+            db.query('SELECT COUNT(*) FROM "PaymentReceipt"'),
+        ]);
+
+        const activeShopsCount = parseInt(activeShopsRes.rows[0].count || 0);
+        const totalTxCount = 
+            parseInt(ledgerRes.rows[0].count || 0) +
+            parseInt(invoiceRes.rows[0].count || 0) +
+            parseInt(purchaseRes.rows[0].count || 0) +
+            parseInt(receiptRes.rows[0].count || 0);
+
+        res.json({
+            success: true,
+            totalFirms: activeShopsCount,
+            totalTransactions: totalTxCount,
+            uptime: '99.9%'
+        });
+    } catch (error) {
+        console.error('🚨 Error fetching public stats:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
