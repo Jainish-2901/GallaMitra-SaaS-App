@@ -35,7 +35,7 @@ import TransactionModal from './components/TransactionModal.jsx';
 
 // Icons Bundle
 import {
-  LayoutDashboard, Users, PlusCircle, UserCheck, Menu, X, Calendar, LogOut, Plus, Store
+  LayoutDashboard, Users, PlusCircle, UserCheck, Menu, X, Calendar, LogOut, Plus, Store, Clock
 } from 'lucide-react';
 
 export default function App() {
@@ -92,6 +92,22 @@ export default function App() {
       setActiveTab('dashboard');
     }
   }, [activeTab, activeShop]);
+
+  // ─── PWA Standalone Redirect Check ───────────────────────────────────────
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const hasMerchantToken = !!localStorage.getItem('gm_shop_token');
+  const lastPortalUrl = localStorage.getItem('gm_last_public_portal_url');
+  const isAtPortal = window.location.pathname.includes('/public-portal') || window.location.search.includes('type=');
+
+  if (isStandalone && !hasMerchantToken && lastPortalUrl && !isAtPortal) {
+    window.location.replace(lastPortalUrl);
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-50">
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-slate-500 text-xs font-mono tracking-widest animate-pulse">REDIRECTING TO SECURE PORTAL...</p>
+      </div>
+    );
+  }
 
   // ─── URL Route Intercepts ───────────────────────────────────────────────
   if (window.location.pathname.startsWith('/s/')) {
@@ -276,6 +292,53 @@ export default function App() {
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                    {/* Trial Expiry Countdown Widget for Mobile */}
+                    {activeShop?.plan === 'trial' && (
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Clock size={13} className="text-blue-600 animate-pulse" />
+                            <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider">Free Trial</span>
+                          </div>
+                          <span className="text-[10px] font-black text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full font-mono">
+                            {(() => {
+                              const expires = activeShop?.subscriptionExpiresAt;
+                              if (!expires) return '15 Days Left';
+                              const left = Math.ceil((new Date(expires) - new Date()) / (1000 * 60 * 60 * 24));
+                              const days = left > 0 ? left : 0;
+                              return `${days} ${days === 1 ? 'day' : 'days'} left`;
+                            })()}
+                          </span>
+                        </div>
+                        
+                        {/* Progress Bar */}
+                        {(() => {
+                          const expires = activeShop?.subscriptionExpiresAt;
+                          if (!expires) return null;
+                          const left = Math.ceil((new Date(expires) - new Date()) / (1000 * 60 * 60 * 24));
+                          const daysLeft = left > 0 ? left : 0;
+                          const daysUsed = Math.max(0, Math.min(15, 15 - daysLeft));
+                          const percent = Math.round((daysUsed / 15) * 100);
+                          return (
+                            <div className="w-full bg-slate-200/80 rounded-full h-1.5 overflow-hidden">
+                              <div className="bg-blue-600 h-1.5 rounded-full transition-all duration-500" style={{ width: `${percent}%` }} />
+                            </div>
+                          );
+                        })()}
+
+                        <button
+                          onClick={() => {
+                            setActiveTab('user_settings');
+                            setSearchTerm('');
+                            setIsMobileMenuOpen(false);
+                          }}
+                          className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-[10px] uppercase tracking-wider transition-all text-center cursor-pointer"
+                        >
+                          Upgrade Now
+                        </button>
+                      </div>
+                    )}
+
                     <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl flex justify-between items-center text-xs font-mono text-slate-700">
                       <span className="font-bold flex items-center gap-1.5"><Calendar size={13} className="text-blue-600" /> Date:</span>
                       <span>{liveTime.toLocaleDateString(localeStr, { weekday: 'short', day: 'numeric', month: 'short' })}</span>
@@ -355,7 +418,42 @@ function SalesList({ t }) {
       date: inv.date, invoiceNo: inv.invoiceNo, customerName: cust?.name || 'Walk-in', itemName: it.name, qty: it.qty, rate: it.rate, total: parseFloat(it.qty) * parseFloat(it.rate)
     }));
   });
-  const filtered = items.filter(i => i.itemName?.toLowerCase().includes(search.toLowerCase()) || i.invoiceNo?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = items.filter(i => {
+    const term = search.toLowerCase().trim();
+    if (!term) return true;
+    
+    const dateObj = new Date(i.date);
+    const dateStrDefault = dateObj.toLocaleDateString().toLowerCase();
+    const dateStrIN = dateObj.toLocaleDateString('en-IN').toLowerCase();
+    const dateStrMonths = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase();
+    const dateStrFullMonth = dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toLowerCase();
+    const dateRaw = dateObj.toISOString().toLowerCase();
+    
+    const invoiceNo = (i.invoiceNo || '').toLowerCase();
+    const customerName = (i.customerName || '').toLowerCase();
+    const itemName = (i.itemName || '').toLowerCase();
+    const qty = String(i.qty).toLowerCase();
+    const rate = String(i.rate).toLowerCase();
+    const total = String(i.total).toLowerCase();
+    const formattedTotal = `₹${parseFloat(i.total).toFixed(2)}`.toLowerCase();
+    const formattedRate = `₹${parseFloat(i.rate).toFixed(2)}`.toLowerCase();
+
+    return (
+      dateStrDefault.includes(term) ||
+      dateStrIN.includes(term) ||
+      dateStrMonths.includes(term) ||
+      dateStrFullMonth.includes(term) ||
+      dateRaw.includes(term) ||
+      invoiceNo.includes(term) ||
+      customerName.includes(term) ||
+      itemName.includes(term) ||
+      qty.includes(term) ||
+      rate.includes(term) ||
+      total.includes(term) ||
+      formattedRate.includes(term) ||
+      formattedTotal.includes(term)
+    );
+  });
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm text-left">
@@ -402,7 +500,42 @@ function PurchaseList({ t }) {
       date: pb.date, billNo: pb.billNo || 'N/A', supplierName: supp?.name || 'N/A', itemName: it.name, qty: it.qty, rate: it.rate, total: parseFloat(it.qty) * parseFloat(it.rate)
     }));
   });
-  const filtered = items.filter(i => i.itemName?.toLowerCase().includes(search.toLowerCase()) || i.billNo?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = items.filter(i => {
+    const term = search.toLowerCase().trim();
+    if (!term) return true;
+    
+    const dateObj = new Date(i.date);
+    const dateStrDefault = dateObj.toLocaleDateString().toLowerCase();
+    const dateStrIN = dateObj.toLocaleDateString('en-IN').toLowerCase();
+    const dateStrMonths = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase();
+    const dateStrFullMonth = dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toLowerCase();
+    const dateRaw = dateObj.toISOString().toLowerCase();
+    
+    const billNo = (i.billNo || '').toLowerCase();
+    const supplierName = (i.supplierName || '').toLowerCase();
+    const itemName = (i.itemName || '').toLowerCase();
+    const qty = String(i.qty).toLowerCase();
+    const rate = String(i.rate).toLowerCase();
+    const total = String(i.total).toLowerCase();
+    const formattedTotal = `₹${parseFloat(i.total).toFixed(2)}`.toLowerCase();
+    const formattedRate = `₹${parseFloat(i.rate).toFixed(2)}`.toLowerCase();
+
+    return (
+      dateStrDefault.includes(term) ||
+      dateStrIN.includes(term) ||
+      dateStrMonths.includes(term) ||
+      dateStrFullMonth.includes(term) ||
+      dateRaw.includes(term) ||
+      billNo.includes(term) ||
+      supplierName.includes(term) ||
+      itemName.includes(term) ||
+      qty.includes(term) ||
+      rate.includes(term) ||
+      total.includes(term) ||
+      formattedRate.includes(term) ||
+      formattedTotal.includes(term)
+    );
+  });
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm text-left">

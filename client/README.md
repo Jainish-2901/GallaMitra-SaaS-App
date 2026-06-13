@@ -8,6 +8,9 @@ GallaMitra (ગલ્લામિત્ર) is a premium, feature-rich SaaS plat
 
 GallaMitra features a tiered SaaS plan architecture. Available workspace tabs and features dynamically adapt based on the active shop's plan:
 
+### 🆓 15-Day Free Trial Subscription
+Newly registered shop owners can test GallaMitra using the 15-day Free Trial. This trial grants complete access to the features of the **Professional Plan** with no initial restrictions. Desktop/mobile sidebars and headers display a real-time countdown showing remaining trial days. Automated warning notices are sent via email on the 10th and 14th days of the trial. Upon expiration on the 15th day, the shop automatically transitions to the Starter Plan. No business ledger records, invoices, or customer details are lost, allowing owners to upgrade to Growth or Professional tiers at any time to resume advanced operations.
+
 ### 🥉 Starter Plan
 * **Dashboard Overview**: Continuous real-time sales & purchase indicators, quick entry panels.
 * **Customer Management (`cust_list`)**: Register customers, track credit/debit balances, view transaction history.
@@ -60,6 +63,7 @@ Indexed for public discoverability on production domains (`https://gallamitra.ve
 ### 5. Print-Friendly & Grayscale Layouts
 Designed specifically to minimize ink usage for low-cost thermal/laser printers:
 * Invoices, receipts, and ledger statements render in elegant, high-contrast, black-and-white print sheets.
+* Payment vouchers (receipts) use a compact side-by-side flex layout to ensure the entire voucher fits on exactly one page without blank overflows.
 * Uses custom CSS print media rules to suppress unnecessary UI margins, headers, and backgrounds.
 
 ### 6. Direct WhatsApp Integration
@@ -67,7 +71,10 @@ Designed specifically to minimize ink usage for low-cost thermal/laser printers:
 * Shortened public URLs allow parties to access their live balance sheets and download PDF statement copies without login barriers.
 
 ### 7. Progressive Web App (PWA)
-Supports offline caching and full application installation. On supported browsers, an install badge ("📲 Download App") appears in the header and mobile navigation drawer for desktop-like native execution.
+Supports offline caching, full application installation, and public portal shortcut creation:
+* **Merchant App**: Owners can install GallaMitra via the "📲 Download App" button in the TopBar or mobile drawer to manage their shops natively.
+* **Customer/Supplier Shortcut App**: Customers/suppliers can install their respective portals directly from the browser window using the inline header action or the premium CTA install banner.
+* **Auto-Redirection**: When the customer/supplier PWA is launched as a standalone app, it detects the display-mode, reads the saved portal URL cached in local storage (`gm_last_public_portal_url`), and automatically redirects them to their personal balance sheet rather than the merchant portal landing page.
 
 ---
 

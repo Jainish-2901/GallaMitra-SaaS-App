@@ -3,7 +3,7 @@ import { useContext } from 'react';
 import { AppContext } from '../../context/AppContext.jsx';
 import { translations } from '../../utils/translations.js';
 import { ownerTabs } from '../../sidebarConfig.js';
-import { LogOut, Briefcase, Store } from 'lucide-react';
+import { LogOut, Briefcase, Store, Clock } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab, setSearchTerm }) {
   const { activeShop, terminateSessionLogout } = useContext(AppContext);
@@ -49,6 +49,59 @@ export default function Sidebar({ activeTab, setActiveTab, setSearchTerm }) {
         })()}
       </div>
 
+      {/* Trial Expiry Countdown Widget */}
+      {activeShop?.plan === 'trial' && (
+        <div className="mx-3 my-2.5 p-3.5 bg-gradient-to-br from-blue-50/80 to-indigo-50/80 border border-blue-100 rounded-2xl shadow-xs space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Clock size={12} className="text-blue-600 animate-pulse" />
+              <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider">Free Trial</span>
+            </div>
+            <span className="text-[10px] font-bold text-blue-700 bg-blue-100/60 px-2 py-0.5 rounded-full font-mono">
+              {(() => {
+                const expires = activeShop?.subscriptionExpiresAt;
+                if (!expires) return '15d left';
+                const left = Math.ceil((new Date(expires) - new Date()) / (1000 * 60 * 60 * 24));
+                const days = left > 0 ? left : 0;
+                return `${days}d left`;
+              })()}
+            </span>
+          </div>
+          
+          {/* Progress bar */}
+          {(() => {
+            const expires = activeShop?.subscriptionExpiresAt;
+            if (!expires) return null;
+            const left = Math.ceil((new Date(expires) - new Date()) / (1000 * 60 * 60 * 24));
+            const daysLeft = left > 0 ? left : 0;
+            const daysUsed = Math.max(0, Math.min(15, 15 - daysLeft));
+            const percent = Math.round((daysUsed / 15) * 100);
+            return (
+              <div className="w-full bg-slate-200/80 rounded-full h-1.5 overflow-hidden">
+                <div 
+                  className="bg-blue-600 h-1.5 rounded-full transition-all duration-500" 
+                  style={{ width: `${percent}%` }}
+                />
+              </div>
+            );
+          })()}
+
+          <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">
+            Access all features of the Professional plan free during your trial.
+          </p>
+
+          <button
+            onClick={() => {
+              setActiveTab('user_settings');
+              if (setSearchTerm) setSearchTerm('');
+            }}
+            className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-[10px] uppercase tracking-wider transition-all active:scale-[0.97] cursor-pointer"
+          >
+            Upgrade Now
+          </button>
+        </div>
+      )}
+
       {/* Logout Footer */}
       <div className="p-3 border-t border-slate-100 bg-slate-50/60">
         <button
@@ -60,5 +113,6 @@ export default function Sidebar({ activeTab, setActiveTab, setSearchTerm }) {
         </button>
       </div>
     </aside>
+
   );
 }

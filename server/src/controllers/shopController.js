@@ -39,6 +39,8 @@ const calculateExpiryDate = (billingCycle) => {
         return new Date(now.setDate(now.getDate() + 30));
     } else if (billingCycle === 'yearly') {
         return new Date(now.setDate(now.getDate() + 365));
+    } else if (billingCycle === 'trial' || billingCycle === 'free_trial') {
+        return new Date(now.setDate(now.getDate() + 15));
     }
     return null; // free plans do not expire
 };
@@ -298,34 +300,66 @@ export const loginShop = async (req, res) => {
 
         // Subscription Expiration Check
         if (shop.subscriptionExpiresAt && new Date() > new Date(shop.subscriptionExpiresAt)) {
-            if (shop.status === 'active') {
-                await db.query('UPDATE "Shop" SET "status" = \'suspended\', "isActive" = FALSE WHERE id = $1', [shop.id]);
-                shop.status = 'suspended';
-                shop.isActive = false;
+            if (shop.plan === 'trial') {
+                // Trial expired -> auto downgrade to starter, keep active, do not block login
+                await db.query(
+                    `UPDATE "Shop" 
+                     SET plan = 'starter', "subscriptionExpiresAt" = NULL, "trialWarning10Sent" = FALSE, "trialWarning14Sent" = FALSE, "updatedAt" = NOW() 
+                     WHERE id = $1`,
+                    [shop.id]
+                );
+                shop.plan = 'starter';
+                shop.subscriptionExpiresAt = null;
 
-                const { supportPhone, supportEmail } = await getSupportContacts();
+                // Send downgrade email immediately
+                const subject = 'Your GallaMitra Free Trial Has Expired';
+                const body = `Hello ${shop.ownerName},\n\nYour 15-day free trial for workspace "${shop.businessName}" has expired.\n\nWe have automatically shifted your workspace to the free Starter plan. Your existing data (ledger entries, invoices, customers, suppliers) is safe and nothing has been deleted. You can upgrade to the Professional plan at any time to regain access to advanced features like reports, analytics, and billing slips.\n\nBest regards,\nGallaMitra Team`;
 
-                // Send Subscription Expired Email
-                const expirySubject = 'GallaMitra Account Status Update: Subscription Expired';
-                const expiryBody = `Hello ${shop.ownerName},\nYour subscription for GallaMitra workspace "${shop.businessName}" has expired on ${new Date(shop.subscriptionExpiresAt).toLocaleDateString()}.\nConsequently, your account has been temporarily suspended. Please contact the platform administrator to renew your billing package.`;
-                
-                const expiryHtml = generateHtmlEmail({
-                    title: 'Account Status Update: Subscription Expired ⚠️',
+                const html = generateHtmlEmail({
+                    title: 'Trial Expired - Workspace Downgraded ℹ️',
                     greeting: `Hello ${shop.ownerName},`,
-                    leadText: `Your subscription for GallaMitra workspace "${shop.businessName}" has expired on ${new Date(shop.subscriptionExpiresAt).toLocaleDateString('en-IN')}. Consequently, your account has been temporarily suspended.`,
+                    leadText: `Your 15-day free trial for GallaMitra workspace "${shop.businessName}" has expired. We have automatically transitioned your account to the free Starter plan so you can continue your work without losing any data.`,
                     details: [
                         { label: 'Workspace Name', value: shop.businessName },
-                        { label: 'Expiry Date', value: new Date(shop.subscriptionExpiresAt).toLocaleDateString('en-IN') },
-                        { label: 'Account Status', value: 'Suspended' }
+                        { label: 'New Plan', value: 'Starter (Free)' },
+                        { label: 'Data Status', value: 'All Data Safe' }
                     ],
-                    supportPhone,
-                    supportEmail
+                    supportPhone: '+91 97732 72749',
+                    supportEmail: 'jainishdabgar2901@gmail.com'
                 });
 
-                await sendNotificationEmail(shop.email, expirySubject, expiryBody, expiryHtml);
-                await logActivity(shop.id, 'SHOP_SUSPENDED_BY_EXPIRATION', 'System', 'Subscription expired');
+                await sendNotificationEmail(shop.email, subject, body, html);
+                await logActivity(shop.id, 'SHOP_TRIAL_EXPIRED_DOWNGRADED', 'System', 'Trial expired, downgraded to starter during login');
+            } else {
+                if (shop.status === 'active') {
+                    await db.query('UPDATE "Shop" SET "status" = \'suspended\', "isActive" = FALSE WHERE id = $1', [shop.id]);
+                    shop.status = 'suspended';
+                    shop.isActive = false;
+
+                    const { supportPhone, supportEmail } = await getSupportContacts();
+
+                    // Send Subscription Expired Email
+                    const expirySubject = 'GallaMitra Account Status Update: Subscription Expired';
+                    const expiryBody = `Hello ${shop.ownerName},\nYour subscription for GallaMitra workspace "${shop.businessName}" has expired on ${new Date(shop.subscriptionExpiresAt).toLocaleDateString()}.\nConsequently, your account has been temporarily suspended. Please contact the platform administrator to renew your billing package.`;
+                    
+                    const expiryHtml = generateHtmlEmail({
+                        title: 'Account Status Update: Subscription Expired ⚠️',
+                        greeting: `Hello ${shop.ownerName},`,
+                        leadText: `Your subscription for GallaMitra workspace "${shop.businessName}" has expired on ${new Date(shop.subscriptionExpiresAt).toLocaleDateString('en-IN')}. Consequently, your account has been temporarily suspended.`,
+                        details: [
+                            { label: 'Workspace Name', value: shop.businessName },
+                            { label: 'Expiry Date', value: new Date(shop.subscriptionExpiresAt).toLocaleDateString('en-IN') },
+                            { label: 'Account Status', value: 'Suspended' }
+                        ],
+                        supportPhone,
+                        supportEmail
+                    });
+
+                    await sendNotificationEmail(shop.email, expirySubject, expiryBody, expiryHtml);
+                    await logActivity(shop.id, 'SHOP_SUSPENDED_BY_EXPIRATION', 'System', 'Subscription expired');
+                }
+                return res.status(403).json({ error: 'Your subscription has expired. Please contact the administrator to renew.' });
             }
-            return res.status(403).json({ error: 'Your subscription has expired. Please contact the administrator to renew.' });
         }
 
         // Status checks
@@ -1498,5 +1532,147 @@ export const getPublicStats = async (req, res) => {
     } catch (error) {
         console.error('🚨 Error fetching public stats:', error);
         res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+// ─── PERIODIC SUBSCRIPTION CHECKS & WARNING EMAILS WORKER ───────────────────────────────────────
+export const processSubscriptionChecks = async () => {
+    try {
+        const now = new Date();
+
+        // 1. Check for warning emails (10th day: 5 days remaining; 14th day: 1 day remaining)
+        // Find active shops with plan = 'trial' and subscriptionExpiresAt not null
+        const shops = await db.query(
+            `SELECT id, "ownerName", "businessName", "email", "subscriptionExpiresAt", "trialWarning10Sent", "trialWarning14Sent" 
+             FROM "Shop" 
+             WHERE plan = 'trial' AND status = 'active' AND "isActive" = TRUE AND "subscriptionExpiresAt" IS NOT NULL`
+        );
+
+        const { supportPhone, supportEmail } = await getSupportContacts();
+
+        for (const shop of shops.rows) {
+            const expiryDate = new Date(shop.subscriptionExpiresAt);
+            const msDiff = expiryDate.getTime() - now.getTime();
+            const daysLeft = Math.ceil(msDiff / (1000 * 60 * 60 * 24));
+
+            if (daysLeft === 5 && !shop.trialWarning10Sent) {
+                // Send 10th-day warning email (5 days left)
+                const subject = 'Your GallaMitra Free Trial Expires in 5 Days';
+                const body = `Hello ${shop.ownerName},\n\nYour 15-day free trial for workspace "${shop.businessName}" will expire in 5 days (on ${expiryDate.toLocaleDateString('en-IN')}).\n\nPlease upgrade to the Professional plan to keep access to all professional features. If you do not upgrade, you will be automatically moved to the free Starter plan when the trial ends, with no data lost.\n\nBest regards,\nGallaMitra Team`;
+                
+                const html = generateHtmlEmail({
+                    title: 'Trial Expiring in 5 Days ⏳',
+                    greeting: `Hello ${shop.ownerName},`,
+                    leadText: `Your 15-day free trial for GallaMitra workspace "${shop.businessName}" will expire in 5 days.`,
+                    details: [
+                        { label: 'Workspace Name', value: shop.businessName },
+                        { label: 'Expiry Date', value: expiryDate.toLocaleDateString('en-IN') },
+                        { label: 'Status', value: '5 Days Remaining' }
+                    ],
+                    supportPhone,
+                    supportEmail
+                });
+
+                await sendNotificationEmail(shop.email, subject, body, html);
+                await db.query('UPDATE "Shop" SET "trialWarning10Sent" = TRUE WHERE id = $1', [shop.id]);
+                console.log(`[Subscription Worker] Sent 10th-day trial warning to ${shop.email}`);
+            } else if (daysLeft === 1 && !shop.trialWarning14Sent) {
+                // Send 14th-day warning email (1 day left)
+                const subject = 'Your GallaMitra Free Trial Expires Tomorrow!';
+                const body = `Hello ${shop.ownerName},\n\nYour 15-day free trial for workspace "${shop.businessName}" will expire tomorrow (on ${expiryDate.toLocaleDateString('en-IN')}).\n\nPlease upgrade to the Professional plan to keep access to all professional features. If you do not upgrade, you will be automatically moved to the free Starter plan tomorrow, with no data lost.\n\nBest regards,\nGallaMitra Team`;
+                
+                const html = generateHtmlEmail({
+                    title: 'Trial Expiring Tomorrow ⏳',
+                    greeting: `Hello ${shop.ownerName},`,
+                    leadText: `Your 15-day free trial for GallaMitra workspace "${shop.businessName}" will expire tomorrow.`,
+                    details: [
+                        { label: 'Workspace Name', value: shop.businessName },
+                        { label: 'Expiry Date', value: expiryDate.toLocaleDateString('en-IN') },
+                        { label: 'Status', value: '1 Day Remaining' }
+                    ],
+                    supportPhone,
+                    supportEmail
+                });
+
+                await sendNotificationEmail(shop.email, subject, body, html);
+                await db.query('UPDATE "Shop" SET "trialWarning14Sent" = TRUE WHERE id = $1', [shop.id]);
+                console.log(`[Subscription Worker] Sent 14th-day trial warning to ${shop.email}`);
+            }
+        }
+
+        // 2. Check for expired trial plans -> downgrade to 'starter'
+        const expiredTrials = await db.query(
+            `SELECT id, "ownerName", "businessName", "email", "subscriptionExpiresAt" 
+             FROM "Shop" 
+             WHERE plan = 'trial' AND "subscriptionExpiresAt" < $1`,
+            [now]
+        );
+
+        for (const shop of expiredTrials.rows) {
+            // Downgrade to 'starter' plan (free plan) and clear subscriptionExpiresAt
+            await db.query(
+                `UPDATE "Shop" 
+                 SET plan = 'starter', "subscriptionExpiresAt" = NULL, "trialWarning10Sent" = FALSE, "trialWarning14Sent" = FALSE, "updatedAt" = NOW() 
+                 WHERE id = $1`,
+                [shop.id]
+            );
+
+            // Send Expired / Downgrade Email
+            const subject = 'Your GallaMitra Free Trial Has Expired';
+            const body = `Hello ${shop.ownerName},\n\nYour 15-day free trial for workspace "${shop.businessName}" has expired.\n\nWe have automatically shifted your workspace to the free Starter plan. Your existing data (ledger entries, invoices, customers, suppliers) is safe and nothing has been deleted. You can upgrade to the Professional plan at any time to regain access to advanced features like reports, analytics, and billing slips.\n\nBest regards,\nGallaMitra Team`;
+
+            const html = generateHtmlEmail({
+                title: 'Trial Expired - Workspace Downgraded ℹ️',
+                greeting: `Hello ${shop.ownerName},`,
+                leadText: `Your 15-day free trial for GallaMitra workspace "${shop.businessName}" has expired. We have automatically transitioned your account to the free Starter plan so you can continue your work without losing any data.`,
+                details: [
+                    { label: 'Workspace Name', value: shop.businessName },
+                    { label: 'New Plan', value: 'Starter (Free)' },
+                    { label: 'Data Status', value: 'All Data Safe' }
+                ],
+                supportPhone,
+                supportEmail
+            });
+
+            await sendNotificationEmail(shop.email, subject, body, html);
+            await logActivity(shop.id, 'SHOP_TRIAL_EXPIRED_DOWNGRADED', 'System', 'Trial expired, downgraded to starter');
+            console.log(`[Subscription Worker] Downgraded trial shop ${shop.email} to starter`);
+        }
+
+        // 3. Check for expired paid plans (growth, professional, etc.) -> suspend them
+        const expiredPaidShops = await db.query(
+            `SELECT id, "ownerName", "businessName", "email", "subscriptionExpiresAt" 
+             FROM "Shop" 
+             WHERE plan != 'starter' AND plan != 'trial' AND status = 'active' AND "subscriptionExpiresAt" < $1`,
+            [now]
+        );
+
+        for (const shop of expiredPaidShops.rows) {
+            await db.query('UPDATE "Shop" SET "status" = \'suspended\', "isActive" = FALSE, "updatedAt" = NOW() WHERE id = $1', [shop.id]);
+            
+            // Send Paid Expiration Email
+            const subject = 'GallaMitra Account Status Update: Subscription Expired';
+            const body = `Hello ${shop.ownerName},\n\nYour subscription for GallaMitra workspace "${shop.businessName}" has expired on ${new Date(shop.subscriptionExpiresAt).toLocaleDateString('en-IN')}.\n\nConsequently, your account has been temporarily suspended. Please contact the platform administrator to renew your billing package.`;
+
+            const html = generateHtmlEmail({
+                title: 'Account Status Update: Subscription Expired ⚠️',
+                greeting: `Hello ${shop.ownerName},`,
+                leadText: `Your subscription for GallaMitra workspace "${shop.businessName}" has expired on ${new Date(shop.subscriptionExpiresAt).toLocaleDateString('en-IN')}. Consequently, your account has been temporarily suspended.`,
+                details: [
+                    { label: 'Workspace Name', value: shop.businessName },
+                    { label: 'Expiry Date', value: new Date(shop.subscriptionExpiresAt).toLocaleDateString('en-IN') },
+                    { label: 'Account Status', value: 'Suspended' }
+                ],
+                supportPhone,
+                supportEmail
+            });
+
+            await sendNotificationEmail(shop.email, subject, body, html);
+            await logActivity(shop.id, 'SHOP_SUSPENDED_BY_EXPIRATION', 'System', 'Subscription expired');
+            console.log(`[Subscription Worker] Suspended paid shop ${shop.email} due to subscription expiration`);
+        }
+
+    } catch (error) {
+        console.error('Error in processSubscriptionChecks worker:', error);
     }
 };

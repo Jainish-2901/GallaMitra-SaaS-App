@@ -199,7 +199,14 @@ export default function RegisterBusinessModal({ isOpen, onClose }) {
                       }`}
                     >
                       <span className="text-[10px] uppercase font-black tracking-wider">{p.name}</span>
-                      <span className="text-[10px] font-mono mt-0.5">₹{parseFloat(p.price).toFixed(0)}/mo</span>
+                      <span className="text-[10px] font-mono mt-0.5">
+                        ₹{parseFloat(p.price).toFixed(0)}
+                        {p.billingCycle?.toLowerCase() === 'free'
+                          ? ' (Free)'
+                          : (p.billingCycle?.toLowerCase() === 'trial'
+                            ? ' (15 Days Trial)'
+                            : `/${p.billingCycle?.toLowerCase() === 'yearly' || p.billingCycle?.toLowerCase() === 'yr' ? 'yr' : 'mo'}`)}
+                      </span>
                     </button>
                   );
                 })}

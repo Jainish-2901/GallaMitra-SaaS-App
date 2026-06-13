@@ -96,44 +96,76 @@ export default function DocumentListsView({ mode, t = {} }) {
     const party = receipt ? (receipt.customerId ? customers.find(c => c.id === receipt.customerId) : suppliers.find(s => s.id === receipt.supplierId)) : null;
 
     return (
-      <div ref={receiptPrintRef} style={{ background: '#fff', padding: '32px', fontFamily: 'Arial, sans-serif', maxWidth: '480px' }}>
+      <div ref={receiptPrintRef} style={{ background: '#fff', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif', width: '420px', border: '1px solid #000', borderRadius: '8px', position: 'relative', margin: '0 auto', boxSizing: 'border-box' }}>
+        
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '24px', borderBottom: '2px dashed #e2e8f0', paddingBottom: '20px' }}>
-          {activeShop?.logoUrl && <img src={activeShop.logoUrl} alt="Logo" style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'cover', margin: '0 auto 10px', display: 'block' }} />}
-          <div style={{ fontWeight: 900, fontSize: '18px', color: '#0f172a' }}>{activeShop?.businessName}</div>
-          {activeShop?.address && <div style={{ fontSize: '11px', color: '#64748b' }}>{activeShop.address}</div>}
-          {activeShop?.phone && <div style={{ fontSize: '11px', color: '#64748b' }}>Tel: {activeShop.phone}</div>}
-          {activeShop?.gstin && <div style={{ fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>GSTIN: {activeShop.gstin}</div>}
-          <div style={{ marginTop: '10px', fontSize: '13px', fontWeight: 900, letterSpacing: '0.15em', color: '#1d4ed8', textTransform: 'uppercase' }}>Payment Receipt</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', marginBottom: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', textAlign: 'left' }}>
+            {activeShop?.logoUrl && <img src={activeShop.logoUrl} alt="Logo" style={{ width: '42px', height: '42px', borderRadius: '6px', objectFit: 'cover', border: '1px solid #e2e8f0', padding: '1px', backgroundColor: '#fff' }} />}
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '13px', color: '#000', lineHeight: '1.2' }}>{activeShop?.businessName}</div>
+              {activeShop?.address && <div style={{ fontSize: '9px', color: '#555', marginTop: '2px', maxWidth: '200px', lineHeight: '1.2' }}>{activeShop.address}</div>}
+              {activeShop?.phone && <div style={{ fontSize: '9px', color: '#555', marginTop: '1px' }}>Tel: {activeShop.phone}</div>}
+              {activeShop?.gstin && (
+                <div style={{ fontSize: '8px', color: '#000', backgroundColor: '#f1f5f9', display: 'inline-block', padding: '1px 4px', borderRadius: '3px', marginTop: '2px', fontFamily: 'monospace', fontWeight: 700, border: '1px solid #cbd5e1' }}>
+                  GSTIN: {activeShop.gstin}
+                </div>
+              )}
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '0.04em', color: '#000', textTransform: 'uppercase', background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '3px 6px', borderRadius: '4px', display: 'inline-block' }}>
+              Receipt
+            </span>
+          </div>
         </div>
+
+        {/* Party Details Card */}
+        <div style={{ background: '#fafafa', border: '1px solid #d1d5db', borderRadius: '8px', padding: '10px', marginBottom: '12px', fontSize: '10px', textAlign: 'left' }}>
+          <div style={{ fontSize: '8px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px', fontFamily: 'monospace' }}>Party Details</div>
+          <div style={{ fontWeight: 800, color: '#000', fontSize: '12px' }}>{party?.shopName || party?.name || '—'}</div>
+          {party?.shopName && <div style={{ color: '#555', marginTop: '2px', fontWeight: 650 }}>Contact: {party.name}</div>}
+          {party?.phone && <div style={{ color: '#555', marginTop: '2px', fontWeight: 650 }}>Phone: <span style={{ color: '#000', fontFamily: 'monospace' }}>{party.phone}</span></div>}
+          {party?.billingAddress && <div style={{ color: '#555', marginTop: '2px', fontWeight: 650 }}>Address: {party.billingAddress}</div>}
+          {party?.gstin && (
+            <div style={{ marginTop: '4px' }}>
+              <span style={{ fontSize: '8px', fontWeight: 700, color: '#000', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace', textTransform: 'uppercase' }}>
+                GSTIN: {party.gstin}
+              </span>
+            </div>
+          )}
+        </div>
+
         {/* Receipt Details */}
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '14px' }}>
           {[
-            ['Receipt No.', `#${receipt?.receiptNo}`],
-            ['Date', receipt ? new Date(receipt.date).toLocaleString('en-IN') : ''],
-            ['Party Name', party?.shopName || party?.name || '—'],
+            ['Voucher No.', `#${receipt?.receiptNo}`],
+            ['Date & Time', receipt ? new Date(receipt.date).toLocaleString('en-IN') : ''],
             ['Payment Mode', receipt?.paymentMode],
             receipt?.remark ? ['Remark', receipt.remark] : null,
           ].filter(Boolean).map(([k, v]) => (
-            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f1f5f9', fontSize: '12px' }}>
-              <span style={{ color: '#64748b' }}>{k}</span>
-              <span style={{ fontWeight: 700, color: '#0f172a', fontFamily: k === 'Receipt No.' ? 'monospace' : 'inherit' }}>{v}</span>
+            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #f1f5f9', fontSize: '10px' }}>
+              <span style={{ color: '#555', fontWeight: 600 }}>{k}</span>
+              <span style={{ fontWeight: 700, color: '#000', marginLeft: 'auto', fontFamily: k.includes('No.') ? 'monospace' : 'inherit' }}>{v}</span>
             </div>
           ))}
         </div>
-        {/* Amount */}
-        <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '18px', textAlign: 'center', margin: '20px 0' }}>
-          <div style={{ color: '#64748b', fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Amount</div>
-          <div style={{ color: '#0f172a', fontWeight: 900, fontSize: '28px', fontFamily: 'monospace', marginTop: '4px' }}>₹{receipt ? parseFloat(receipt.amount).toFixed(2) : '0.00'}</div>
+        
+        {/* Amount Card */}
+        <div style={{ background: '#fafafa', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', textAlign: 'center', margin: '12px 0' }}>
+          <div style={{ color: '#555', fontSize: '8px', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 700 }}>Amount Received</div>
+          <div style={{ color: '#000', fontWeight: 800, fontSize: '20px', fontFamily: 'monospace', marginTop: '2px' }}>₹{receipt ? parseFloat(receipt.amount).toFixed(2) : '0.00'}</div>
         </div>
+
         {/* Signature */}
         {activeShop?.signatureUrl && (
-          <div style={{ textAlign: 'right', marginTop: '20px' }}>
-            <img src={activeShop.signatureUrl} alt="Signature" style={{ height: '36px', objectFit: 'contain' }} />
-            <div style={{ fontSize: '9px', color: '#94a3b8', marginTop: '2px' }}>Authorized Signature</div>
+          <div style={{ textAlign: 'right', marginTop: '16px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+            <img src={activeShop.signatureUrl} alt="Signature" style={{ height: '30px', objectFit: 'contain', marginBottom: '2px' }} />
+            <div style={{ borderTop: '1px solid #000', width: '100px' }} />
+            <div style={{ fontSize: '8px', color: '#666', marginTop: '2px', fontWeight: 700, textTransform: 'uppercase' }}>Authorized Signatory</div>
           </div>
         )}
-        <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '10px', color: '#94a3b8' }}>Powered by GallaMitra</div>
+        <div style={{ textAlign: 'center', marginTop: '16px', paddingTop: '8px', borderTop: '1px dashed #e2e8f0', fontSize: '8px', color: '#888' }}>Powered by GallaMitra</div>
       </div>
     );
   };
@@ -1718,7 +1750,7 @@ export default function DocumentListsView({ mode, t = {} }) {
 
       {/* Hidden receipt print body (only when selectedReceipt active) */}
       {selectedReceipt && (
-        <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '550px', zIndex: -1 }}>
+        <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '420px', zIndex: -1 }}>
           <ReceiptPrintBody receipt={selectedReceipt} />
         </div>
       )}
@@ -1733,65 +1765,101 @@ export default function DocumentListsView({ mode, t = {} }) {
       {/* ─── Receipt View Modal ──────────────────────────────────────────────── */}
       {selectedReceipt && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setSelectedReceipt(null)}>
-          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden flex flex-col max-h-[90vh] relative" onClick={e => e.stopPropagation()}>
+            {/* Subtle accent bar at top */}
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-slate-900" />
+
             {/* Modal Header */}
-            <div className="px-5 py-4 flex items-center justify-between" style={{ background: 'linear-gradient(135deg,#064e3b,#065f46)' }}>
+            <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100 mt-1.5">
               <div>
-                <h3 className="font-black text-white text-sm">Payment Receipt</h3>
-                <p className="text-emerald-300 text-[10px] font-mono font-bold">Voucher #{selectedReceipt.receiptNo}</p>
+                <span className="text-[9px] font-black tracking-widest text-slate-400 uppercase leading-none font-mono">
+                  Payment Receipt
+                </span>
+                <h3 className="font-black text-slate-900 text-base mt-1">
+                  Voucher #{selectedReceipt.receiptNo}
+                </h3>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => handlePrintRef(receiptPrintRef, `Receipt #${selectedReceipt.receiptNo}`)}
-                  className="p-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl transition-all">
+                  className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all"
+                  title="Print">
                   <Printer size={12} />
                 </button>
                 <button onClick={() => handleSaveRefAsPDF(receiptPrintRef, `Receipt_${selectedReceipt.receiptNo}.pdf`)}
-                  className="p-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl transition-all">
+                  className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all"
+                  title="Save PDF">
                   <FileDown size={12} />
                 </button>
                 <button onClick={() => setSelectedReceipt(null)}
-                  className="p-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/30 text-rose-300 rounded-xl transition-all">
+                  className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all">
                   <X size={12} />
                 </button>
               </div>
             </div>
+
             {/* Body */}
             <div className="p-6 overflow-y-auto flex-1 space-y-4">
               {/* Business */}
               <div className="text-center pb-4 border-b border-dashed border-slate-200">
-                {activeShop?.logoUrl && <img src={activeShop.logoUrl} alt="Logo" className="w-12 h-12 rounded-xl object-cover mx-auto mb-2 border border-slate-200" />}
-                <p className="font-black text-slate-900 text-base">{activeShop?.businessName}</p>
-                {activeShop?.address && <p className="text-slate-400 text-[10px] mt-0.5">{activeShop.address}</p>}
+                {activeShop?.logoUrl && <img src={activeShop.logoUrl} alt="Logo" className="w-12 h-12 rounded-xl object-cover mx-auto mb-2 border border-slate-200 shadow-2xs p-0.5 bg-white" />}
+                <p className="font-black text-slate-900 text-base leading-tight">{activeShop?.businessName}</p>
+                {activeShop?.address && <p className="text-slate-400 text-[10px] mt-0.5 leading-relaxed">{activeShop.address}</p>}
                 {activeShop?.phone && <p className="text-slate-400 text-[10px]">Tel: {activeShop.phone}</p>}
+                {activeShop?.gstin && (
+                  <p className="mt-1">
+                    <span className="inline-block bg-slate-100 text-slate-700 border border-slate-200 font-mono text-[9px] font-black px-2 py-0.5 rounded uppercase">
+                      GSTIN: {activeShop.gstin}
+                    </span>
+                  </p>
+                )}
               </div>
-              {/* Details */}
-              <div className="space-y-2.5">
-                {(() => {
-                  const party = selectedReceipt.customerId ? customers.find(c => c.id === selectedReceipt.customerId) : suppliers.find(s => s.id === selectedReceipt.supplierId);
-                  return [
-                    ['Receipt No.', `#${selectedReceipt.receiptNo}`, Hash],
-                    ['Date', new Date(selectedReceipt.date).toLocaleString('en-IN'), Calendar],
-                    ['Party Name', party?.shopName || party?.name || '—', Building2],
-                    ['Payment Mode', selectedReceipt.paymentMode, CreditCard],
-                    selectedReceipt.remark ? ['Remark', selectedReceipt.remark, FileText] : null,
-                  ].filter(Boolean).map(([k, v, Icon]) => (
-                    <div key={k} className="flex items-center justify-between py-2.5 px-3 bg-slate-50 rounded-xl border border-slate-100">
-                      <div className="flex items-center gap-2 text-[10px] text-slate-500">
-                        <Icon size={11} className="text-slate-400" /> {k}
-                      </div>
-                      <span className="font-bold text-slate-900 text-xs font-mono">{v}</span>
+
+              {/* Party Details Card */}
+              {(() => {
+                const party = selectedReceipt.customerId ? customers.find(c => c.id === selectedReceipt.customerId) : suppliers.find(s => s.id === selectedReceipt.supplierId);
+                return (
+                  <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 text-left space-y-1.5">
+                    <p className="text-[8px] text-slate-400 font-mono font-bold uppercase tracking-wider mb-1">Party Details</p>
+                    <p className="font-black text-slate-900 text-sm leading-snug">{party?.shopName || party?.name || '—'}</p>
+                    {party?.shopName && <p className="text-slate-505 text-[10px] font-semibold">Contact: {party.name}</p>}
+                    {party?.phone && <p className="text-slate-500 text-[10px] font-semibold">Phone: <span className="font-mono text-slate-900">{party.phone}</span></p>}
+                    {party?.billingAddress && <p className="text-slate-500 text-[10px] leading-relaxed">Address: {party.billingAddress}</p>}
+                    {party?.gstin && (
+                      <p className="mt-1.5">
+                        <span className="inline-block bg-emerald-50 text-emerald-700 border border-emerald-100 font-mono text-[9px] font-black px-1.5 py-0.5 rounded uppercase">
+                          GSTIN: {party.gstin}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Details List */}
+              <div className="space-y-2">
+                {[
+                  ['Date', new Date(selectedReceipt.date).toLocaleString('en-IN'), Calendar],
+                  ['Payment Mode', selectedReceipt.paymentMode, CreditCard],
+                  selectedReceipt.remark ? ['Remark', selectedReceipt.remark, FileText] : null,
+                ].filter(Boolean).map(([k, v, Icon]) => (
+                  <div key={k} className="flex items-center justify-between py-2.5 px-3 bg-slate-50/50 rounded-xl border border-slate-100">
+                    <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                      <Icon size={12} className="text-slate-400" /> {k}
                     </div>
-                  ));
-                })()}
+                    <span className="font-bold text-slate-900 text-xs font-mono">{v}</span>
+                  </div>
+                ))}
               </div>
-              {/* Amount */}
-              <div className="rounded-2xl p-5 text-center" style={{ background: 'linear-gradient(135deg,#064e3b,#065f46)' }}>
-                <p className="text-emerald-300 text-[10px] font-mono uppercase tracking-wider font-bold">Amount Received</p>
-                <p className="text-white font-black text-3xl font-mono mt-1 font-bold">₹{parseFloat(selectedReceipt.amount).toFixed(2)}</p>
+
+              {/* Amount Received */}
+              <div className="rounded-2xl p-5 text-center bg-slate-50 border border-slate-200">
+                <p className="text-slate-500 text-[9px] font-mono uppercase tracking-wider font-bold">Amount Received</p>
+                <p className="text-slate-955 font-black text-3xl font-mono mt-1 font-bold">₹{parseFloat(selectedReceipt.amount).toFixed(2)}</p>
               </div>
+
               {/* Signature */}
               {activeShop?.signatureUrl && (
-                <div className="flex flex-col items-end">
+                <div className="flex flex-col items-end pt-2">
                   <p className="text-[8px] font-mono text-slate-400 uppercase tracking-wider">Authorized Signature</p>
                   <img src={activeShop.signatureUrl} alt="Signature" className="h-10 object-contain mt-1 border border-slate-100 rounded-lg p-0.5 bg-slate-50" />
                 </div>

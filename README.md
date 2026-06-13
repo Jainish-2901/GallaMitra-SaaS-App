@@ -13,7 +13,7 @@ The monorepo is divided into three primary sub-systems:
 ### 1. 💼 Owner Client Portal (`/client`)
 The main tenant-facing workspace application where business owners perform retail tasks.
 * **Tech Stack**: React 19, React Router DOM v7, Vite v8, Tailwind CSS.
-* **Key Features**: Customer/Supplier CRUDs, Mixed Ledger (Credit/Debit entries), itemized GST Invoice Builder, Whatsapp Sharing, Offline-ready PWA installation, and Multilingual Support (English, Gujarati, Hindi).
+* **Key Features**: Customer/Supplier CRUDs, Mixed Ledger (Credit/Debit entries), itemized GST Invoice Builder, 15-Day Free Trial (with automatic warnings & Starter-downgrade), Whatsapp Sharing, Grayscale Single-Page Payment Vouchers, PWA installation & Public Portal shortcuts (with automatic standalone statement redirection), and Multilingual Support (English, Gujarati, Hindi).
 * **Hosted At**: `https://gallamitra.vercel.app/`
 
 ### 2. 👑 Super Admin Dashboard (`/admin`)

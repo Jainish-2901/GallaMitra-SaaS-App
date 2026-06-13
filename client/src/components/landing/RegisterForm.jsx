@@ -52,7 +52,7 @@ function PlanCard({ plan, selected, onSelect, index }) {
         <div>
           <p style={{ fontSize: '.82rem', fontWeight: 900, color: selected ? color : '#334155' }}>{plan.name}</p>
           <p style={{ fontSize: '.68rem', fontWeight: 800, color: selected ? color : '#94A3B8' }}>
-            ₹{parseFloat(plan.price).toFixed(0)}{plan.billingCycle === 'free' ? ' (Free)' : `/${plan.billingCycle === 'yearly' ? 'yr' : 'mo'}`}
+            ₹{parseFloat(plan.price).toFixed(0)}{plan.billingCycle === 'free' ? ' (Free)' : (plan.billingCycle === 'trial' ? ' (15 Days Trial)' : `/${plan.billingCycle === 'yearly' ? 'yr' : 'mo'}`)}
           </p>
         </div>
         {selected && <CheckCircle size={16} color={color} style={{ marginLeft: 'auto' }} />}
@@ -133,7 +133,7 @@ export default function RegisterForm({ onSwitchToLogin, onClose }) {
     activePlanBorder = '#DDD6FE';
   }
 
-  const renderSelectedPrice = `₹${parseFloat(activePlanObj.price).toFixed(0)}${activePlanObj.billingCycle === 'free' ? ' (Free)' : `/${activePlanObj.billingCycle === 'yearly' ? 'yr' : 'mo'}`}`;
+  const renderSelectedPrice = `₹${parseFloat(activePlanObj.price).toFixed(0)}${activePlanObj.billingCycle === 'free' ? ' (Free)' : (activePlanObj.billingCycle === 'trial' ? ' (15 Days Trial)' : `/${activePlanObj.billingCycle === 'yearly' ? 'yr' : 'mo'}`)}`;
 
   return (
     <div>

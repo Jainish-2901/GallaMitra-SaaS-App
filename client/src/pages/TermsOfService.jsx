@@ -12,7 +12,7 @@ export default function TermsOfService() {
             <FileText size={24} />
           </div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Terms of Service</h2>
-          <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">Last Updated: June 11, 2026</p>
+          <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">Last Updated: June 13, 2026</p>
         </div>
 
         {/* Content Matrix */}
@@ -24,10 +24,10 @@ export default function TermsOfService() {
           {/* 1. Tenant Lifecycle */}
           <div className="space-y-3">
             <h3 className="text-base font-black text-slate-900 flex items-center gap-2 tracking-tight">
-              <Award size={18} className="text-blue-600" /> 1. Workspace Allocation & Super-Admin Override
+              <Award size={18} className="text-blue-600" /> 1. Workspace Allocation & Trial Plan Terms
             </h3>
             <p className="text-slate-500 text-xs md:text-sm">
-              Advanced feature access modules (Growth and Premium configurations) require active approval sequences by global platform operators before routing deployment. Global system operators preserve total infrastructure rights to intercept or freeze any workspace tier instantly if transactional patterns breach financial integrity or violate platform parameters.
+              New business owner registrations are automatically allocated a 15-day Free Trial of the Professional tier features. Advanced paid tier accesses require approval sequences by global platform operators. Trial plans last exactly 15 days, after which accounts are automatically shifted to the Starter tier. Platform operators reserve total infrastructure rights to intercept, modify, or terminate any workspace tier if transactional patterns violate platform integrity.
             </p>
           </div>
 
@@ -44,10 +44,10 @@ export default function TermsOfService() {
           {/* 3. PWA Capabilities */}
           <div className="space-y-3">
             <h3 className="text-base font-black text-slate-900 flex items-center gap-2 tracking-tight">
-              <Smartphone size={18} className="text-blue-600" /> 3. Progressive Web App (PWA) Sync Parameters
+              <Smartphone size={18} className="text-blue-600" /> 3. Progressive Web App (PWA) Sync & Portal Shortcuts
             </h3>
-            <p className="text-slate-500 text-xs md:text-sm">
-              Our PWA provides quick-action shortcuts and stores structural asset frames locally to speed up rendering. However, because GallaMitra does not manage local inventory nodes, all active balance adjustments, voucher generations, and invoice builds are strictly online operations. They require active internet handshakes to commit edits safely to central database clusters.
+            <p className="text-slate-505 text-xs md:text-sm font-semibold">
+              Our PWA provides quick-action shortcuts and stores structural asset frames locally to speed up rendering. We also offer PWA shortcut installation prompts for customers and suppliers inside their public portal. When installed and launched, the app redirects to the respective party's portal URL stored in browser memory, facilitating fast future reference. All active balance adjustments, voucher generations, and invoice builds are strictly online operations and require active internet handshakes to commit edits safely to central database clusters.
             </p>
           </div>
 

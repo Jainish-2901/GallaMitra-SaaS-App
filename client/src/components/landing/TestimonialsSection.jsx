@@ -12,7 +12,7 @@ const testimonials = [
     avatarColor: "bg-blue-500 text-white"
   },
   {
-    quote: "The offline-ready PWA client is incredibly fast under physical shop operations. GST invoice builds take seconds and sync immediately once online. Zero buffering delay!",
+    quote: "The online PWA client is incredibly fast under physical shop operations. GST invoice builds take seconds and sync immediately. Zero buffering delay!",
     author: "Amit Sharma",
     role: "Owner, Sharma Electronics",
     location: "Indore, Madhya Pradesh",

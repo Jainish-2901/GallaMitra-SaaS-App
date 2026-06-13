@@ -76,6 +76,17 @@ export default function TopBar({ activeTab, setActiveTab, setSearchTerm, isMobil
                   <span className="hidden xs:inline-block text-[8px] px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-full font-bold uppercase tracking-wider shrink-0">
                     ⚡ {activeShop?.plan}
                   </span>
+                  {activeShop?.plan === 'trial' && (() => {
+                    const expires = activeShop?.subscriptionExpiresAt;
+                    if (!expires) return null;
+                    const left = Math.ceil((new Date(expires) - new Date()) / (1000 * 60 * 60 * 24));
+                    const days = left > 0 ? left : 0;
+                    return (
+                      <span className="text-[8px] px-1.5 py-0.5 bg-amber-50 text-amber-600 border border-amber-200 rounded-full font-black uppercase tracking-wider flex items-center gap-1 shrink-0">
+                        <Clock size={8} className="animate-pulse" /> {days} {days === 1 ? 'day' : 'days'} left
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-slate-500 font-semibold truncate">
                   <span className="hidden sm:inline">{activeShop?.ownerName}</span>
@@ -101,7 +112,16 @@ export default function TopBar({ activeTab, setActiveTab, setSearchTerm, isMobil
                     <div className="flex items-center justify-between px-3 py-2 bg-blue-50/50 border border-blue-100 rounded-xl text-left">
                       <div className="min-w-0">
                         <p className="font-bold text-xs text-blue-800 truncate">{activeShop?.businessName}</p>
-                        <p className="text-[9px] text-blue-600 font-semibold uppercase">{activeShop?.plan} (Current)</p>
+                        <p className="text-[9px] text-blue-600 font-semibold uppercase flex items-center gap-1">
+                          <span>{activeShop?.plan} (Current)</span>
+                          {activeShop?.plan === 'trial' && (() => {
+                            const expires = activeShop?.subscriptionExpiresAt;
+                            if (!expires) return null;
+                            const left = Math.ceil((new Date(expires) - new Date()) / (1000 * 60 * 60 * 24));
+                            const days = left > 0 ? left : 0;
+                            return <span className="text-amber-600 font-black">• {days}d left</span>;
+                          })()}
+                        </p>
                       </div>
                       <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500 shrink-0" />
                     </div>
@@ -144,6 +164,17 @@ export default function TopBar({ activeTab, setActiveTab, setSearchTerm, isMobil
               <span className="hidden xs:inline-block text-[8px] px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-full font-bold uppercase tracking-wider shrink-0">
                 ⚡ {activeShop?.plan}
               </span>
+              {activeShop?.plan === 'trial' && (() => {
+                const expires = activeShop?.subscriptionExpiresAt;
+                if (!expires) return null;
+                const left = Math.ceil((new Date(expires) - new Date()) / (1000 * 60 * 60 * 24));
+                const days = left > 0 ? left : 0;
+                return (
+                  <span className="text-[8px] px-1.5 py-0.5 bg-amber-50 text-amber-600 border border-amber-200 rounded-full font-black uppercase tracking-wider flex items-center gap-1 shrink-0">
+                    <Clock size={8} className="animate-pulse" /> {days} {days === 1 ? 'day' : 'days'} left
+                  </span>
+                );
+              })()}
             </div>
             <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-slate-500 font-semibold truncate">
               <span className="hidden sm:inline">{activeShop?.ownerName}</span>

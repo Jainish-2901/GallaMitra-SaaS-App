@@ -4,7 +4,10 @@
 <head>
   <meta charset="UTF-8" />
 
-  <link rel="icon" type="image/png" href="/logo.png" />
+  <!-- Google Favicon & App Icon Specifications -->
+  <link rel="icon" type="image/png" href="/logo.png" sizes="192x192" />
+  <link rel="icon" type="image/png" href="/logo.png" sizes="any" />
+  <link rel="shortcut icon" href="/logo.png" type="image/png" />
   <link rel="apple-touch-icon" href="/logo.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
@@ -19,11 +22,11 @@
     gtag('config', 'G-L4R5P224RL');
   </script>
 
-  <title>GallaMitra - Multi-Tenant SaaS Billing & Vyapar Ledger</title>
+  <title>GallaMitra - Multi-Tenant SaaS Billing & Vyapar Ledger Book App</title>
   <meta name="description"
-    content="GallaMitra is a high-performance multi-tenant SaaS Billing & Ledger Management Platform. Securely manage shop accounting, suppliers, dynamic firm invoices, and digital ledger entries with absolute zero buffering delay." />
+    content="GallaMitra SaaS is India's leading multi-tenant billing software and online vyapar ledger book. Securely manage shop accounting, customer suppliers, GST invoice builder, and ledger records with zero buffering delay." />
   <meta name="keywords"
-    content="GallaMitra, SaaS billing platform, multi tenant accounting, online khata book, shop ledger manager, GST invoice builder, India business software, digital ledger records" />
+    content="GallaMitra, galla mitra, galla mitra saas, gallamitra saas, galla mitra app, gallamitra app, gallamitra billing, online ledger book, vyapar ledger app, best saas billing and ledger management software in india, online vyapar khata book for retail shop, gst invoice builder for Indian merchants, how to manage customer and supplier ledger online, free digital ledger book for small businesses, multi-tenant shop accounting software, whatsapp ledger sharing with payment receipts, GST billing software, merchant billing app, business accounting software, khata book app, shop ledger book app, digital vyapar account app, customer ledger manager, galla billing software, mitra ledger software" />
   <meta name="robots" content="index, follow" />
   <meta name="author" content="GallaMitra Operations" />
 
@@ -50,11 +53,47 @@
 
   <!-- Progressive Web App Meta Tags -->
   <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#0F172A" />
+  <meta name="theme-color" content="#FFFFFF" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="GallaMitra" />
+
+  <!-- Structured Data / Rich Results for Google Search (Logo, alternate name, and search queries) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "GallaMitra",
+    "alternateName": ["Galla Mitra", "GallaMitra SaaS", "Galla Mitra SaaS", "GallaMitra App", "Galla Mitra App"],
+    "url": "https://gallamitra.vercel.app/",
+    "logo": "https://gallamitra.vercel.app/logo.png",
+    "description": "GallaMitra SaaS is a high-performance multi-tenant billing software and digital vyapar ledger book designed for Indian merchants, shops, and businesses.",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "telephone": "+91-97732-72749",
+      "contactType": "technical support",
+      "email": "jainishdabgar2901@gmail.com"
+    }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "GallaMitra",
+    "alternateName": ["Galla Mitra", "GallaMitra SaaS", "Galla Mitra SaaS", "GallaMitra App", "Galla Mitra App"],
+    "url": "https://gallamitra.vercel.app/",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://gallamitra.vercel.app/?search={search_term_string}"
+      },
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
 </head>
 
 <body style="background-color: #F8FAFC; margin: 0; padding: 0;">

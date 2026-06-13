@@ -12,7 +12,7 @@ export default function PrivacyPolicy() {
             <ShieldCheck size={24} />
           </div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Privacy Policy</h2>
-          <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">Last Updated: June 11, 2026</p>
+          <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">Last Updated: June 13, 2026</p>
         </div>
 
         {/* Content Matrix */}
@@ -27,7 +27,7 @@ export default function PrivacyPolicy() {
               <Eye size={18} className="text-blue-600" /> 1. Information We Securely Collect
             </h3>
             <p className="text-slate-500 text-xs md:text-sm">
-              To provide your workspace, we collect user-provided details via Google OAuth sync, including business name, owner name, verified email addresses, phone numbers, state, business address, digital sign strings, and optional GSTIN/VPA parameters. We log transaction histories, sales invoices, purchase bills, and manual ledger entries on your behalf.
+              To provide your workspace, we collect user-provided details via Google OAuth sync, including business name, owner name, verified email addresses, phone numbers, state, business address, digital sign strings, and optional GSTIN/VPA parameters. We log transaction histories, sales invoices, purchase bills, and manual ledger entries on your behalf. Additionally, we track subscription metadata, plan statuses (Starter, Growth, Trial, Professional), and email dispatch flags to manage trial notices, countdown triggers, and automatic warnings.
             </p>
           </div>
 
@@ -44,10 +44,10 @@ export default function PrivacyPolicy() {
           {/* 3. Non-Cascade Retention Safeguard */}
           <div className="space-y-3">
             <h3 className="text-base font-black text-slate-900 flex items-center gap-2 tracking-tight">
-              <RefreshCw size={18} className="text-blue-600" /> 3. Deletion Security Policy
+              <RefreshCw size={18} className="text-blue-600" /> 3. Deletion & Subscription Downgrade Policy
             </h3>
             <p className="text-slate-500 text-xs md:text-sm">
-              To protect financial audit transparency, GallaMitra enforces a strict non-cascade deletion safeguard. If a customer or supplier profile is manually purged from your lists, related historical transactional lines and ledger logs are securely preserved in the architecture logs to keep aggregate firm balances balanced and uncorrupted.
+              To protect financial audit transparency, GallaMitra enforces a strict non-cascade deletion safeguard. If a customer or supplier profile is manually purged from your lists, related historical transactional lines and ledger logs are securely preserved in the architecture logs to keep aggregate firm balances balanced and uncorrupted. Furthermore, upon expiration of the 15-day Free Trial or any paid plan, the platform automatically transitions the shop account to the Starter Plan. No business metadata, invoices, ledger entries, or customer details are deleted or lost during this downgrade sequence.
             </p>
           </div>
 
@@ -56,8 +56,8 @@ export default function PrivacyPolicy() {
             <h3 className="text-base font-black text-slate-900 flex items-center gap-2 tracking-tight">
               <Globe size={18} className="text-blue-600" /> 4. Sharing & Public Ledger Portals
             </h3>
-            <p className="text-slate-500 text-xs md:text-sm">
-              GallaMitra gives operators the power to distribute guess-proof public link identifiers to customers and suppliers via WhatsApp triggers. These public pass portals grant real-time, read-only balance lookups and generate native UPI QR configurations for frictionless settlements. Memory metrics are preserved by linking assets directly via link strings instead of third-party personal drive accounts.
+            <p className="text-slate-505 text-xs md:text-sm font-semibold">
+              GallaMitra gives operators the power to distribute guess-proof public link identifiers to customers and suppliers via WhatsApp triggers. These public pass portals grant real-time, read-only balance lookups, support PWA (Progressive Web App) shortcut prompts for saving the portal to a device home screen, and cache the active portal URL in local storage (`gm_last_public_portal_url`) to enable seamless, direct redirection to the client statement when the installed application is launched. Memory metrics are preserved by linking assets directly via link strings instead of third-party personal drive accounts.
             </p>
           </div>
 

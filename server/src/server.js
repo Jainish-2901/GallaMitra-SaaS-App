@@ -10,6 +10,7 @@ import partyRoutes from './routes/partyRoutes.js';
 import ledgerRoutes from './routes/ledgerRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
 import transactionalRoutes from './routes/transactionalRoutes.js';
+import { processSubscriptionChecks } from './controllers/shopController.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -123,6 +124,18 @@ const startServer = async () => {
 
         // Trigger self-ping worker loop once server cluster successfully attaches
         keepServerAlive();
+
+        // Run initial subscription checks on startup, then every 12 hours
+        console.log('dY" Starting periodic subscription warning/expiry check worker...');
+        processSubscriptionChecks().catch((err) => {
+            console.error('Error running initial subscription checks:', err);
+        });
+        setInterval(() => {
+            console.log('dY" Running scheduled subscription warning/expiry check worker...');
+            processSubscriptionChecks().catch((err) => {
+                console.error('Error running scheduled subscription checks:', err);
+            });
+        }, 12 * 60 * 60 * 1000); // 12 hours
     });
 
     server.on('error', (err) => {

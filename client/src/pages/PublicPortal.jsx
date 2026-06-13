@@ -11,7 +11,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 export default function PublicPortal() {
-  const { fetchPublicCustomer, fetchPublicSupplier } = useContext(AppContext);
+  const { fetchPublicCustomer, fetchPublicSupplier, installApp, isInstallable } = useContext(AppContext);
 
   const urlParams = new URLSearchParams(window.location.search);
   const portalType = urlParams.get('type') || 'customer';
@@ -96,6 +96,12 @@ export default function PublicPortal() {
       document.title = profile.shopName || profile.name || 'GallaMitra Portal';
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (!loading && portalData && !portalData.error) {
+      localStorage.setItem('gm_last_public_portal_url', window.location.pathname + window.location.search);
+    }
+  }, [loading, portalData]);
 
   useEffect(() => {
     if (!loading && portalData) {
@@ -428,47 +434,81 @@ export default function PublicPortal() {
   };
 
   // ── RECEIPT PRINT BODY ──────────────────────────────────────────────────────
-  const ReceiptPrintBody = ({ receipt }) => (
-    <div ref={receiptPrintRef} style={{ background: '#fff', padding: '32px', fontFamily: 'Arial, sans-serif', maxWidth: '480px' }}>
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '24px', borderBottom: '2px dashed #e2e8f0', paddingBottom: '20px' }}>
-        {profile?.logoUrl && <img src={profile.logoUrl} alt="Logo" style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'cover', margin: '0 auto 10px', display: 'block' }} />}
-        <div style={{ fontWeight: 900, fontSize: '18px', color: '#0f172a' }}>{profile?.businessName}</div>
-        {profile?.shopAddress && <div style={{ fontSize: '11px', color: '#64748b' }}>{profile.shopAddress}</div>}
-        {profile?.shopPhone && <div style={{ fontSize: '11px', color: '#64748b' }}>Tel: {profile.shopPhone}</div>}
-        {profile?.shopGstin && <div style={{ fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>GSTIN: {profile.shopGstin}</div>}
-        <div style={{ marginTop: '10px', fontSize: '13px', fontWeight: 900, letterSpacing: '0.15em', color: '#0f172a', textTransform: 'uppercase' }}>Payment Receipt</div>
-      </div>
-      {/* Receipt Details */}
-      <div style={{ marginBottom: '20px' }}>
-        {[
-          ['Receipt No.', `#${receipt.receiptNo}`],
-          ['Date', new Date(receipt.date).toLocaleString('en-IN')],
-          ['Received From', profile?.shopName || profile?.name],
-          ['Payment Mode', receipt.paymentMode],
-          receipt.remark ? ['Remark', receipt.remark] : null,
-        ].filter(Boolean).map(([k, v]) => (
-          <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f1f5f9', fontSize: '12px' }}>
-            <span style={{ color: '#64748b' }}>{k}</span>
-            <span style={{ fontWeight: 700, color: '#0f172a', fontFamily: k === 'Receipt No.' ? 'monospace' : 'inherit' }}>{v}</span>
+  const ReceiptPrintBody = ({ receipt }) => {
+    return (
+      <div ref={receiptPrintRef} style={{ background: '#fff', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif', width: '420px', border: '1px solid #000', borderRadius: '8px', position: 'relative', margin: '0 auto', boxSizing: 'border-box' }}>
+        
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', marginBottom: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', textAlign: 'left' }}>
+            {profile?.logoUrl && <img src={profile.logoUrl} alt="Logo" style={{ width: '42px', height: '42px', borderRadius: '6px', objectFit: 'cover', border: '1px solid #e2e8f0', padding: '1px', backgroundColor: '#fff' }} />}
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '13px', color: '#000', lineHeight: '1.2' }}>{profile?.businessName}</div>
+              {profile?.shopAddress && <div style={{ fontSize: '9px', color: '#555', marginTop: '2px', maxWidth: '200px', lineHeight: '1.2' }}>{profile.shopAddress}</div>}
+              {profile?.shopPhone && <div style={{ fontSize: '9px', color: '#555', marginTop: '1px' }}>Tel: {profile.shopPhone}</div>}
+              {profile?.shopGstin && (
+                <div style={{ fontSize: '8px', color: '#000', backgroundColor: '#f1f5f9', display: 'inline-block', padding: '1px 4px', borderRadius: '3px', marginTop: '2px', fontFamily: 'monospace', fontWeight: 700, border: '1px solid #cbd5e1' }}>
+                  GSTIN: {profile.shopGstin}
+                </div>
+              )}
+            </div>
           </div>
-        ))}
-      </div>
-      {/* Amount */}
-      <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '18px', textAlign: 'center', margin: '20px 0' }}>
-        <div style={{ color: '#64748b', fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Amount Received</div>
-        <div style={{ color: '#0f172a', fontWeight: 900, fontSize: '28px', fontFamily: 'monospace', marginTop: '4px' }}>₹{parseFloat(receipt.amount).toFixed(2)}</div>
-      </div>
-      {/* Signature */}
-      {profile?.shopSignatureUrl && (
-        <div style={{ textAlign: 'right', marginTop: '20px' }}>
-          <img src={profile.shopSignatureUrl} alt="Signature" style={{ height: '36px', objectFit: 'contain' }} />
-          <div style={{ fontSize: '9px', color: '#94a3b8', marginTop: '2px' }}>Authorized Signature</div>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '0.04em', color: '#000', textTransform: 'uppercase', background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '3px 6px', borderRadius: '4px', display: 'inline-block' }}>
+              Receipt
+            </span>
+          </div>
         </div>
-      )}
-      <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '10px', color: '#94a3b8' }}>Powered by GallaMitra</div>
-    </div>
-  );
+
+        {/* Party Details Card */}
+        <div style={{ background: '#fafafa', border: '1px solid #d1d5db', borderRadius: '8px', padding: '10px', marginBottom: '12px', fontSize: '10px', textAlign: 'left' }}>
+          <div style={{ fontSize: '8px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px', fontFamily: 'monospace' }}>Party Details</div>
+          <div style={{ fontWeight: 800, color: '#000', fontSize: '12px' }}>{profile?.shopName || profile?.name || '—'}</div>
+          {profile?.shopName && <div style={{ color: '#555', marginTop: '2px', fontWeight: 650 }}>Contact: {profile.name}</div>}
+          {profile?.phone && <div style={{ color: '#555', marginTop: '2px', fontWeight: 650 }}>Phone: <span style={{ color: '#000', fontFamily: 'monospace' }}>{profile.phone}</span></div>}
+          {profile?.billingAddress && <div style={{ color: '#555', marginTop: '2px', fontWeight: 650 }}>Address: {profile.billingAddress}</div>}
+          {profile?.gstin && (
+            <div style={{ marginTop: '4px' }}>
+              <span style={{ fontSize: '8px', fontWeight: 700, color: '#000', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace', textTransform: 'uppercase' }}>
+                GSTIN: {profile.gstin}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Receipt Details */}
+        <div style={{ marginBottom: '14px' }}>
+          {[
+            ['Voucher No.', `#${receipt?.receiptNo}`],
+            ['Date & Time', receipt ? new Date(receipt.date).toLocaleString('en-IN') : ''],
+            ['Payment Mode', receipt?.paymentMode],
+            receipt?.remark ? ['Remark', receipt.remark] : null,
+          ].filter(Boolean).map(([k, v]) => (
+            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #f1f5f9', fontSize: '10px' }}>
+              <span style={{ color: '#555', fontWeight: 600 }}>{k}</span>
+              <span style={{ fontWeight: 700, color: '#000', marginLeft: 'auto', fontFamily: k.includes('No.') ? 'monospace' : 'inherit' }}>{v}</span>
+            </div>
+          ))}
+        </div>
+        
+        {/* Amount Card */}
+        <div style={{ background: '#fafafa', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', textAlign: 'center', margin: '12px 0' }}>
+          <div style={{ color: '#555', fontSize: '8px', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 700 }}>Amount Received</div>
+          <div style={{ color: '#0f172a', fontWeight: 900, fontSize: '20px', fontFamily: 'monospace', marginTop: '4px' }}>₹{receipt ? parseFloat(receipt.amount).toFixed(2) : '0.00'}</div>
+        </div>
+
+        {/* Signature */}
+        {profile?.shopSignatureUrl && (
+          <div style={{ textAlign: 'right', marginTop: '16px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+            <img src={profile.shopSignatureUrl} alt="Signature" style={{ height: '30px', objectFit: 'contain', marginBottom: '2px' }} />
+            <div style={{ borderTop: '1px solid #000', width: '100px' }} />
+            <div style={{ fontSize: '8px', color: '#666', marginTop: '2px', fontWeight: 700, textTransform: 'uppercase' }}>Authorized Signatory</div>
+          </div>
+        )}
+        <div style={{ textAlign: 'center', marginTop: '24px', paddingTop: '12px', borderTop: '1px solid #f1f5f9', fontSize: '9px', color: '#94a3b8' }}>Powered by GallaMitra</div>
+      </div>
+    );
+  };
 
   // ── INVOICE PRINT BODY ──────────────────────────────────────────────────────
   const InvoicePrintBody = ({ doc }) => {
@@ -718,7 +758,7 @@ export default function PublicPortal() {
 
       {/* Hidden receipt print body (only when selectedReceipt active) */}
       {selectedReceipt && (
-        <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '550px', zIndex: -1 }}>
+        <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '420px', zIndex: -1 }}>
           <ReceiptPrintBody receipt={selectedReceipt} />
         </div>
       )}
@@ -754,16 +794,29 @@ export default function PublicPortal() {
               </p>
             </div>
           </div>
-          {/* Desktop nav */}
-          <nav className="hidden md:flex gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200">
-            {tabs.map(({ id, label, icon: Icon }) => (
-              <button key={id} onClick={() => setActiveTab(id)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black tracking-wide transition-all whitespace-nowrap ${activeTab === id ? 'bg-white text-slate-900 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-800 hover:bg-white/70'
-                  }`}>
-                <Icon size={11} />{label}
+          <div className="flex items-center gap-3">
+            {/* Desktop nav */}
+            <nav className="hidden md:flex gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200">
+              {tabs.map(({ id, label, icon: Icon }) => (
+                <button key={id} onClick={() => setActiveTab(id)}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black tracking-wide transition-all whitespace-nowrap ${activeTab === id ? 'bg-white text-slate-900 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-800 hover:bg-white/70'
+                    }`}>
+                  <Icon size={11} />{label}
+                </button>
+              ))}
+            </nav>
+
+            {/* PWA Download Button */}
+            {isInstallable && (
+              <button
+                onClick={installApp}
+                className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all active:scale-[0.98] cursor-pointer"
+              >
+                <Download size={12} />
+                <span className="hidden sm:inline">Download App</span>
               </button>
-            ))}
-          </nav>
+            )}
+          </div>
         </div>
       </header>
 
@@ -791,6 +844,26 @@ export default function PublicPortal() {
                 <Shield size={10} /> Verified
               </div>
             </div>
+
+            {/* PWA promotional banner */}
+            {isInstallable && (
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-5 border border-blue-500 shadow-md text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 card-hover">
+                <div className="space-y-1">
+                  <h3 className="font-black text-sm flex items-center gap-1.5">
+                    📲 Install {profile?.businessName || 'Merchant'} App
+                  </h3>
+                  <p className="text-white/80 text-[10px] leading-relaxed max-w-md">
+                    Install this portal as a shortcut app on your phone to instantly view statements, check transaction history, and receive notifications anytime.
+                  </p>
+                </div>
+                <button
+                  onClick={installApp}
+                  className="bg-white text-indigo-700 hover:bg-indigo-50 border border-white font-black text-xs px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95 whitespace-nowrap cursor-pointer self-stretch sm:self-auto text-center font-bold"
+                >
+                  Install Now
+                </button>
+              </div>
+            )}
 
             {/* Balance card */}
             <div className={`rounded-2xl p-6 border shadow-sm relative overflow-hidden ${isOwed ? 'bg-rose-600 border-rose-500' : 'bg-emerald-600 border-emerald-500'}`}>
@@ -1234,11 +1307,13 @@ export default function PublicPortal() {
               </div>
               <div className="flex gap-2">
                 <button onClick={() => handlePrintRef(receiptPrintRef, `Receipt #${selectedReceipt.receiptNo}`)}
-                  className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all">
+                  className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all"
+                  title="Print">
                   <Printer size={12} />
                 </button>
                 <button onClick={() => handleSaveRefAsPDF(receiptPrintRef, `Receipt_${selectedReceipt.receiptNo}.pdf`)}
-                  className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all">
+                  className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all"
+                  title="Save PDF">
                   <FileDown size={12} />
                 </button>
                 <button onClick={() => setSelectedReceipt(null)}
@@ -1247,40 +1322,65 @@ export default function PublicPortal() {
                 </button>
               </div>
             </div>
+
             {/* Body */}
             <div className="p-6 overflow-y-auto flex-1 space-y-4">
               {/* Business */}
               <div className="text-center pb-4 border-b border-dashed border-slate-200">
-                {profile?.logoUrl && <img src={profile.logoUrl} alt="Logo" className="w-12 h-12 rounded-xl object-cover mx-auto mb-2 border border-slate-200" />}
-                <p className="font-black text-slate-900 text-base">{profile?.businessName}</p>
-                {profile?.shopAddress && <p className="text-slate-400 text-[10px] mt-0.5">{profile.shopAddress}</p>}
+                {profile?.logoUrl && <img src={profile.logoUrl} alt="Logo" className="w-12 h-12 rounded-xl object-cover mx-auto mb-2 border border-slate-200 shadow-2xs p-0.5 bg-white" />}
+                <p className="font-black text-slate-900 text-base leading-tight">{profile?.businessName}</p>
+                {profile?.shopAddress && <p className="text-slate-400 text-[10px] mt-0.5 leading-relaxed">{profile.shopAddress}</p>}
                 {profile?.shopPhone && <p className="text-slate-400 text-[10px]">Tel: {profile.shopPhone}</p>}
+                {profile?.shopGstin && (
+                  <p className="mt-1">
+                    <span className="inline-block bg-slate-100 text-slate-700 border border-slate-200 font-mono text-[9px] font-black px-2 py-0.5 rounded uppercase">
+                      GSTIN: {profile.shopGstin}
+                    </span>
+                  </p>
+                )}
               </div>
-              {/* Details */}
-              <div className="space-y-2.5">
+
+              {/* Party Details Card */}
+              <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 text-left space-y-1.5">
+                <p className="text-[8px] text-slate-400 font-mono font-bold uppercase tracking-wider mb-1">Party Details</p>
+                <p className="font-black text-slate-900 text-sm leading-snug">{profile?.shopName || profile?.name || '—'}</p>
+                {profile?.shopName && <p className="text-slate-505 text-[10px] font-semibold">Contact: {profile.name}</p>}
+                {profile?.phone && <p className="text-slate-500 text-[10px] font-semibold">Phone: <span className="font-mono text-slate-900">{profile.phone}</span></p>}
+                {profile?.billingAddress && <p className="text-slate-500 text-[10px] leading-relaxed">Address: {profile.billingAddress}</p>}
+                {profile?.gstin && (
+                  <p className="mt-1.5">
+                    <span className="inline-block bg-emerald-50 text-emerald-700 border border-emerald-100 font-mono text-[9px] font-black px-1.5 py-0.5 rounded uppercase">
+                      GSTIN: {profile.gstin}
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              {/* Details List */}
+              <div className="space-y-2">
                 {[
-                  ['Receipt No.', `#${selectedReceipt.receiptNo}`, Hash],
                   ['Date', new Date(selectedReceipt.date).toLocaleString('en-IN'), Calendar],
-                  ['Received From', profile?.shopName || profile?.name, Building2],
                   ['Payment Mode', selectedReceipt.paymentMode, CreditCard],
                   selectedReceipt.remark ? ['Remark', selectedReceipt.remark, FileText] : null,
                 ].filter(Boolean).map(([k, v, Icon]) => (
-                  <div key={k} className="flex items-center justify-between py-2.5 px-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <div key={k} className="flex items-center justify-between py-2.5 px-3 bg-slate-50/50 rounded-xl border border-slate-100">
                     <div className="flex items-center gap-2 text-[10px] text-slate-500">
-                      <Icon size={11} className="text-slate-450" /> {k}
+                      <Icon size={12} className="text-slate-400" /> {k}
                     </div>
                     <span className="font-bold text-slate-900 text-xs font-mono">{v}</span>
                   </div>
                 ))}
               </div>
-              {/* Amount */}
+
+              {/* Amount Received */}
               <div className="rounded-2xl p-5 text-center bg-slate-50 border border-slate-200">
-                <p className="text-slate-500 text-[10px] font-mono uppercase tracking-wider font-bold">Amount Received</p>
-                <p className="text-slate-900 font-black text-3xl font-mono mt-1 font-bold">₹{parseFloat(selectedReceipt.amount).toFixed(2)}</p>
+                <p className="text-slate-500 text-[9px] font-mono uppercase tracking-wider font-bold">Amount Received</p>
+                <p className="text-slate-950 font-black text-3xl font-mono mt-1 font-bold">₹{parseFloat(selectedReceipt.amount).toFixed(2)}</p>
               </div>
+
               {/* Signature */}
               {profile?.shopSignatureUrl && (
-                <div className="flex flex-col items-end">
+                <div className="flex flex-col items-end pt-2">
                   <p className="text-[8px] font-mono text-slate-400 uppercase tracking-wider">Authorized Signature</p>
                   <img src={profile.shopSignatureUrl} alt="Signature" className="h-10 object-contain mt-1 border border-slate-100 rounded-lg p-0.5 bg-slate-50" />
                 </div>

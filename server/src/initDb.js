@@ -240,6 +240,19 @@ export const initDatabase = async () => {
 
     -- Drop unique constraint on Shop email to allow multiple businesses under the same email
     ALTER TABLE "Shop" DROP CONSTRAINT IF EXISTS "Shop_email_key";
+
+    -- Subscription trial warning sent flags
+    ALTER TABLE "Shop" ADD COLUMN IF NOT EXISTS "trialWarning10Sent" BOOLEAN DEFAULT FALSE;
+    ALTER TABLE "Shop" ADD COLUMN IF NOT EXISTS "trialWarning14Sent" BOOLEAN DEFAULT FALSE;
+
+    -- Seed 15 Days Free Trial plan if not exists
+    INSERT INTO "Plan" ("id", "name", "price", "billingCycle", "allowedTabs", "features", "requiresApproval", "allowMultiBusiness")
+    VALUES 
+    ('trial', '15 Days Free Trial', 0.00, 'trial', 
+     '["dashboard", "cust_list", "supp_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "user_settings", "business_settings"]',
+     '["Professional plan features", "Export PDF & CSV reports", "Deep financial analytics", "15 days free trial"]', 
+     FALSE, TRUE)
+    ON CONFLICT ("id") DO NOTHING;
     `;
 
   // High-speed query optimization indexes
@@ -298,7 +311,11 @@ export const initDatabase = async () => {
             ('professional', 'Professional', 299.00, 'monthly', 
              '["dashboard", "cust_list", "supp_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "user_settings", "business_settings"]',
              '["Growth plan features", "Export PDF & CSV reports", "Deep financial analytics", "Unlimited entries"]', 
-             TRUE, TRUE)
+             TRUE, TRUE),
+            ('trial', '15 Days Free Trial', 0.00, 'trial', 
+             '["dashboard", "cust_list", "supp_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "user_settings", "business_settings"]',
+             '["Professional plan features", "Export PDF & CSV reports", "Deep financial analytics", "15 days free trial"]', 
+             FALSE, TRUE)
             ON CONFLICT ("id") DO NOTHING;
             `;
       await db.query(seedPlansQuery);
