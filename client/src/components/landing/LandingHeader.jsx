@@ -51,7 +51,7 @@ export default function LandingHeader({ onOpenLogin, onOpenRegister }) {
           className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group select-none"
         >
           <div className="bg-white border border-slate-200 p-1.5 rounded-2xl shadow-sm w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center overflow-hidden transition-transform group-hover:scale-105">
-            <img src="/favicon.png" alt="GallaMitra Logo" className="w-full h-full object-contain" />
+            <img src="/logo.png" alt="GallaMitra Logo" className="w-full h-full object-contain" />
           </div>
           <div>
             <h1 className="text-sm sm:text-base font-black tracking-tight text-slate-900 leading-none">GallaMitra</h1>

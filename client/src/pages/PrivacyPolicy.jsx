@@ -12,7 +12,7 @@ export default function PrivacyPolicy() {
             <ShieldCheck size={24} />
           </div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Privacy Policy</h2>
-          <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">Last Updated: June 13, 2026</p>
+          <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">Last Updated: June 14, 2026</p>
         </div>
 
         {/* Content Matrix */}
@@ -27,7 +27,7 @@ export default function PrivacyPolicy() {
               <Eye size={18} className="text-blue-600" /> 1. Information We Securely Collect
             </h3>
             <p className="text-slate-500 text-xs md:text-sm">
-              To provide your workspace, we collect user-provided details via Google OAuth sync, including business name, owner name, verified email addresses, phone numbers, state, business address, digital sign strings, and optional GSTIN/VPA parameters. We log transaction histories, sales invoices, purchase bills, and manual ledger entries on your behalf. Additionally, we track subscription metadata, plan statuses (Starter, Growth, Trial, Professional), and email dispatch flags to manage trial notices, countdown triggers, and automatic warnings.
+              To provide your workspace, we collect user-provided details via Google OAuth sync, including business name, owner name, verified email addresses, phone numbers, state, business address, digital sign strings, and optional GSTIN/VPA parameters. We log transaction histories, sales invoices, purchase bills, and manual ledger entries on your behalf. Additionally, we track subscription metadata, plan statuses (Starter, Growth, Trial, Professional), billing cycles (Monthly, Yearly, 3-Month, 6-Month), and email dispatch flags to manage trial notices, countdown triggers, and automatic warnings.
             </p>
           </div>
 

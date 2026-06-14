@@ -2,8 +2,8 @@ const CACHE_NAME = 'gallamitra-cache-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/favicon.svg',
-  '/icons.svg',
+  '/favicon.ico',
+  '/logo.png',
   '/manifest.json'
 ];
 

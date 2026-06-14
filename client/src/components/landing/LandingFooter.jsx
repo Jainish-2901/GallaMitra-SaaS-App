@@ -30,7 +30,7 @@ export default function LandingFooter() {
             className="flex items-center gap-3 cursor-pointer select-none group"
           >
             <div className="bg-white border border-slate-200 p-1 w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shadow-xs transition-transform group-hover:scale-105">
-              <img src="/favicon.png" alt="GallaMitra Logo" className="w-full h-full object-contain" />
+              <img src="/logo.png" alt="GallaMitra Logo" className="w-full h-full object-contain" />
             </div>
             <span className="font-black text-slate-900 text-base tracking-tight transition-colors group-hover:text-blue-600">GallaMitra SaaS</span>
           </div>

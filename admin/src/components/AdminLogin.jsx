@@ -54,7 +54,7 @@ export default function AdminLogin() {
                 padding: '6px'
               }}>
                 <img
-                  src="/favicon.png"
+                  src="/logo.png"
                   alt="GallaMitra Admin Logo"
                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   onError={(e) => {

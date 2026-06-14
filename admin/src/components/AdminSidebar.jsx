@@ -17,7 +17,7 @@ export default function AdminSidebar({ activeTab, setActiveTab, isOpen, onClose 
       {/* Brand */}
       <div className="sidebar-brand">
         <div className="sidebar-brand-icon" style={{ background: '#fff', overflow: 'hidden', padding: 2 }}>
-          <img src="/favicon.png" alt="GallaMitra Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <img src="/logo.png" alt="GallaMitra Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </div>
         <div>
           <h1>GallaMitra</h1>

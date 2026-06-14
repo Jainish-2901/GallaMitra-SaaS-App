@@ -265,6 +265,8 @@ export default function AdminSettingsPage() {
                     >
                       <option value="free">Free / Forever</option>
                       <option value="monthly">Monthly</option>
+                      <option value="3_months">3 Months</option>
+                      <option value="6_months">6 Months</option>
                       <option value="yearly">Yearly</option>
                     </select>
                   </div>
@@ -392,7 +394,7 @@ export default function AdminSettingsPage() {
                           </h4>
                         </div>
                         <span style={{ fontSize: '1.2rem', fontWeight: 900, color: color, fontFamily: 'JetBrains Mono, monospace', whiteSpace: 'nowrap' }}>
-                          ₹{parseFloat(p.price).toFixed(0)}<span style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontStyle: 'normal' }}>/{p.billingCycle === 'free' ? 'free' : p.billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
+                          ₹{parseFloat(p.price).toFixed(0)}<span style={{ fontSize: '0.65rem', color: 'var(--text-3)', fontStyle: 'normal' }}>/{p.billingCycle === 'free' ? 'free' : p.billingCycle === 'monthly' ? 'mo' : p.billingCycle === '3_months' ? '3 mo' : p.billingCycle === '6_months' ? '6 mo' : p.billingCycle === 'yearly' ? 'yr' : p.billingCycle}</span>
                         </span>
                       </div>
 

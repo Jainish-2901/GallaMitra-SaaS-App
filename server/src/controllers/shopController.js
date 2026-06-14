@@ -37,6 +37,10 @@ const calculateExpiryDate = (billingCycle) => {
     const now = new Date();
     if (billingCycle === 'monthly') {
         return new Date(now.setDate(now.getDate() + 30));
+    } else if (billingCycle === '3_months') {
+        return new Date(now.setMonth(now.getMonth() + 3));
+    } else if (billingCycle === '6_months') {
+        return new Date(now.setMonth(now.getMonth() + 6));
     } else if (billingCycle === 'yearly') {
         return new Date(now.setDate(now.getDate() + 365));
     } else if (billingCycle === 'trial' || billingCycle === 'free_trial') {
@@ -623,7 +627,12 @@ export const toggleShopStatus = async (req, res) => {
     try {
         const status = isActive ? 'active' : 'suspended';
         const result = await db.query(
-            `UPDATE "Shop" SET "isActive" = $1, "status" = $2, "updatedAt" = NOW()
+            `UPDATE "Shop" SET "isActive" = $1, "status" = $2,
+                     "trialWarning10Sent" = CASE WHEN $1 = TRUE THEN FALSE ELSE "trialWarning10Sent" END,
+                     "trialWarning14Sent" = CASE WHEN $1 = TRUE THEN FALSE ELSE "trialWarning14Sent" END,
+                     "paidWarning5Sent" = CASE WHEN $1 = TRUE THEN FALSE ELSE "paidWarning5Sent" END,
+                     "paidWarning1Sent" = CASE WHEN $1 = TRUE THEN FALSE ELSE "paidWarning1Sent" END,
+                     "updatedAt" = NOW()
              WHERE id = $3 RETURNING id, "ownerName" as ownername, "businessName" as businessname, "email", "isActive" as isactive, "status"`,
             [isActive, status, id]
         );
@@ -683,7 +692,10 @@ export const approveShop = async (req, res) => {
              SET "status" = 'active', "isActive" = TRUE,
                  "plan" = $1,
                  "approvedAt" = NOW(), "approvedBy" = 'super_admin',
-                 "rejectionReason" = NULL, "subscriptionExpiresAt" = $2, "updatedAt" = NOW()
+                 "rejectionReason" = NULL, "subscriptionExpiresAt" = $2,
+                 "trialWarning10Sent" = FALSE, "trialWarning14Sent" = FALSE,
+                 "paidWarning5Sent" = FALSE, "paidWarning1Sent" = FALSE,
+                 "updatedAt" = NOW()
              WHERE id = $3
              RETURNING ${SAFE_SHOP_FIELDS}`,
             [targetPlan, expiryDate, id]
@@ -786,7 +798,10 @@ export const changeShopPlan = async (req, res) => {
 
         const result = await db.query(
             `UPDATE "Shop" 
-             SET "plan" = $1, "subscriptionExpiresAt" = $2, "updatedAt" = NOW()
+             SET "plan" = $1, "subscriptionExpiresAt" = $2,
+                 "trialWarning10Sent" = FALSE, "trialWarning14Sent" = FALSE,
+                 "paidWarning5Sent" = FALSE, "paidWarning1Sent" = FALSE,
+                 "updatedAt" = NOW()
              WHERE id = $3
              RETURNING ${SAFE_SHOP_FIELDS}`,
             [plan, expiryDate, id]
@@ -1163,7 +1178,10 @@ export const approvePlanChange = async (req, res) => {
             `UPDATE "Shop"
              SET "plan" = $1, "subscriptionExpiresAt" = $2,
                  "requestedPlan" = NULL, "planRequestStatus" = 'none',
-                 "status" = 'active', "isActive" = TRUE, "updatedAt" = NOW()
+                 "status" = 'active', "isActive" = TRUE,
+                 "trialWarning10Sent" = FALSE, "trialWarning14Sent" = FALSE,
+                 "paidWarning5Sent" = FALSE, "paidWarning1Sent" = FALSE,
+                 "updatedAt" = NOW()
              WHERE id = $3
              RETURNING ${SAFE_SHOP_FIELDS}`,
             [shop.requestedPlan, expiryDate, id]
@@ -1622,6 +1640,63 @@ export const processSubscriptionChecks = async () => {
             }
         }
 
+        // 1B. Check for warning emails for paid plans (5 days remaining; 1 day remaining)
+        const paidShops = await db.query(
+            `SELECT id, "ownerName", "businessName", "email", "subscriptionExpiresAt", "paidWarning5Sent", "paidWarning1Sent", plan 
+             FROM "Shop" 
+             WHERE plan != 'starter' AND plan != 'trial' AND status = 'active' AND "isActive" = TRUE AND "subscriptionExpiresAt" IS NOT NULL`
+        );
+
+        for (const shop of paidShops.rows) {
+            const expiryDate = new Date(shop.subscriptionExpiresAt);
+            const msDiff = expiryDate.getTime() - now.getTime();
+            const daysLeft = Math.ceil(msDiff / (1000 * 60 * 60 * 24));
+
+            if (daysLeft === 5 && !shop.paidWarning5Sent) {
+                // Send 5-days remaining warning email
+                const subject = `Your GallaMitra Subscription for "${shop.businessName}" Expires in 5 Days`;
+                const body = `Hello ${shop.ownerName},\n\nYour subscription for workspace "${shop.businessName}" will expire in 5 days (on ${expiryDate.toLocaleDateString('en-IN')}).\n\nPlease renew your subscription to maintain continuous access to your business ledger, invoices, and analytics.\n\nBest regards,\nGallaMitra Team`;
+                
+                const html = generateHtmlEmail({
+                    title: 'Subscription Expiring in 5 Days ⏳',
+                    greeting: `Hello ${shop.ownerName},`,
+                    leadText: `Your subscription for GallaMitra workspace "${shop.businessName}" will expire in 5 days.`,
+                    details: [
+                        { label: 'Workspace Name', value: shop.businessName },
+                        { label: 'Expiry Date', value: expiryDate.toLocaleDateString('en-IN') },
+                        { label: 'Status', value: '5 Days Remaining' }
+                    ],
+                    supportPhone,
+                    supportEmail
+                });
+
+                await sendNotificationEmail(shop.email, subject, body, html);
+                await db.query('UPDATE "Shop" SET "paidWarning5Sent" = TRUE WHERE id = $1', [shop.id]);
+                console.log(`[Subscription Worker] Sent 5-day paid warning to ${shop.email}`);
+            } else if (daysLeft === 1 && !shop.paidWarning1Sent) {
+                // Send 1-day remaining warning email
+                const subject = `Urgent: Your GallaMitra Subscription for "${shop.businessName}" Expires Tomorrow!`;
+                const body = `Hello ${shop.ownerName},\n\nYour subscription for workspace "${shop.businessName}" will expire tomorrow (on ${expiryDate.toLocaleDateString('en-IN')}).\n\nPlease renew your subscription today to avoid account suspension and keep managing your billing ledgers without interruption.\n\nBest regards,\nGallaMitra Team`;
+                
+                const html = generateHtmlEmail({
+                    title: 'Subscription Expiring Tomorrow ⏳',
+                    greeting: `Hello ${shop.ownerName},`,
+                    leadText: `Your subscription for GallaMitra workspace "${shop.businessName}" will expire tomorrow. Renew today to prevent service interruption.`,
+                    details: [
+                        { label: 'Workspace Name', value: shop.businessName },
+                        { label: 'Expiry Date', value: expiryDate.toLocaleDateString('en-IN') },
+                        { label: 'Status', value: '1 Day Remaining' }
+                    ],
+                    supportPhone,
+                    supportEmail
+                });
+
+                await sendNotificationEmail(shop.email, subject, body, html);
+                await db.query('UPDATE "Shop" SET "paidWarning1Sent" = TRUE WHERE id = $1', [shop.id]);
+                console.log(`[Subscription Worker] Sent 1-day paid warning to ${shop.email}`);
+            }
+        }
+
         // 2. Check for expired trial plans -> downgrade to 'starter'
         const expiredTrials = await db.query(
             `SELECT id, "ownerName", "businessName", "email", "subscriptionExpiresAt" 
@@ -1634,7 +1709,9 @@ export const processSubscriptionChecks = async () => {
             // Downgrade to 'starter' plan (free plan) and clear subscriptionExpiresAt
             await db.query(
                 `UPDATE "Shop" 
-                 SET plan = 'starter', "subscriptionExpiresAt" = NULL, "trialWarning10Sent" = FALSE, "trialWarning14Sent" = FALSE, "updatedAt" = NOW() 
+                 SET plan = 'starter', "subscriptionExpiresAt" = NULL, 
+                     "trialWarning10Sent" = FALSE, "trialWarning14Sent" = FALSE, 
+                     "paidWarning5Sent" = FALSE, "paidWarning1Sent" = FALSE, "updatedAt" = NOW() 
                  WHERE id = $1`,
                 [shop.id]
             );
@@ -1670,7 +1747,14 @@ export const processSubscriptionChecks = async () => {
         );
 
         for (const shop of expiredPaidShops.rows) {
-            await db.query('UPDATE "Shop" SET "status" = \'suspended\', "isActive" = FALSE, "updatedAt" = NOW() WHERE id = $1', [shop.id]);
+            await db.query(
+                `UPDATE "Shop" 
+                 SET "status" = 'suspended', "isActive" = FALSE, 
+                     "trialWarning10Sent" = FALSE, "trialWarning14Sent" = FALSE, 
+                     "paidWarning5Sent" = FALSE, "paidWarning1Sent" = FALSE, "updatedAt" = NOW() 
+                 WHERE id = $1`,
+                [shop.id]
+            );
             
             // Send Paid Expiration Email
             const subject = 'GallaMitra Account Status Update: Subscription Expired';

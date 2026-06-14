@@ -174,7 +174,7 @@ export default function UserSettings() {
                     <div className="flex items-center gap-2">
                       <p className="text-xs font-black text-slate-900">{p.name}</p>
                       <span className="text-[10px] font-bold text-slate-500">
-                        ₹{priceNum.toFixed(0)}/{p.billingCycle}
+                        ₹{priceNum.toFixed(0)}/{p.billingCycle === 'free' ? 'free' : p.billingCycle === 'trial' ? 'trial' : p.billingCycle === 'monthly' ? 'mo' : p.billingCycle === '3_months' ? '3 mo' : p.billingCycle === '6_months' ? '6 mo' : p.billingCycle === 'yearly' ? 'yr' : p.billingCycle}
                       </span>
                     </div>
                     <ul className="flex flex-wrap gap-x-3 gap-y-1 mt-1">

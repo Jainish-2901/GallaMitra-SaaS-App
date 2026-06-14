@@ -134,7 +134,7 @@ export default function PWAInstallationSection() {
                     >
                         <div className="w-24 h-24 bg-white border border-slate-100 rounded-3xl flex items-center justify-center mx-auto shadow-sm mb-5 overflow-hidden group">
                             <img
-                                src="/favicon.png"
+                                src="/logo.png"
                                 alt="GallaMitra Logo"
                                 className="w-16 h-16 object-contain"
                                 onError={(e) => {

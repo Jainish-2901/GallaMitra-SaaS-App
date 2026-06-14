@@ -245,6 +245,10 @@ export const initDatabase = async () => {
     ALTER TABLE "Shop" ADD COLUMN IF NOT EXISTS "trialWarning10Sent" BOOLEAN DEFAULT FALSE;
     ALTER TABLE "Shop" ADD COLUMN IF NOT EXISTS "trialWarning14Sent" BOOLEAN DEFAULT FALSE;
 
+    -- Paid subscription warning sent flags
+    ALTER TABLE "Shop" ADD COLUMN IF NOT EXISTS "paidWarning5Sent" BOOLEAN DEFAULT FALSE;
+    ALTER TABLE "Shop" ADD COLUMN IF NOT EXISTS "paidWarning1Sent" BOOLEAN DEFAULT FALSE;
+
     -- Seed 15 Days Free Trial plan if not exists
     INSERT INTO "Plan" ("id", "name", "price", "billingCycle", "allowedTabs", "features", "requiresApproval", "allowMultiBusiness")
     VALUES 

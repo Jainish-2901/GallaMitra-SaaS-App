@@ -91,7 +91,7 @@ export default function LandingPage() {
                           <p className="text-3xl sm:text-4xl font-black mb-6 font-mono text-slate-900">
                             ₹{priceNum.toFixed(0)}
                             <span className="text-xs font-semibold text-slate-400 font-sans">
-                              {tier.billingCycle === 'free' ? ' (Free)' : `/${tier.billingCycle === 'yearly' ? 'yr' : 'mo'}`}
+                              {tier.billingCycle === 'free' ? ' (Free)' : tier.billingCycle === 'trial' ? ' (15 Days Trial)' : `/${tier.billingCycle === 'yearly' ? 'yr' : tier.billingCycle === '3_months' ? '3mo' : tier.billingCycle === '6_months' ? '6mo' : 'mo'}`}
                             </span>
                           </p>
                           <ul className="space-y-3.5 mb-8">

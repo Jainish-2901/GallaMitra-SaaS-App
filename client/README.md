@@ -6,7 +6,11 @@ GallaMitra (ગલ્લામિત્ર) is a premium, feature-rich SaaS plat
 
 ## ⚡ Subscription Plans & Feature Matrix
 
-GallaMitra features a tiered SaaS plan architecture. Available workspace tabs and features dynamically adapt based on the active shop's plan:
+GallaMitra features a tiered SaaS plan architecture. Available workspace tabs and features dynamically adapt based on the active shop's plan. Subscription plans (Starter, Growth, Professional) can be dynamically configured by Super Admins with custom pricing and flexible billing cycles, supporting:
+* **Monthly** (30 days duration)
+* **3-Month Plan** (90 days / 3 months duration)
+* **6-Month Plan** (180 days / 6 months duration)
+* **Yearly** (365 days / 1 year duration)
 
 ### 👨‍👧‍👦 Parent-Child Workspace Subscription Inheritance
 GallaMitra operates under an account-level subscription framework. Any child businesses or workspaces registered under an existing owner account (email) automatically inherit the plan type, active status, and remaining subscription duration of the parent workspace. Merchants do not need to re-select plans or wait for separate administrative approval when adding additional sub-businesses. All workspaces under the same account remain active until the parent plan's duration expires.
