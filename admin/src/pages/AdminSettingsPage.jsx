@@ -92,10 +92,10 @@ export default function AdminSettingsPage() {
 
   const handleEditClick = (plan) => {
     setEditingPlan(plan);
-    setPlanId(plan.id);
-    setPlanName(plan.name);
-    setPlanPrice(plan.price.toString());
-    setBillingCycle(plan.billingCycle || plan.billingcycle);
+    setPlanId(plan.id || '');
+    setPlanName(plan.name || '');
+    setPlanPrice(plan.price !== undefined && plan.price !== null ? plan.price.toString() : '0');
+    setBillingCycle(plan.billingCycle || plan.billingcycle || 'monthly');
     setSelectedTabs(typeof plan.allowedTabs === 'string' ? JSON.parse(plan.allowedTabs) : (plan.allowedTabs || []));
     setFeaturesText(Array.isArray(plan.features) ? plan.features.join('\n') : (typeof plan.features === 'string' ? JSON.parse(plan.features).join('\n') : ''));
     setRequiresApproval(plan.requiresApproval !== false && plan.requiresapproval !== false);
@@ -121,9 +121,13 @@ export default function AdminSettingsPage() {
   };
 
   const handleDelete = async (id) => {
+    if (!window.confirm(`Are you sure you want to delete the plan "${id}"? This action cannot be undone and will affect any shops assigned to this plan.`)) {
+      return;
+    }
     const res = await deletePlan(id);
     if (res.success) {
       toast.success('Plan deleted successfully.');
+      setEditingPlan(null);
       loadPlans();
     } else {
       toast.error(res.error || 'Failed to delete plan.');
@@ -132,38 +136,46 @@ export default function AdminSettingsPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!planId.trim() || !planName.trim()) { toast.warning('Plan ID and Name are required.'); return; }
-
-    const featuresArray = featuresText.split('\n').map(f => f.trim()).filter(Boolean);
-    const planPayload = {
-      id: planId.trim().toLowerCase(),
-      name: planName.trim(),
-      price: parseFloat(planPrice || '0'),
-      billingCycle,
-      allowedTabs: selectedTabs,
-      features: featuresArray,
-      requiresApproval,
-      allowMultiBusiness
-    };
-
-    if (editingPlan === 'new') {
-      const res = await createPlan(planPayload);
-      if (res.success) {
-        toast.success('Plan created successfully!');
-        setEditingPlan(null);
-        loadPlans();
-      } else {
-        toast.error(res.error || 'Failed to create plan.');
+    try {
+      if (!planId || !planId.trim() || !planName || !planName.trim()) {
+        toast.warning('Plan ID and Name are required.');
+        return;
       }
-    } else {
-      const res = await updatePlan(editingPlan.id, planPayload);
-      if (res.success) {
-        toast.success('Plan updated successfully!');
-        setEditingPlan(null);
-        loadPlans();
+
+      const featuresArray = (featuresText || '').split('\n').map(f => f.trim()).filter(Boolean);
+      const planPayload = {
+        id: planId.trim().toLowerCase(),
+        name: planName.trim(),
+        price: parseFloat(planPrice || '0'),
+        billingCycle,
+        allowedTabs: selectedTabs || [],
+        features: featuresArray,
+        requiresApproval: !!requiresApproval,
+        allowMultiBusiness: !!allowMultiBusiness
+      };
+
+      if (editingPlan === 'new') {
+        const res = await createPlan(planPayload);
+        if (res.success) {
+          toast.success('Plan created successfully!');
+          setEditingPlan(null);
+          loadPlans();
+        } else {
+          toast.error(res.error || 'Failed to create plan.');
+        }
       } else {
-        toast.error(res.error || 'Failed to update plan.');
+        const res = await updatePlan(editingPlan.id, planPayload);
+        if (res.success) {
+          toast.success('Plan updated successfully!');
+          setEditingPlan(null);
+          loadPlans();
+        } else {
+          toast.error(res.error || 'Failed to update plan.');
+        }
       }
+    } catch (err) {
+      console.error('🚨 Error inside plan handleSubmit:', err);
+      toast.error(err.message || 'An unexpected error occurred while saving.');
     }
   };
 
@@ -306,9 +318,21 @@ export default function AdminSettingsPage() {
                   </label>
                 </div>
 
-                <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center', padding: '12px 16px', borderRadius: '12px', marginTop: '12px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800 }}>
-                  <Save size={15} /> Save Plan Configuration
-                </button>
+                <div style={{ display: 'flex', gap: '10px', width: '100%', marginTop: '12px' }}>
+                  <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center', padding: '12px 16px', borderRadius: '12px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800, flex: 1 }}>
+                    <Save size={15} /> Save Plan Configuration
+                  </button>
+                  {editingPlan && editingPlan !== 'new' && !['starter', 'growth', 'professional'].includes(editingPlan.id) && (
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      onClick={() => handleDelete(editingPlan.id)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center', padding: '12px 16px', borderRadius: '12px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800 }}
+                    >
+                      <Trash2 size={15} /> Delete Plan
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Right Column: Allowed Tab Permissions checklist cluster */}
@@ -427,7 +451,7 @@ export default function AdminSettingsPage() {
                         <Edit2 size={12} /> Edit Plan
                       </button>
                       {!['starter', 'growth', 'professional'].includes(p.id) && (
-                        <button className="btn btn-sm btn-danger-ghost" onClick={() => handleDelete(p.id)} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '4px 10px', cursor: 'pointer' }}>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(p.id)} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '4px 10px', cursor: 'pointer' }}>
                           <Trash2 size={13} />
                         </button>
                       )}

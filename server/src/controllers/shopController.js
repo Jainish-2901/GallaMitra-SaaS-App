@@ -101,7 +101,16 @@ export const updatePlan = async (req, res) => {
                  "allowMultiBusiness" = COALESCE($7, "allowMultiBusiness"),
                  "updatedAt" = NOW()
              WHERE id = $8 RETURNING *`,
-            [name, price !== undefined ? parseFloat(price) : null, billingCycle, allowedTabs ? JSON.stringify(allowedTabs) : null, features ? JSON.stringify(features) : null, requiresApproval, allowMultiBusiness, id]
+            [
+                name !== undefined ? name : null,
+                price !== undefined ? parseFloat(price) : null,
+                billingCycle !== undefined ? billingCycle : null,
+                allowedTabs ? JSON.stringify(allowedTabs) : null,
+                features ? JSON.stringify(features) : null,
+                requiresApproval !== undefined ? requiresApproval : null,
+                allowMultiBusiness !== undefined ? allowMultiBusiness : null,
+                id
+            ]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Plan not found.' });
 

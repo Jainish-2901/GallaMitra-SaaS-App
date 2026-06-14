@@ -501,7 +501,15 @@ export const AppProvider = ({ children }) => {
             handleSessionExpiry(response);
             const data = await response.json();
             if (response.ok && data.success) {
-                return { success: true, portalUrl: data.portalUrl, token: data.token };
+                let portalUrl = data.portalUrl;
+                try {
+                    const parsedUrl = new URL(portalUrl);
+                    const currentOrigin = window.location.origin;
+                    portalUrl = `${currentOrigin}${parsedUrl.pathname}${parsedUrl.search}`;
+                } catch (e) {
+                    console.error("Error patching portal URL domain:", e);
+                }
+                return { success: true, portalUrl, token: data.token };
             }
             return { success: false, error: data.error || 'Failed to generate portal link.' };
         } catch (error) {
@@ -522,6 +530,14 @@ export const AppProvider = ({ children }) => {
             }
 
             let fullUrl = data.portalUrl;
+            try {
+                const parsedUrl = new URL(fullUrl);
+                const currentOrigin = window.location.origin;
+                fullUrl = `${currentOrigin}${parsedUrl.pathname}${parsedUrl.search}`;
+            } catch (e) {
+                console.error("Error patching portal URL domain:", e);
+            }
+
             if (tab) fullUrl += `&tab=${tab}`;
             if (docId) fullUrl += `&docId=${docId}`;
             if (receiptId) fullUrl += `&receiptId=${receiptId}`;

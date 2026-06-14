@@ -9,6 +9,7 @@ import { ownerTabs } from './sidebarConfig.js';
 import PublicPortal from './pages/PublicPortal.jsx';
 import LandingPage from './pages/LandingPage.jsx';
 import PendingApprovalView from './pages/PendingApprovalView.jsx';
+import NotFound from './pages/NotFound.jsx';
 
 // Layout Structural Nodes
 import Sidebar from './components/layout/Sidebar.jsx';
@@ -128,6 +129,7 @@ export default function App() {
       <Routes>
         <Route path="/privacy" element={<LandingPage />} />
         <Route path="/terms" element={<LandingPage />} />
+        <Route path="/not-found" element={<NotFound />} />
         <Route path="*" element={
           <div className="h-screen w-full bg-[#F8FAFC] flex flex-col font-sans overflow-hidden">
             <div className="bg-white border-b border-slate-200 h-16 w-full flex items-center justify-between px-4 animate-pulse">
@@ -166,6 +168,7 @@ export default function App() {
       <Routes>
         <Route path="/privacy" element={<LandingPage />} />
         <Route path="/terms" element={<LandingPage />} />
+        <Route path="/not-found" element={<NotFound />} />
         <Route path="*" element={<PendingApprovalView />} />
       </Routes>
     );
@@ -176,6 +179,7 @@ export default function App() {
       <Routes>
         <Route path="/privacy" element={<LandingPage />} />
         <Route path="/terms" element={<LandingPage />} />
+        <Route path="/not-found" element={<NotFound />} />
         <Route path="*" element={<LandingPage />} />
       </Routes>
     );
@@ -223,6 +227,7 @@ export default function App() {
     <Routes>
       <Route path="/privacy" element={<LandingPage />} />
       <Route path="/terms" element={<LandingPage />} />
+      <Route path="/not-found" element={<NotFound />} />
       <Route path="*" element={
         <div className="h-screen w-full bg-[#F8FAFC] flex flex-col font-sans overflow-hidden select-none">
 

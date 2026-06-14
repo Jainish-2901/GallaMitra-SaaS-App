@@ -62,11 +62,13 @@ app.get('/s/:id', async (req, res) => {
         if (result.rows.length > 0) {
             res.redirect(result.rows[0].fullUrl);
         } else {
-            res.status(404).send('Invalid Link');
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            res.redirect(`${frontendUrl}/not-found?reason=invalid-link`);
         }
     } catch (err) {
         console.error('Error in short link redirect:', err);
-        res.status(500).send('Internal Server Error');
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        res.redirect(`${frontendUrl}/not-found?reason=invalid-link`);
     }
 });
 
