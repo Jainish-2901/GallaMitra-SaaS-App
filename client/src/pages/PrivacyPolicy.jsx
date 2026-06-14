@@ -44,10 +44,10 @@ export default function PrivacyPolicy() {
           {/* 3. Non-Cascade Retention Safeguard */}
           <div className="space-y-3">
             <h3 className="text-base font-black text-slate-900 flex items-center gap-2 tracking-tight">
-              <RefreshCw size={18} className="text-blue-600" /> 3. Deletion & Subscription Downgrade Policy
+              <RefreshCw size={18} className="text-blue-600" /> 3. Deletion, Downgrade & Workspace Inheritance Policy
             </h3>
-            <p className="text-slate-500 text-xs md:text-sm">
-              To protect financial audit transparency, GallaMitra enforces a strict non-cascade deletion safeguard. If a customer or supplier profile is manually purged from your lists, related historical transactional lines and ledger logs are securely preserved in the architecture logs to keep aggregate firm balances balanced and uncorrupted. Furthermore, upon expiration of the 15-day Free Trial or any paid plan, the platform automatically transitions the shop account to the Starter Plan. No business metadata, invoices, ledger entries, or customer details are deleted or lost during this downgrade sequence.
+            <p className="text-slate-505 text-xs md:text-sm font-semibold">
+              To protect financial audit transparency, GallaMitra enforces a strict non-cascade deletion safeguard. If a customer or supplier profile is manually purged from your lists, related historical transactional lines and ledger logs are securely preserved in the architecture logs to keep aggregate firm balances balanced and uncorrupted. Under our parent-child subscription model, any sub-businesses created under an existing owner email inherit the plan, active status, and expiration duration of the parent workspace. Furthermore, upon expiration of the 15-day Free Trial or any paid plan, the platform automatically transitions the shop account to the Starter Plan. No business metadata, invoices, ledger entries, or customer details are deleted or lost during this downgrade sequence.
             </p>
           </div>
 

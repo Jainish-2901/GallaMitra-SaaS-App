@@ -8,6 +8,9 @@ GallaMitra (ગલ્લામિત્ર) is a premium, feature-rich SaaS plat
 
 GallaMitra features a tiered SaaS plan architecture. Available workspace tabs and features dynamically adapt based on the active shop's plan:
 
+### 👨‍👧‍👦 Parent-Child Workspace Subscription Inheritance
+GallaMitra operates under an account-level subscription framework. Any child businesses or workspaces registered under an existing owner account (email) automatically inherit the plan type, active status, and remaining subscription duration of the parent workspace. Merchants do not need to re-select plans or wait for separate administrative approval when adding additional sub-businesses. All workspaces under the same account remain active until the parent plan's duration expires.
+
 ### 🆓 15-Day Free Trial Subscription
 Newly registered shop owners can test GallaMitra using the 15-day Free Trial. This trial grants complete access to the features of the **Professional Plan** with no initial restrictions. Desktop/mobile sidebars and headers display a real-time countdown showing remaining trial days. Automated warning notices are sent via email on the 10th and 14th days of the trial. Upon expiration on the 15th day, the shop automatically transitions to the Starter Plan. No business ledger records, invoices, or customer details are lost, allowing owners to upgrade to Growth or Professional tiers at any time to resume advanced operations.
 

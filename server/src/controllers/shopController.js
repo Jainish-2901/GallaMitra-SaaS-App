@@ -172,17 +172,39 @@ export const registerShop = async (req, res) => {
             passwordHash = await bcrypt.hash(password, 12);
         }
         
-        // Auto-approve if requiresApproval is false
-        const directApprove = !planDetails.requiresApproval;
-        const status = directApprove ? 'active' : 'pending';
-        const isActive = directApprove;
-        const expiryDate = calculateExpiryDate(planDetails.billingCycle);
+        // Check for existing shop (parent-child logic)
+        const existingShops = await db.query(
+            `SELECT plan, status, "isActive", "subscriptionExpiresAt" 
+             FROM "Shop" 
+             WHERE LOWER("email") = $1 AND "status" != 'rejected' 
+             ORDER BY "createdAt" ASC LIMIT 1`,
+            [email.toLowerCase().trim()]
+        );
+
+        let finalPlan = plan;
+        let status = !planDetails.requiresApproval ? 'active' : 'pending';
+        let isActive = !planDetails.requiresApproval;
+        let expiryDate = calculateExpiryDate(planDetails.billingCycle);
+
+        if (existingShops.rows.length > 0) {
+            const parent = existingShops.rows[0];
+            finalPlan = parent.plan;
+            status = parent.status;
+            isActive = parent.isActive;
+            expiryDate = parent.subscriptionExpiresAt;
+        }
+
+        const directApprove = status === 'active';
+
+        // Fetch planDetails for finalPlan (for emails and logs)
+        const finalPlanRes = await db.query('SELECT * FROM "Plan" WHERE id = $1', [finalPlan]);
+        const finalPlanDetails = finalPlanRes.rows[0] || planDetails;
 
         const newShop = await db.query(
             `INSERT INTO "Shop" ("businessName", "ownerName", "email", "phone", "passwordHash", "plan", "status", "isActive", "subscriptionExpiresAt")
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING ${SAFE_SHOP_FIELDS}`,
-             [businessName.trim(), ownerName.trim(), email.toLowerCase().trim(), phone || null, passwordHash, plan, status, isActive, expiryDate]
+             [businessName.trim(), ownerName.trim(), email.toLowerCase().trim(), phone || null, passwordHash, finalPlan, status, isActive, expiryDate]
         );
 
         const shop = newShop.rows[0];
@@ -193,18 +215,18 @@ export const registerShop = async (req, res) => {
         // Send Email Notification
         const registerSubject = directApprove ? 'Welcome to GallaMitra! Workspace Ready' : 'GallaMitra Workspace Registration Under Review';
         const registerBody = directApprove
-            ? `Hello ${ownerName},\nThank you for registering. Your workspace "${businessName}" under the "${planDetails.name}" plan has been automatically approved and is ready!\nYou can access your panel immediately: ${frontendUrl}/login\n\nBest regards,\nGallaMitra Team`
-            : `Hello ${ownerName},\nYour workspace registration for "${businessName}" under the "${planDetails.name}" plan has been submitted and is currently under review.\nWe will notify you as soon as the administrator approves your request.\n\nBest regards,\nGallaMitra Team`;
+            ? `Hello ${ownerName},\nThank you for registering. Your workspace "${businessName}" under the "${finalPlanDetails.name}" plan has been automatically approved and is ready!\nYou can access your panel immediately: ${frontendUrl}/login\n\nBest regards,\nGallaMitra Team`
+            : `Hello ${ownerName},\nYour workspace registration for "${businessName}" under the "${finalPlanDetails.name}" plan has been submitted and is currently under review.\nWe will notify you as soon as the administrator approves your request.\n\nBest regards,\nGallaMitra Team`;
 
         const userHtml = generateHtmlEmail({
             title: directApprove ? 'Welcome to GallaMitra! 🎉' : 'Registration Under Review 🕐',
             greeting: `Hello ${ownerName},`,
             leadText: directApprove
-                ? `Thank you for registering. Your workspace "${businessName}" under the "${planDetails.name}" plan has been automatically approved and is ready!`
-                : `Your workspace registration for "${businessName}" under the "${planDetails.name}" plan has been submitted and is currently under review. We will notify you as soon as the administrator approves your request.`,
+                ? `Thank you for registering. Your workspace "${businessName}" under the "${finalPlanDetails.name}" plan has been automatically approved and is ready!`
+                : `Your workspace registration for "${businessName}" under the "${finalPlanDetails.name}" plan has been submitted and is currently under review. We will notify you as soon as the administrator approves your request.`,
             details: [
                 { label: 'Business Name', value: businessName },
-                { label: 'Selected Plan', value: planDetails.name },
+                { label: 'Selected Plan', value: finalPlanDetails.name },
                 { label: 'Status', value: directApprove ? 'Active' : 'Pending Approval' }
             ],
             actionUrl: directApprove ? frontendUrl : undefined,
@@ -217,7 +239,7 @@ export const registerShop = async (req, res) => {
 
         // Notify Super Admin of new shop registration
         const adminSubject = `🚨 New Shop Registered: ${businessName}`;
-        const adminBody = `Hello Admin,\n\nA new shop workspace has been registered on GallaMitra.\n\nBusiness Name: ${businessName}\nOwner Name: ${ownerName}\nEmail: ${email}\nPhone: ${phone || 'N/A'}\nPlan Selected: ${planDetails.name}\nStatus: ${status}\n\nPlease review this shop workspace in the admin dashboard.\n\nBest regards,\nGallaMitra System`;
+        const adminBody = `Hello Admin,\n\nA new shop workspace has been registered on GallaMitra.\n\nBusiness Name: ${businessName}\nOwner Name: ${ownerName}\nEmail: ${email}\nPhone: ${phone || 'N/A'}\nPlan Selected: ${finalPlanDetails.name}\nStatus: ${status}\n\nPlease review this shop workspace in the admin dashboard.\n\nBest regards,\nGallaMitra System`;
 
         const adminHtml = generateHtmlEmail({
             title: '🚨 New Shop Registered',
@@ -228,7 +250,7 @@ export const registerShop = async (req, res) => {
                 { label: 'Owner Name', value: ownerName },
                 { label: 'Email', value: email },
                 { label: 'Phone', value: phone || 'N/A' },
-                { label: 'Plan Selected', value: planDetails.name },
+                { label: 'Plan Selected', value: finalPlanDetails.name },
                 { label: 'Status', value: status.toUpperCase() }
             ],
             actionUrl: `${adminUrl}/?tab=shops`,
@@ -239,7 +261,7 @@ export const registerShop = async (req, res) => {
 
         await sendNotificationEmail(supportEmail, adminSubject, adminBody, adminHtml);
 
-        await logActivity(shop.id, 'SHOP_REGISTERED', 'Owner', `${businessName} registered (Plan: ${planDetails.name})`);
+        await logActivity(shop.id, 'SHOP_REGISTERED', 'Owner', `${businessName} registered (Plan: ${finalPlanDetails.name})`);
 
         const response = {
             message: directApprove ? 'Registration successful!' : 'Registration submitted. Your workspace is under review.',

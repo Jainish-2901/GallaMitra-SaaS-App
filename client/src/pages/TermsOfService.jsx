@@ -26,8 +26,8 @@ export default function TermsOfService() {
             <h3 className="text-base font-black text-slate-900 flex items-center gap-2 tracking-tight">
               <Award size={18} className="text-blue-600" /> 1. Workspace Allocation & Trial Plan Terms
             </h3>
-            <p className="text-slate-500 text-xs md:text-sm">
-              New business owner registrations are automatically allocated a 15-day Free Trial of the Professional tier features. Advanced paid tier accesses require approval sequences by global platform operators. Trial plans last exactly 15 days, after which accounts are automatically shifted to the Starter tier. Platform operators reserve total infrastructure rights to intercept, modify, or terminate any workspace tier if transactional patterns violate platform integrity.
+            <p className="text-slate-505 text-xs md:text-sm font-semibold">
+              New business owner registrations are automatically allocated a 15-day Free Trial of the Professional tier features. Advanced paid tier accesses require approval sequences by global platform operators. Under our parent-child workspace inheritance model, any additional sub-businesses or workspaces registered under an existing account automatically inherit the plan, active status, and remaining subscription duration of the parent workspace, bypassing new plan selection and separate administrative approval. Trial plans last exactly 15 days, after which accounts are automatically shifted to the Starter tier. Platform operators reserve total infrastructure rights to intercept, modify, or terminate any workspace tier if transactional patterns violate platform integrity.
             </p>
           </div>
 

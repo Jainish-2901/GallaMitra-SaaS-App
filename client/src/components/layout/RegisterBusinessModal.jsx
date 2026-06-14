@@ -5,22 +5,15 @@ import { AppContext } from '../../context/AppContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 
 export default function RegisterBusinessModal({ isOpen, onClose }) {
-  const { activeShop, plans, registerShopOwner, fetchMyWorkspaces } = useContext(AppContext);
+  const { activeShop, registerShopOwner, fetchMyWorkspaces } = useContext(AppContext);
   const toast = useToast();
 
   const [businessName, setBusinessName] = useState('');
   const [ownerName, setOwnerName] = useState(activeShop?.ownerName || '');
   const [phone, setPhone] = useState(activeShop?.phone || '');
-  const [plan, setPlan] = useState('');
+  const [plan, setPlan] = useState(activeShop?.plan || 'starter');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-
-  // Dynamically set default plan when modal opens or plans load
-  useEffect(() => {
-    if (isOpen && plans.length > 0 && !plan) {
-      setPlan(plans[0].id);
-    }
-  }, [isOpen, plans, plan]);
 
   if (!isOpen) return null;
 
@@ -179,39 +172,7 @@ export default function RegisterBusinessModal({ isOpen, onClose }) {
               </div>
             </div>
 
-            {/* Select Billing Plan */}
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                Billing Package Plan
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {plans.map(p => {
-                  const isSelected = plan === p.id;
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => setPlan(p.id)}
-                      className={`p-2.5 border rounded-xl flex flex-col items-center justify-center text-center transition-all ${
-                        isSelected
-                          ? 'border-blue-500 bg-blue-50/50 text-blue-700 font-bold'
-                          : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-650 font-semibold'
-                      }`}
-                    >
-                      <span className="text-[10px] uppercase font-black tracking-wider">{p.name}</span>
-                      <span className="text-[10px] font-mono mt-0.5">
-                        ₹{parseFloat(p.price).toFixed(0)}
-                        {p.billingCycle?.toLowerCase() === 'free'
-                          ? ' (Free)'
-                          : (p.billingCycle?.toLowerCase() === 'trial'
-                            ? ' (15 Days Trial)'
-                            : `/${p.billingCycle?.toLowerCase() === 'yearly' || p.billingCycle?.toLowerCase() === 'yr' ? 'yr' : 'mo'}`)}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+
 
             {/* Form actions */}
             <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
