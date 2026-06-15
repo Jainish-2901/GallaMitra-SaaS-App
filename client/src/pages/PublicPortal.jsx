@@ -30,10 +30,21 @@ export default function PublicPortal() {
   const [printLoading, setPrintLoading] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
 
   const ledgerReportRef = useRef(null);
   const receiptPrintRef = useRef(null);
   const invoicePrintRef = useRef(null);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+      setIsMobile(mobileRegex.test(navigator.userAgent) || window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -105,17 +116,16 @@ export default function PublicPortal() {
 
   useEffect(() => {
     if (!loading && portalData && !portalData.error && profile) {
-      const shopName = profile.shopName || profile.name || 'GallaMitra';
+      const shopName = profile.businessName || profile.shopName || profile.name || 'GallaMitra';
       const cleanShopName = shopName.trim();
-      const shortName = cleanShopName.length > 12 ? cleanShopName.substring(0, 12) + '..' : cleanShopName;
 
       // Unique start_url and id per customer/supplier
       const startUrl = window.location.pathname + window.location.search;
       const pwaId = `${window.location.pathname}?type=${portalType}&id=${entityId}`;
 
       const dynamicManifest = {
-        short_name: shortName,
-        name: `${cleanShopName} Portal`,
+        short_name: cleanShopName,
+        name: cleanShopName,
         icons: [
           {
             src: "/logo.png",
@@ -875,7 +885,7 @@ export default function PublicPortal() {
             </nav>
 
             {/* PWA Download Button */}
-            {isInstallable && (
+            {isInstallable && isMobile && (
               <button
                 onClick={installApp}
                 className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all active:scale-[0.98] cursor-pointer"
@@ -914,7 +924,7 @@ export default function PublicPortal() {
             </div>
 
             {/* PWA promotional banner */}
-            {isInstallable && (
+            {isInstallable && isMobile && (
               <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-5 border border-blue-500 shadow-md text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 card-hover">
                 <div className="space-y-1">
                   <h3 className="font-black text-sm flex items-center gap-1.5">
