@@ -119,28 +119,28 @@ export default function PublicPortal() {
       const shopName = profile.businessName || profile.shopName || profile.name || 'GallaMitra';
       const cleanShopName = shopName.trim();
 
-      // Unique start_url and id per customer/supplier
-      const startUrl = window.location.pathname + window.location.search;
-      const pwaId = `${window.location.pathname}?type=${portalType}&id=${entityId}`;
+      // Unique start_url and id per customer/supplier (must be absolute for blob manifest)
+      const startUrl = window.location.origin + window.location.pathname + window.location.search;
+      const pwaId = window.location.origin + window.location.pathname + `?type=${portalType}&id=${entityId}`;
 
       const dynamicManifest = {
         short_name: cleanShopName,
         name: cleanShopName,
         icons: [
           {
-            src: "/logo.png",
+            src: window.location.origin + "/logo.png",
             type: "image/png",
             sizes: "192x192",
             purpose: "any"
           },
           {
-            src: "/logo.png",
+            src: window.location.origin + "/logo.png",
             type: "image/png",
             sizes: "512x512",
             purpose: "any"
           },
           {
-            src: "/logo.png",
+            src: window.location.origin + "/logo.png",
             type: "image/png",
             sizes: "512x512",
             purpose: "maskable"
