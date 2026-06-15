@@ -43,7 +43,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!assets/|favicon.ico|logo.png|manifest.json|sw.js|sitemap.xml|robots.txt).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
