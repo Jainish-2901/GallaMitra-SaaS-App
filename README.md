@@ -13,13 +13,13 @@ The monorepo is divided into three primary sub-systems:
 ### 1. 💼 Owner Client Portal (`/client`)
 The main tenant-facing workspace application where business owners perform retail tasks.
 * **Tech Stack**: React 19, React Router DOM v7, Vite v8, Tailwind CSS.
-* **Key Features**: Customer/Supplier CRUDs, Mixed Ledger (Credit/Debit entries), itemized GST Invoice Builder, 15-Day Free Trial (with automatic warnings & Starter-downgrade), Whatsapp Sharing, Grayscale Single-Page Payment Vouchers, PWA installation & Public Portal shortcuts (with automatic standalone statement redirection), Parent-Child Workspace Subscription Inheritance (auto-sharing plan & duration), support for custom 3 & 6 month billing cycles, Unified logo/favicon branding, and Multilingual Support (English, Gujarati, Hindi).
+* **Key Features**: Customer/Supplier CRUDs, Mixed Ledger (Credit/Debit entries), itemized GST Invoice Builder, 15-Day Free Trial (with automatic warnings & Starter-downgrade), Whatsapp Sharing, Grayscale Single-Page Payment Vouchers, PWA installation & Public Portal shortcuts (with dynamic manifest isolation for multi-app setups), Parent-Child Workspace Subscription Inheritance (auto-sharing plan & duration), support for Starter, Growth, Scale, Enterprise, and Professional tiers, Unified logo/favicon branding, and Multilingual Support (English, Gujarati, Hindi).
 * **Hosted At**: `https://gallamitra.vercel.app/`
 
 ### 2. 👑 Super Admin Dashboard (`/admin`)
 The administrative portal used by platform managers to review registrations and supervise subscription workspaces.
 * **Tech Stack**: React, Vite, Framer Motion, Tailwind CSS.
-* **Key Features**: Approve/Reject new shops, CRUD and configure custom subscription plans (support for monthly, yearly, 3-month, and 6-month cycles with tab permissions), reset passwords, monitor database table health metrics, and review system audit logs.
+* **Key Features**: Approve/Reject new shops, CRUD and configure custom subscription plans (support for Starter, Growth, Scale, Enterprise, and Professional tiers), reset passwords, monitor database table health metrics, and review system audit logs.
 
 ### 3. ⚙️ Server Backend Engine (`/server`)
 The centralized core REST API engine powering database logic, security routing, and transactional notifications.

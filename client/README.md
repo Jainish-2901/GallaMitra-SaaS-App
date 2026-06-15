@@ -6,19 +6,23 @@ GallaMitra (ગલ્લામિત્ર) is a premium, feature-rich SaaS plat
 
 ## ⚡ Subscription Plans & Feature Matrix
 
-GallaMitra features a tiered SaaS plan architecture. Available workspace tabs and features dynamically adapt based on the active shop's plan. Subscription plans (Starter, Growth, Professional) can be dynamically configured by Super Admins with custom pricing and flexible billing cycles, supporting:
-* **Monthly** (30 days duration)
-* **3-Month Plan** (90 days / 3 months duration)
-* **6-Month Plan** (180 days / 6 months duration)
-* **Yearly** (365 days / 1 year duration)
+## ⚡ Subscription Plans & Feature Matrix
+
+GallaMitra features a tiered SaaS plan architecture. Available workspace tabs and features dynamically adapt based on the active shop's plan. Subscription plans can be dynamically configured by Super Admins with custom pricing and flexible billing cycles, supporting:
+* **Starter** (₹0 Free): Core ledger management, Customer/Supplier lists, Sale/Purchase ledgers, Payment receipts.
+* **15-Day Free Trial** (₹0 Free Trial): Grants 15 days of full Professional features, including Reports, Export, and Deep Analytics.
+* **Growth** (₹299/mo): Starter features + Invoice builder, Purchase bills, Voucher list, Item registry, Logo upload.
+* **Scale** (₹799/3mo): Growth features + Reports & CSV exports, PDF exports, Deep Analytics, Unlimited entries.
+* **Enterprise** (₹1749/6mo): Growth features + Reports & CSV exports, PDF exports, Deep Analytics, Unlimited entries, Multi-Business workspace management.
+* **Professional** (₹3499/yr): Growth features + Reports & CSV exports, PDF exports, Deep Analytics, Unlimited entries, Multi-Business workspace management.
 
 ### 👨‍👧‍👦 Parent-Child Workspace Subscription Inheritance
 GallaMitra operates under an account-level subscription framework. Any child businesses or workspaces registered under an existing owner account (email) automatically inherit the plan type, active status, and remaining subscription duration of the parent workspace. Merchants do not need to re-select plans or wait for separate administrative approval when adding additional sub-businesses. All workspaces under the same account remain active until the parent plan's duration expires.
 
 ### 🆓 15-Day Free Trial Subscription
-Newly registered shop owners can test GallaMitra using the 15-day Free Trial. This trial grants complete access to the features of the **Professional Plan** with no initial restrictions. Desktop/mobile sidebars and headers display a real-time countdown showing remaining trial days. Automated warning notices are sent via email on the 10th and 14th days of the trial. Upon expiration on the 15th day, the shop automatically transitions to the Starter Plan. No business ledger records, invoices, or customer details are lost, allowing owners to upgrade to Growth or Professional tiers at any time to resume advanced operations.
+Newly registered shop owners can test GallaMitra using the 15-day Free Trial. This trial grants complete access to the features of the **Professional Plan** with no initial restrictions. Desktop/mobile sidebars and headers display a real-time countdown showing remaining trial days. Automated warning notices are sent via email on the 10th and 14th days of the trial. Upon expiration on the 15th day, the shop automatically transitions to the Starter Plan. No business ledger records, invoices, or customer details are lost, allowing owners to upgrade to any paid tier (Growth, Scale, Enterprise, Professional) at any time to resume advanced operations.
 
-### 🥉 Starter Plan
+### 🥉 Starter Plan (₹0 / Free)
 * **Dashboard Overview**: Continuous real-time sales & purchase indicators, quick entry panels.
 * **Customer Management (`cust_list`)**: Register customers, track credit/debit balances, view transaction history.
 * **Supplier Registry (`supp_list`)**: Track supplier liabilities, payments remitted, and balances.
@@ -28,7 +32,7 @@ Newly registered shop owners can test GallaMitra using the 15-day Free Trial. Th
 * **Payment Voucher List (`receipt_list`)**: Log of all payments received and records of client cash slips.
 * **Profile Settings (`user_settings`)**: Standard business profile management.
 
-### 🥈 Growth Plan (Includes Starter features plus:)
+### 🥈 Growth Plan (₹299/mo) (Includes Starter features plus:)
 * **Invoice Builder (`invoice_builder`)**: Itemized billing generator with automatic GST/discount calculations.
 * **Invoice List (`invoice_list`)**: Central repository of issued invoices with download & print capabilities.
 * **Sales Item Registry (`sales_list`)**: Dynamic catalog of sold inventory items, pricing logs, and tags.
@@ -37,9 +41,10 @@ Newly registered shop owners can test GallaMitra using the 15-day Free Trial. Th
 * **Purchase Bill List (`pbill_list`)**: Manage historical purchase entries and vendor ledger balance logs.
 * **Business Settings (`business_settings`)**: Upload business logo, manage workspace settings, toggle sub-options.
 
-### 🥇 Professional Plan (Includes Growth features plus:)
+### 🥇 Scale & Enterprise & Professional Plans (₹799/3mo, ₹1749/6mo, ₹3499/yr) (Includes Growth features plus:)
 * **Reports & CSV Export (`reports`)**: Selectable start and end date-range filters to export Ledgers to CSV, print-friendly PDFs, or print.
 * **Analytics & Charts (`analytics`)**: Detailed visualization dashboards displaying monthly trends, customer analysis, and purchase-vs-sales reports.
+* **Multi-Business Management** (Enterprise & Professional only): Support for Swapping between multiple active business workspaces instantly.
 
 ---
 
@@ -81,7 +86,7 @@ Designed specifically to minimize ink usage for low-cost thermal/laser printers:
 Supports offline caching, full application installation, and public portal shortcut creation:
 * **Merchant App**: Owners can install GallaMitra via the "📲 Download App" button in the TopBar or mobile drawer to manage their shops natively.
 * **Customer/Supplier Shortcut App**: Customers/suppliers can install their respective portals directly from the browser window using the inline header action or the premium CTA install banner.
-* **Auto-Redirection**: When the customer/supplier PWA is launched as a standalone app, it detects the display-mode, reads the saved portal URL cached in local storage (`gm_last_public_portal_url`), and automatically redirects them to their personal balance sheet rather than the merchant portal landing page.
+* **Dynamic Portal Isolation (Multi-User PWAs)**: When a customer or supplier opens their public portal link, GallaMitra dynamically constructs and injects a parameterized web manifest blob URL. This specifies a unique `id` and `start_url` containing their specific token. As a result, a user can install separate standalone home screen apps for different shop portals (e.g. Maruti Traders, Krishna Sweets) on a single device, and launching any of them will open their respective portal directly.
 
 ---
 

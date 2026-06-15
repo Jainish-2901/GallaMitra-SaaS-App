@@ -47,7 +47,7 @@ export default function TermsOfService() {
               <Smartphone size={18} className="text-blue-600" /> 3. Progressive Web App (PWA) Sync & Portal Shortcuts
             </h3>
             <p className="text-slate-505 text-xs md:text-sm font-semibold">
-              Our PWA provides quick-action shortcuts and stores structural asset frames locally to speed up rendering. We also offer PWA shortcut installation prompts for customers and suppliers inside their public portal. When installed and launched, the app redirects to the respective party's portal URL stored in browser memory, facilitating fast future reference. All active balance adjustments, voucher generations, and invoice builds are strictly online operations and require active internet handshakes to commit edits safely to central database clusters.
+              Our PWA provides quick-action shortcuts and stores structural asset frames locally to speed up rendering. We also offer dynamic PWA installation prompts for customers and suppliers inside their public portal. By assigning a unique, parameterized start URL and web manifest, the browser installs each portal as a separate standalone application, allowing fast future reference to that specific statement directly on launching the app. All active balance adjustments, voucher generations, and invoice builds are strictly online operations and require active internet handshakes to commit edits safely to central database clusters.
             </p>
           </div>
 

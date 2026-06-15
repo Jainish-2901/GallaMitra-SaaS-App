@@ -57,7 +57,7 @@ export default function PrivacyPolicy() {
               <Globe size={18} className="text-blue-600" /> 4. Sharing & Public Ledger Portals
             </h3>
             <p className="text-slate-505 text-xs md:text-sm font-semibold">
-              GallaMitra gives operators the power to distribute guess-proof public link identifiers to customers and suppliers via WhatsApp triggers. These public pass portals grant real-time, read-only balance lookups, support PWA (Progressive Web App) shortcut prompts for saving the portal to a device home screen, and cache the active portal URL in local storage (`gm_last_public_portal_url`) to enable seamless, direct redirection to the client statement when the installed application is launched. Memory metrics are preserved by linking assets directly via link strings instead of third-party personal drive accounts.
+              GallaMitra gives operators the power to distribute guess-proof public link identifiers to customers and suppliers via WhatsApp triggers. These public pass portals grant real-time, read-only balance lookups and support Progressive Web App (PWA) installation. By dynamically generating a unique manifest and start URL for each portal, GallaMitra allows customers and suppliers to install multiple separate shop portals on a single device as distinct standalone applications. Each PWA app directly targets its respective owner statement without overriding other installations. Memory metrics are preserved by linking assets directly via link strings instead of third-party personal drive accounts.
             </p>
           </div>
 

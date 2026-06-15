@@ -12,7 +12,7 @@ The **GallaMitra Super Admin Dashboard** is a high-performance control console u
 
 ### 2. Shop Verification Registry (`ShopsPage.jsx`)
 * **Tenant Lifecycle Control**: Administrative approval pipeline to Approve or Reject newly registered businesses.
-* **Subscription Management**: Instantly assign custom subscription plans (Starter, Growth, Professional) and adjust subscription expiration dates.
+* **Subscription Management**: Instantly assign custom subscription plans (Starter, Growth, Scale, Enterprise, Professional) and adjust subscription expiration dates.
 * **Audit Control**: Purge or suspend misbehaving workspaces with a unified workspace deletion flow.
 
 ### 3. Plans & Module Permissions (`AdminSettingsPage.jsx`)
