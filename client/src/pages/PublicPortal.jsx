@@ -104,6 +104,74 @@ export default function PublicPortal() {
   }, [loading, portalData]);
 
   useEffect(() => {
+    if (!loading && portalData && !portalData.error && profile) {
+      const shopName = profile.shopName || profile.name || 'GallaMitra';
+      const cleanShopName = shopName.trim();
+      const shortName = cleanShopName.length > 12 ? cleanShopName.substring(0, 12) + '..' : cleanShopName;
+
+      // Unique start_url and id per customer/supplier
+      const startUrl = window.location.pathname + window.location.search;
+      const pwaId = `${window.location.pathname}?type=${portalType}&id=${entityId}`;
+
+      const dynamicManifest = {
+        short_name: shortName,
+        name: `${cleanShopName} Portal`,
+        icons: [
+          {
+            src: "/logo.png",
+            type: "image/png",
+            sizes: "192x192",
+            purpose: "any"
+          },
+          {
+            src: "/logo.png",
+            type: "image/png",
+            sizes: "512x512",
+            purpose: "any"
+          },
+          {
+            src: "/logo.png",
+            type: "image/png",
+            sizes: "512x512",
+            purpose: "maskable"
+          }
+        ],
+        start_url: startUrl,
+        id: pwaId,
+        background_color: "#F8FAFC",
+        theme_color: "#FFFFFF",
+        display: "standalone",
+        orientation: "portrait"
+      };
+
+      const manifestString = JSON.stringify(dynamicManifest);
+      const manifestBlob = new Blob([manifestString], { type: 'application/json' });
+      const manifestUrl = URL.createObjectURL(manifestBlob);
+
+      // Find existing manifest link or create one in the document head
+      let linkElement = document.querySelector('link[rel="manifest"]');
+      if (linkElement) {
+        linkElement.setAttribute('href', manifestUrl);
+      } else {
+        linkElement = document.createElement('link');
+        linkElement.setAttribute('rel', 'manifest');
+        linkElement.setAttribute('href', manifestUrl);
+        document.head.appendChild(linkElement);
+      }
+
+      // Update apple title meta tag dynamically for native iOS experience
+      let appleTitleElement = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+      if (appleTitleElement) {
+        appleTitleElement.setAttribute('content', cleanShopName);
+      }
+
+      return () => {
+        URL.revokeObjectURL(manifestUrl);
+      };
+    }
+  }, [loading, portalData, profile, portalType, entityId]);
+
+  useEffect(() => {
     if (!loading && portalData) {
       const urlParams = new URLSearchParams(window.location.search);
       const docId = urlParams.get('docId');
