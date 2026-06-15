@@ -72,7 +72,7 @@ export default function CustomerManagement({ openTxModal }) {
       toast.error(shortRes.error || 'Failed to generate short share link.');
       return;
     }
-    const text = `*${activeShop?.businessName}*\nCustomer: *${name}*\nView details: ${shortRes.shortUrl}`;
+    const text = `🏢 *${activeShop?.businessName}*\n👤 Customer: *${name}*\n📝 View details: ${shortRes.shortUrl}`;
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
@@ -193,7 +193,7 @@ export default function CustomerManagement({ openTxModal }) {
                     <button onClick={async () => {
                       const shortRes = await generateShortShareLink({ partyId: c.id, role: 'customer' });
                       if (!shortRes.success || !shortRes.shortUrl) { toast.error(shortRes.error || 'Failed to generate short share link.'); return; }
-                      const text = `*${activeShop?.businessName}*\nCustomer: *${c.name}*\nView details: ${shortRes.shortUrl}`;
+                      const text = `🏢 *${activeShop?.businessName}*\n👤 Customer: *${c.name}*\n📝 View details: ${shortRes.shortUrl}`;
                       const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
                       window.open(url, '_blank');
                     }} className="bg-white hover:bg-green-50 text-slate-600 hover:text-green-600 border px-2 py-1.5 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition-all">

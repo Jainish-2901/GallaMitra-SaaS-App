@@ -615,18 +615,18 @@ export default function DocumentListsView({ mode, t = {} }) {
     let text = '';
     if (isInvoice) {
       text = `*Invoice #${doc.invoiceNo}*\n`;
-      text += `Shop: *${activeShop?.businessName}*\n`;
-      text += `Customer: *${party?.name || 'Valued Customer'}*\n`;
-      text += `Date: *${new Date(doc.date).toLocaleDateString()}*\n`;
-      text += `Grand Total: *₹${parseFloat(doc.grandTotal).toFixed(2)}*\n\n`;
-      text += `Please check details on the portal: ${portalLink}`;
+      text += `🏢 Shop: *${activeShop?.businessName}*\n`;
+      text += `👤 Customer: *${party?.name || 'Valued Customer'}*\n`;
+      text += `📅 Date: *${new Date(doc.date).toLocaleDateString()}*\n`;
+      text += `💰 Grand Total: *₹${parseFloat(doc.grandTotal).toFixed(2)}*\n\n`;
+      text += `📝 Please check details on the portal: ${portalLink}`;
     } else {
       text = `*Purchase Bill #${doc.billNo || 'N/A'}*\n`;
-      text += `Shop: *${activeShop?.businessName}*\n`;
-      text += `Supplier: *${party?.name || 'N/A'}*\n`;
-      text += `Date: *${new Date(doc.date).toLocaleDateString()}*\n`;
-      text += `Total Amount: *₹${parseFloat(doc.totalAmount).toFixed(2)}*\n\n`;
-      text += `Please check details on the portal: ${portalLink}`;
+      text += `🏢 Shop: *${activeShop?.businessName}*\n`;
+      text += `👤 Supplier: *${party?.name || 'N/A'}*\n`;
+      text += `📅 Date: *${new Date(doc.date).toLocaleDateString()}*\n`;
+      text += `💰 Total Amount: *₹${parseFloat(doc.totalAmount).toFixed(2)}*\n\n`;
+      text += `📝 Please check details on the portal: ${portalLink}`;
     }
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
@@ -643,12 +643,12 @@ export default function DocumentListsView({ mode, t = {} }) {
     const portalLink = shortRes.shortUrl;
     const party = receipt.customerId ? customers.find(c => c.id === receipt.customerId) : suppliers.find(s => s.id === receipt.supplierId);
     let text = `*Payment Receipt #${receipt.receiptNo}*\n`;
-    text += `Shop: *${activeShop?.businessName}*\n`;
-    text += `Received From: *${party?.name || '—'}*\n`;
-    text += `Date: *${new Date(receipt.date).toLocaleDateString()}*\n`;
-    text += `Amount: *₹${parseFloat(receipt.amount).toFixed(2)}*\n`;
-    text += `Payment Mode: *${receipt.paymentMode}*\n\n`;
-    text += `Please check details on the portal: ${portalLink}`;
+    text += `🏢 Shop: *${activeShop?.businessName}*\n`;
+    text += `👤 Received From: *${party?.name || '—'}*\n`;
+    text += `📅 Date: *${new Date(receipt.date).toLocaleDateString()}*\n`;
+    text += `💰 Amount: *₹${parseFloat(receipt.amount).toFixed(2)}*\n`;
+    text += `🔄 Payment Mode: *${receipt.paymentMode}*\n\n`;
+    text += `📝 Please check details on the portal: ${portalLink}`;
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
