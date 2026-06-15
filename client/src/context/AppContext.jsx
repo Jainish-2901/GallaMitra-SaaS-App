@@ -552,7 +552,7 @@ export const AppProvider = ({ children }) => {
             });
 
             if (createRes.ok) {
-                const frontendBase = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
+                const frontendBase = window.location.origin;
                 const shortUrl = `${frontendBase}/s/${shortId}`;
                 return { success: true, shortUrl, fullUrl };
             }
