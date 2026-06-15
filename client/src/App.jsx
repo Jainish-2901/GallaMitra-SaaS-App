@@ -490,6 +490,32 @@ function SalesList({ t }) {
           </tbody>
         </table>
       </div>
+
+      {/* Mobile Card List */}
+      <div className="md:hidden space-y-3">
+        {filtered.length === 0 ? (
+          <div className="text-center py-12 text-slate-400 font-mono text-xs">No items match.</div>
+        ) : (
+          filtered.map((item, idx) => (
+            <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-mono text-slate-400">{new Date(item.date).toLocaleDateString()}</span>
+                <span className="text-xs font-mono text-blue-600 font-black">#{item.invoiceNo}</span>
+              </div>
+              <div className="flex justify-between items-start gap-2">
+                <div className="min-w-0">
+                  <h4 className="font-black text-slate-900 text-xs truncate">{item.customerName}</h4>
+                  <p className="text-[11px] text-slate-500 font-semibold mt-0.5">{item.itemName}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xs font-mono font-black text-slate-900">₹{item.total.toFixed(2)}</p>
+                  <p className="text-[9px] font-mono text-slate-400 mt-0.5">{item.qty} × ₹{parseFloat(item.rate).toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </motion.div>
   );
 }
@@ -571,6 +597,32 @@ function PurchaseList({ t }) {
               ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Card List */}
+      <div className="md:hidden space-y-3">
+        {filtered.length === 0 ? (
+          <div className="text-center py-12 text-slate-400 font-mono text-xs">No purchased items found.</div>
+        ) : (
+          filtered.map((item, idx) => (
+            <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-mono text-slate-400">{new Date(item.date).toLocaleDateString()}</span>
+                <span className="text-xs font-mono text-slate-800 font-bold">#{item.billNo}</span>
+              </div>
+              <div className="flex justify-between items-start gap-2">
+                <div className="min-w-0">
+                  <h4 className="font-black text-slate-900 text-xs truncate">{item.supplierName}</h4>
+                  <p className="text-[11px] text-slate-500 font-semibold mt-0.5">{item.itemName}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xs font-mono font-black text-slate-900">₹{item.total.toFixed(2)}</p>
+                  <p className="text-[9px] font-mono text-slate-400 mt-0.5">{item.qty} × ₹{parseFloat(item.rate).toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </motion.div>
   );
