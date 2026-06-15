@@ -12,7 +12,7 @@ export default function PrivacyPolicy() {
             <ShieldCheck size={24} />
           </div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Privacy Policy</h2>
-          <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">Last Updated: June 14, 2026</p>
+          <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">Last Updated: June 15, 2026</p>
         </div>
 
         {/* Content Matrix */}
