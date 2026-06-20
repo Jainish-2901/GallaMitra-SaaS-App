@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { db } from './db.js';
+import { prisma } from './utils/prisma.js';
 
 // SMTP Transporter setup (reads from environment variables)
 const transporter = nodemailer.createTransport({
@@ -16,25 +16,25 @@ export const processEmailQueue = async () => {
   try {
     while (true) {
       // Reserve one email atomically using SKIP LOCKED
-      const reserveRes = await db.query(
-        `UPDATE "EmailQueue"
-                 SET "status" = 'processing', "attempts" = "attempts" + 1
-                 WHERE id = (
-                     SELECT id FROM "EmailQueue"
-                     WHERE "status" = 'pending' AND "attempts" < 3
-                     ORDER BY "createdAt" ASC
-                     LIMIT 1
-                     FOR UPDATE SKIP LOCKED
-                 )
-                 RETURNING *`
-      );
+      const reservedEmails = await prisma.$queryRaw`
+        UPDATE "EmailQueue"
+        SET "status" = 'processing', "attempts" = "attempts" + 1
+        WHERE id = (
+            SELECT id FROM "EmailQueue"
+            WHERE "status" = 'pending' AND "attempts" < 3
+            ORDER BY "createdAt" ASC
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+        )
+        RETURNING *
+      `;
 
-      if (reserveRes.rows.length === 0) {
+      if (!reservedEmails || reservedEmails.length === 0) {
         // No more pending emails in queue
         break;
       }
 
-      const email = reserveRes.rows[0];
+      const email = reservedEmails[0];
       const nextAttempts = email.attempts;
       let success = false;
       let errorMsg = null;
@@ -62,16 +62,24 @@ export const processEmailQueue = async () => {
 
       // Update queue status
       if (success) {
-        await db.query(
-          'UPDATE "EmailQueue" SET "status" = $1, "processedAt" = NOW(), "error" = NULL WHERE id = $2',
-          ['sent', email.id]
-        );
+        await prisma.emailQueue.update({
+          where: { id: email.id },
+          data: {
+            status: 'sent',
+            processedAt: new Date(),
+            error: null
+          }
+        });
       } else {
         const statusVal = nextAttempts >= 3 ? 'failed' : 'pending';
-        await db.query(
-          'UPDATE "EmailQueue" SET "status" = $1, "error" = $2, "processedAt" = NOW() WHERE id = $3',
-          [statusVal, errorMsg, email.id]
-        );
+        await prisma.emailQueue.update({
+          where: { id: email.id },
+          data: {
+            status: statusVal,
+            error: errorMsg,
+            processedAt: new Date()
+          }
+        });
       }
     }
   } catch (err) {
@@ -81,10 +89,15 @@ export const processEmailQueue = async () => {
 
 export const getSupportContacts = async () => {
   try {
-    const adminSettingsRes = await db.query('SELECT "supportPhone" as supportphone, "supportEmail" as supportemail FROM "AdminUser" LIMIT 1');
+    const adminSettings = await prisma.adminUser.findFirst({
+      select: {
+        supportPhone: true,
+        supportEmail: true
+      }
+    });
     return {
-      supportPhone: adminSettingsRes.rows.length > 0 && adminSettingsRes.rows[0].supportphone ? adminSettingsRes.rows[0].supportphone : '+91 97732 72749',
-      supportEmail: adminSettingsRes.rows.length > 0 && adminSettingsRes.rows[0].supportemail ? adminSettingsRes.rows[0].supportemail : 'jainishdabgar2901@gmail.com',
+      supportPhone: adminSettings?.supportPhone ? adminSettings.supportPhone : '+91 97732 72749',
+      supportEmail: adminSettings?.supportEmail ? adminSettings.supportEmail : 'jainishdabgar2901@gmail.com',
       backendUrl: process.env.BACKEND_URL || 'http://localhost:5000',
       frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
       adminUrl: process.env.ADMIN_URL || 'http://localhost:5001'
@@ -107,11 +120,14 @@ export const sendNotificationEmail = async (to, subject, text, html) => {
   const content = html || text;
 
   try {
-    await db.query(
-      `INSERT INTO "EmailQueue" ("toEmail", "subject", "body", "status")
-             VALUES ($1, $2, $3, $4)`,
-      [to.toLowerCase().trim(), subject, content, 'pending']
-    );
+    await prisma.emailQueue.create({
+      data: {
+        toEmail: to.toLowerCase().trim(),
+        subject,
+        body: content,
+        status: 'pending'
+      }
+    });
 
     // Process queue asynchronously in background (don't block web request)
     processEmailQueue().catch(err => console.error('🚨 Error processing email queue:', err));

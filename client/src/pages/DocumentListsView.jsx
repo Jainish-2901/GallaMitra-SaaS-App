@@ -1,7 +1,7 @@
 import React, { useContext, useState, useRef } from 'react';
 import { AppContext } from '../context/AppContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
-import { Layers, ArrowDownLeft, ArrowUpRight, Trash2, Edit2, X, Plus, Eye, Printer, FileDown, Hash, Calendar, CreditCard, FileText, Info, Building2 } from 'lucide-react';
+import { Layers, ArrowDownLeft, ArrowUpRight, Trash2, Edit2, X, Plus, Eye, Printer, FileDown, Hash, Calendar, CreditCard, FileText, Info, Building2, Upload, Paperclip, Loader2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -31,6 +31,116 @@ export default function DocumentListsView({ mode, t = {} }) {
   const [editPbTaxRate, setEditPbTaxRate] = useState(0);
   const [editPbDiscount, setEditPbDiscount] = useState(0);
   const [editPbMiscCharges, setEditPbMiscCharges] = useState(0);
+
+  // Attachment upload edit states & helper functions
+  const [editAttachedImgUrl, setEditAttachedImgUrl] = useState('');
+  const [editPbAttachedImgUrl, setEditPbAttachedImgUrl] = useState('');
+  const [uploadingFile, setUploadingFile] = useState(false);
+
+  const uploadToCloudinary = async (file) => {
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dopmlnvyg';
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'ml_default';
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', uploadPreset);
+    formData.append('use_filename', 'true');
+    formData.append('unique_filename', 'false');
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!res.ok) {
+      const errData = await res.json();
+      throw new Error(errData.error?.message || 'Upload failed');
+    }
+    
+    const data = await res.json();
+    return data.secure_url;
+  };
+
+  const handleEditFileChange = async (e, type) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingFile(true);
+    toast.info('Uploading file attachment to Cloudinary...');
+    try {
+      const url = await uploadToCloudinary(file);
+      if (type === 'invoice') {
+        setEditAttachedImgUrl(url);
+      } else {
+        setEditPbAttachedImgUrl(url);
+      }
+      toast.success('Attachment uploaded successfully!');
+    } catch (err) {
+      console.error(err);
+      toast.error(`Upload failed: ${err.message}`);
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const handleRemoveAttachment = async (doc, type) => {
+    if (!window.confirm('Are you sure you want to permanently delete this attachment copy?')) return;
+    
+    if (type === 'invoice') {
+      let itemsArray = [];
+      try {
+        itemsArray = typeof doc.itemsJson === 'string' ? JSON.parse(doc.itemsJson) : doc.itemsJson;
+      } catch (e) {
+        itemsArray = [];
+      }
+      const res = await editInvoice(doc.id, {
+        invoiceNo: doc.invoiceNo,
+        customerId: doc.customerId,
+        date: new Date(doc.date).toISOString().split('T')[0],
+        itemsArray: Array.isArray(itemsArray) ? itemsArray : [],
+        subTotal: parseFloat(doc.subTotal || 0),
+        taxAmount: parseFloat(doc.taxAmount || 0),
+        taxRate: parseFloat(doc.taxRate || 0),
+        miscCharges: parseFloat(doc.miscCharges || 0),
+        discount: parseFloat(doc.discount || 0),
+        grandTotal: parseFloat(doc.grandTotal || 0),
+        description: doc.description || '',
+        attachedImgUrl: null
+      });
+      if (res.success) {
+        toast.success('Invoice attachment deleted successfully!');
+        if (selectedDoc && selectedDoc.id === doc.id) {
+          setSelectedDoc(prev => prev ? { ...prev, attachedImgUrl: null } : null);
+        }
+      } else {
+        toast.error('Failed to delete invoice attachment.');
+      }
+    } else {
+      let itemsArray = [];
+      try {
+        itemsArray = typeof doc.itemsJson === 'string' ? JSON.parse(doc.itemsJson) : doc.itemsJson;
+      } catch (e) {
+        itemsArray = [];
+      }
+      const res = await editPurchaseBill(doc.id, {
+        billNo: doc.billNo,
+        supplierId: doc.supplierId,
+        date: new Date(doc.date).toISOString().split('T')[0],
+        itemsArray: Array.isArray(itemsArray) ? itemsArray : [],
+        slipDetails: doc.slipDetails || '',
+        totalAmount: parseFloat(doc.totalAmount || 0),
+        attachedImgUrl: null
+      });
+      if (res.success) {
+        toast.success('Purchase bill attachment deleted successfully!');
+        if (selectedDoc && selectedDoc.id === doc.id) {
+          setSelectedDoc(prev => prev ? { ...prev, attachedImgUrl: null } : null);
+        }
+      } else {
+        toast.error('Failed to delete purchase bill attachment.');
+      }
+    }
+  };
 
   // Receipt Edit state variables
   const [editingReceipt, setEditingReceipt] = useState(null);
@@ -400,6 +510,7 @@ export default function DocumentListsView({ mode, t = {} }) {
     setEditMiscCharges(parseFloat(inv.miscCharges || 0));
     setEditDiscount(parseFloat(inv.discount || 0));
     setEditDescription(inv.description || '');
+    setEditAttachedImgUrl(inv.attachedImgUrl || '');
     try {
       const parsedItems = typeof inv.itemsJson === 'string' ? JSON.parse(inv.itemsJson) : inv.itemsJson;
       setEditItems(Array.isArray(parsedItems) ? parsedItems : []);
@@ -455,7 +566,8 @@ export default function DocumentListsView({ mode, t = {} }) {
       miscCharges: miscVal,
       discount: discVal,
       grandTotal: grandVal,
-      description: editDescription
+      description: editDescription,
+      attachedImgUrl: editAttachedImgUrl || null
     });
     if (res.success) {
       toast.success(t.editInvoiceSuccess || 'Invoice edited and ledger balances recalculated!');
@@ -504,6 +616,7 @@ export default function DocumentListsView({ mode, t = {} }) {
     setEditPbDate(new Date(pb.date).toISOString().split('T')[0]);
     setEditPbSlipDetails(pb.slipDetails || '');
     setEditPbTotalAmount(parseFloat(pb.totalAmount || 0));
+    setEditPbAttachedImgUrl(pb.attachedImgUrl || '');
     try {
       const parsedItems = typeof pb.itemsJson === 'string' ? JSON.parse(pb.itemsJson) : pb.itemsJson;
       if (Array.isArray(parsedItems)) {
@@ -590,7 +703,8 @@ export default function DocumentListsView({ mode, t = {} }) {
       date: editPbDate,
       itemsArray: itemsToSave,
       slipDetails: editPbSlipDetails,
-      totalAmount: grandTotalVal
+      totalAmount: grandTotalVal,
+      attachedImgUrl: editPbAttachedImgUrl || null
     });
     if (res.success) {
       toast.success('Purchase bill edited and supplier ledgers recalculated!');
@@ -740,8 +854,23 @@ export default function DocumentListsView({ mode, t = {} }) {
                       return (
                         <tr key={i.id} className="hover:bg-slate-50/50">
                           <td className="p-3 text-blue-600 font-bold font-mono">
-                            {i.invoiceNo}
-                            {i.isEdited && <span className="ml-1 text-[8px] bg-amber-50 text-amber-600 px-1 rounded">Edited</span>}
+                            <div>{i.invoiceNo}</div>
+                            {i.isEdited && <span className="text-[8px] bg-amber-50 text-amber-600 px-1 rounded mt-0.5 inline-block">Edited</span>}
+                            {i.attachedImgUrl && (
+                              <div className="flex gap-2 items-center mt-0.5">
+                                <a href={i.attachedImgUrl} target="_blank" rel="noreferrer" className="text-[9px] text-blue-600 underline font-sans font-bold">
+                                  View ↗
+                                </a>
+                                <span className="text-[9px] text-slate-300">|</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveAttachment(i, 'invoice')}
+                                  className="text-[9px] text-rose-600 hover:underline font-sans font-bold"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            )}
                           </td>
                           <td className="p-3 font-semibold text-slate-900">{customer?.name || 'Unknown customer'}</td>
                           <td className="p-3 text-slate-450">{new Date(i.date).toLocaleDateString()}</td>
@@ -828,6 +957,20 @@ export default function DocumentListsView({ mode, t = {} }) {
                         <span>Date: {new Date(i.date).toLocaleDateString()}</span>
                         <span>Subtotal: ₹{parseFloat(i.subTotal).toFixed(2)}</span>
                       </div>
+                      {i.attachedImgUrl && (
+                        <p className="text-[10px] text-blue-600 font-mono mt-1 flex gap-2 items-center">
+                          <span>Attached:</span>
+                          <a href={i.attachedImgUrl} target="_blank" rel="noreferrer" className="underline font-bold">View ↗</a>
+                          <span className="text-slate-300">|</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAttachment(i, 'invoice')}
+                            className="text-rose-600 font-bold hover:underline"
+                          >
+                            Delete
+                          </button>
+                        </p>
+                      )}
                       <div className="flex justify-between items-center pt-2 border-t border-slate-200/50">
                         {/* WhatsApp Sharing Button */}
                         <button
@@ -1101,8 +1244,23 @@ export default function DocumentListsView({ mode, t = {} }) {
                       return (
                         <tr key={pb.id} className="hover:bg-slate-50/50">
                           <td className="p-3 text-blue-600 font-bold font-mono">
-                            #{pb.billNo || 'N/A'}
-                            {pb.isEdited && <span className="ml-1 text-[8px] bg-amber-50 text-amber-600 px-1 rounded">Edited</span>}
+                            <div>#{pb.billNo || 'N/A'}</div>
+                            {pb.isEdited && <span className="text-[8px] bg-amber-50 text-amber-600 px-1 rounded mt-0.5 inline-block">Edited</span>}
+                            {pb.attachedImgUrl && (
+                              <div className="flex gap-2 items-center mt-0.5">
+                                <a href={pb.attachedImgUrl} target="_blank" rel="noreferrer" className="text-[9px] text-blue-600 underline font-sans font-bold">
+                                  View ↗
+                                </a>
+                                <span className="text-[9px] text-slate-300">|</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveAttachment(pb, 'purchase')}
+                                  className="text-[9px] text-rose-600 hover:underline font-sans font-bold"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            )}
                           </td>
                           <td className="p-3 font-semibold text-slate-900">{supplier?.name || 'N/A'}</td>
                           <td className="p-3 text-slate-450">{new Date(pb.date).toLocaleDateString()}</td>
@@ -1186,8 +1344,17 @@ export default function DocumentListsView({ mode, t = {} }) {
                       </div>
                       {pb.slipDetails && <p className="text-slate-500 text-[10px] mt-1">Remark: {pb.slipDetails}</p>}
                       {pb.attachedImgUrl && (
-                        <p className="text-[10px] text-blue-600 font-mono mt-0.5 truncate max-w-xs">
-                          Attached: <a href={pb.attachedImgUrl} target="_blank" rel="noreferrer" className="underline">View Image</a>
+                        <p className="text-[10px] text-blue-600 font-mono mt-1 flex gap-2 items-center">
+                          <span>Attached:</span>
+                          <a href={pb.attachedImgUrl} target="_blank" rel="noreferrer" className="underline font-bold">View Attachment ↗</a>
+                          <span className="text-slate-300">|</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAttachment(pb, 'purchase')}
+                            className="text-rose-600 font-bold hover:underline"
+                          >
+                            Delete
+                          </button>
                         </p>
                       )}
                       <div className="flex justify-between items-center pt-2 border-t border-slate-200/50">
@@ -1399,6 +1566,57 @@ export default function DocumentListsView({ mode, t = {} }) {
                 />
               </div>
 
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Invoice Attachment (Image/PDF/Doc)</label>
+                {editAttachedImgUrl ? (
+                  <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Paperclip size={16} className="text-blue-600 shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-xs font-bold text-slate-800 truncate block">Attachment Uploaded</span>
+                        <a
+                          href={editAttachedImgUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[10px] text-blue-600 font-bold hover:underline block truncate"
+                        >
+                          View Document ↗
+                        </a>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditAttachedImgUrl('')}
+                      className="text-slate-400 hover:text-rose-600 transition-colors p-1"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center border border-dashed border-slate-300 bg-slate-50/50 hover:bg-slate-100/70 hover:border-slate-400 rounded-xl p-4 cursor-pointer transition-all">
+                    {uploadingFile ? (
+                      <div className="flex flex-col items-center gap-1">
+                        <Loader2 className="animate-spin text-blue-600" size={20} />
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Uploading to Cloudinary...</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1">
+                        <Upload size={20} className="text-slate-400" />
+                        <span className="text-xs font-bold text-slate-600">Choose File to Upload</span>
+                        <span className="text-[9px] text-slate-400 font-semibold font-sans">PDF, Document, or Image</span>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                      onChange={(e) => handleEditFileChange(e, 'invoice')}
+                      disabled={uploadingFile}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+
               {/* Recalculated total preview */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex justify-between items-center text-xs font-mono">
                 <div className="text-slate-500 space-y-0.5">
@@ -1585,6 +1803,57 @@ export default function DocumentListsView({ mode, t = {} }) {
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 resize-none font-semibold"
                   placeholder="Slip details, tracking notes..."
                 />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Attached Bill Copy / Photo Document</label>
+                {editPbAttachedImgUrl ? (
+                  <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Paperclip size={16} className="text-blue-600 shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-xs font-bold text-slate-800 truncate block">Attachment Uploaded</span>
+                        <a
+                          href={editPbAttachedImgUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[10px] text-blue-600 font-bold hover:underline block truncate"
+                        >
+                          View Document ↗
+                        </a>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditPbAttachedImgUrl('')}
+                      className="text-slate-400 hover:text-rose-600 transition-colors p-1"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center border border-dashed border-slate-300 bg-slate-50/50 hover:bg-slate-100/70 hover:border-slate-400 rounded-xl p-4 cursor-pointer transition-all">
+                    {uploadingFile ? (
+                      <div className="flex flex-col items-center gap-1">
+                        <Loader2 className="animate-spin text-blue-600" size={20} />
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Uploading to Cloudinary...</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1">
+                        <Upload size={20} className="text-slate-400" />
+                        <span className="text-xs font-bold text-slate-600">Choose File to Upload</span>
+                        <span className="text-[9px] text-slate-400 font-semibold font-sans">PDF, Document, or Image</span>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                      onChange={(e) => handleEditFileChange(e, 'purchase')}
+                      disabled={uploadingFile}
+                      className="hidden"
+                    />
+                  </label>
+                )}
               </div>
 
               {/* Recalculated total preview */}
@@ -2018,6 +2287,31 @@ export default function DocumentListsView({ mode, t = {} }) {
                         <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest font-mono block">Remarks</span>
                         <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] text-slate-655 leading-relaxed font-semibold">
                           {selectedDoc.description}
+                        </div>
+                      </div>
+                    )}
+                    {selectedDoc.attachedImgUrl && (
+                      <div className="space-y-1">
+                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest font-mono block">Attachment</span>
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-slate-705 truncate">Document/Bill Attachment</span>
+                          <div className="flex gap-2 shrink-0">
+                            <a
+                              href={selectedDoc.attachedImgUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold py-1.5 px-3 rounded-lg border border-blue-100 hover:underline transition-all"
+                            >
+                              View ↗
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAttachment(selectedDoc, selectedDoc.type === 'invoice' ? 'invoice' : 'purchase')}
+                              className="bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold py-1.5 px-3 rounded-lg border border-rose-100 hover:underline transition-all"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}

@@ -23,8 +23,8 @@ The administrative portal used by platform managers to review registrations and 
 
 ### 3. ⚙️ Server Backend Engine (`/server`)
 The centralized core REST API engine powering database logic, security routing, and transactional notifications.
-* **Tech Stack**: Node.js, Express, PostgreSQL (Neon Serverless Clusters), Nodemailer, JWT.
-* **Key Features**: Parameterized SQL query protections, isolated tenant workspaces schema constraints, SMTP transactional email queue dispatcher, and auto-wake sleep engines.
+* **Tech Stack**: Node.js, Express, Prisma ORM, PostgreSQL (Neon Serverless Clusters or local PostgreSQL), Nodemailer, JWT.
+* **Key Features**: Type-safe query interfaces via Prisma client, isolated tenant workspaces schema constraints, SMTP transactional email queue dispatcher, and auto-wake sleep engines.
 
 ---
 
@@ -91,6 +91,11 @@ ADMIN_URL=http://localhost:5001
 
 JWT_SECRET=your_jwt_secret_hash_key
 ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5001
+
+# Cloudinary API Credentials Configuration (Required for asset deletion)
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 ```
 
 #### 2. Owner Client (`client/.env`):
@@ -107,9 +112,25 @@ VITE_BACKEND_URL=http://localhost:5000/api
 
 ---
 
-### Step 3: Run Development Servers
-Open three separate terminals and run:
+### Step 3: Run the Application
 
+You can choose to run the application either using **Docker Compose** (recommended for production-like simulation) or via standard **Local Development Mode**.
+
+#### Option A: Running via Docker Compose (All services containerized)
+1. **Verify Docker Desktop is running**: Make sure Docker Desktop is open and the engine is active.
+2. **Configure environment files**: Make sure `.env` files are set up inside `server/.env`, `client/.env`, and `admin/.env` directories. No root-level `.env` is required as services pull from their respective subfolders.
+3. **Start all services**:
+   ```bash
+   docker compose up --build
+   ```
+   *   **What this does**: Automatically compiles static React files, starts `nginx` web servers for client/admin portals, boots the REST backend, generates the Prisma client inside the server container, and hooks up the database connection dynamically.
+   *   **Access URLs**:
+       *   Client App: `http://localhost:5173`
+       *   Super Admin Portal: `http://localhost:5001`
+       *   Backend API: `http://localhost:5000`
+
+#### Option B: Standard Local Development (Host machine execution)
+Open three separate terminals and run:
 ```bash
 # Terminal 1: Start Backend API (runs on port 5000)
 cd server && npm run dev
@@ -123,10 +144,31 @@ cd admin && npm run dev
 
 ---
 
+### 🗄️ Database Workflows & Prisma Command Tools
+
+To view and manage the database structure using Prisma:
+
+1. **Introspect and Validate Schema**:
+   Verify Prisma configuration against backend tables:
+   ```bash
+   cd server && npm run prisma:validate
+   ```
+2. **Open Visual Database Console (Prisma Studio)**:
+   Launch a browser-based admin GUI to inspect, search, and edit database records visually:
+   ```bash
+   cd server && npm run prisma:studio
+   ```
+   *(Access it at `http://localhost:5555`)*
+3. **Regenerate Prisma Client**:
+   Update client generation if the schema changes:
+   ```bash
+   cd server && npm run prisma:generate
+   ```
+
+---
+
 ## 📦 Production Builds & Compilation
-
 Vite utilizes the high-performance **esbuild** minification loop. Compile production files cleanly inside `/dist` folders before deployment:
-
 ```bash
 # Build Client application
 cd client && npm run build
@@ -141,3 +183,4 @@ cd admin && npm run build
 * **Header Privacy**: Disabled Express header information via `app.disable('x-powered-by')`.
 * **Database Defenses**: Utilizes parameterized database arrays to prevent SQL Injection.
 * **Search Engine Visibility**: Custom configured `sitemap.xml` and `robots.txt` direct crawlers to parse root and legal paths (`/privacy`, `/terms`) while isolating auth-restricted panels.
+

@@ -12,7 +12,7 @@ export default function TermsOfService() {
             <FileText size={24} />
           </div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Terms of Service</h2>
-          <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">Last Updated: June 15, 2026</p>
+          <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">Last Updated: June 20, 2026</p>
         </div>
 
         {/* Content Matrix */}
@@ -27,7 +27,7 @@ export default function TermsOfService() {
               <Award size={18} className="text-blue-600" /> 1. Workspace Allocation & Trial Plan Terms
             </h3>
             <p className="text-slate-505 text-xs md:text-sm font-semibold">
-              New business owner registrations are automatically allocated a 15-day Free Trial of the Professional tier features. Advanced paid tier accesses require approval sequences by global platform operators. Under our parent-child workspace inheritance model, any additional sub-businesses or workspaces registered under an existing account automatically inherit the plan, active status, and remaining subscription duration of the parent workspace, bypassing new plan selection and separate administrative approval. Trial plans last exactly 15 days, after which accounts are automatically shifted to the Starter tier. Platform operators support monthly, yearly, 3-month, and 6-month billing cycles, and reserve total infrastructure rights to intercept, modify, or terminate any workspace tier if transactional patterns violate platform integrity.
+              New business owner registrations are automatically allocated a 15-day Free Trial of the Professional tier features. Advanced paid tier accesses require approval sequences by global platform operators. Under our parent-child workspace inheritance model, any additional sub-businesses or workspaces registered under an existing account automatically inherit the plan, active status, and remaining subscription duration of the parent workspace, bypassing new plan selection and separate administrative approval. Trial plans last exactly 15 days, after which accounts are automatically shifted to the Starter tier. Platform operators support monthly, yearly, 3-month, 6-month, and trial billing cycles, and reserve total infrastructure rights to intercept, modify, or terminate any workspace tier if transactional patterns violate platform integrity.
             </p>
           </div>
 

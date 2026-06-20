@@ -1,10 +1,10 @@
-import { db } from '../db.js';
 import bcrypt from 'bcryptjs';
 import { sendNotificationEmail, generateHtmlEmail, getSupportContacts } from '../emailService.js';
 import { logActivity } from '../activityLogger.js';
 import { signShopToken } from '../utils/tokens.js';
 import fs from 'fs';
 import path from 'path';
+import { prisma } from '../utils/prisma.js';
 
 // ─── ADMIN AUTHENTICATION MIDDLEWARE ───────────────────────────────────────────
 export const adminAuth = async (req, res, next) => {
@@ -13,9 +13,12 @@ export const adminAuth = async (req, res, next) => {
         return res.status(401).json({ error: 'Unauthorized: Admin session key required.' });
     }
     try {
-        const result = await db.query('SELECT id, username FROM "AdminUser" WHERE "token" = $1', [adminKey]);
-        if (result.rows.length > 0) {
-            req.admin = result.rows[0];
+        const admin = await prisma.adminUser.findFirst({
+            where: { token: adminKey },
+            select: { id: true, username: true }
+        });
+        if (admin) {
+            req.admin = admin;
             return next();
         }
         return res.status(401).json({ error: 'Unauthorized: Invalid admin session.' });
@@ -25,12 +28,33 @@ export const adminAuth = async (req, res, next) => {
     }
 };
 
-const SAFE_SHOP_FIELDS = `
-    id, "businessName", "ownerName", "email", "phone",
-    "logoUrl", "signatureUrl", "address", "businessPhone", "businessEmail",
-    "gstin", "state", "vpa", "isActive", "language",
-    "plan", "status", "approvedAt", "subscriptionExpiresAt", "createdAt", "updatedAt"
-`;
+// Helper: safe shop field mapper
+const toSafeShop = (shop) => {
+    if (!shop) return null;
+    return {
+        id: shop.id,
+        businessName: shop.businessName,
+        ownerName: shop.ownerName,
+        email: shop.email,
+        phone: shop.phone,
+        logoUrl: shop.logoUrl,
+        signatureUrl: shop.signatureUrl,
+        address: shop.address,
+        businessPhone: shop.businessPhone,
+        businessEmail: shop.businessEmail,
+        gstin: shop.gstin,
+        state: shop.state,
+        vpa: shop.vpa,
+        isActive: shop.isActive,
+        language: shop.language,
+        plan: shop.plan,
+        status: shop.status,
+        approvedAt: shop.approvedAt,
+        subscriptionExpiresAt: shop.subscriptionExpiresAt,
+        createdAt: shop.createdAt,
+        updatedAt: shop.updatedAt
+    };
+};
 
 // Helper: Calculate Expiration Date
 const calculateExpiryDate = (billingCycle) => {
@@ -53,8 +77,10 @@ const calculateExpiryDate = (billingCycle) => {
 // GET /api/shops/plans
 export const getPlans = async (req, res) => {
     try {
-        const result = await db.query('SELECT * FROM "Plan" ORDER BY price ASC');
-        res.json({ success: true, plans: result.rows });
+        const plans = await prisma.plan.findMany({
+            orderBy: { price: 'asc' }
+        });
+        res.json({ success: true, plans });
     } catch (error) {
         console.error('🚨 Error fetching plans:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -68,17 +94,27 @@ export const createPlan = async (req, res) => {
         return res.status(400).json({ error: 'All plan parameters are required.' });
     }
     try {
-        const existing = await db.query('SELECT id FROM "Plan" WHERE id = $1', [id.trim().toLowerCase()]);
-        if (existing.rows.length > 0) return res.status(409).json({ error: 'Plan ID already exists.' });
+        const existing = await prisma.plan.findUnique({
+            where: { id: id.trim().toLowerCase() },
+            select: { id: true }
+        });
+        if (existing) return res.status(409).json({ error: 'Plan ID already exists.' });
 
-        const result = await db.query(
-            `INSERT INTO "Plan" ("id", "name", "price", "billingCycle", "allowedTabs", "features", "requiresApproval", "allowMultiBusiness")
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-            [id.trim().toLowerCase(), name.trim(), parseFloat(price), billingCycle, JSON.stringify(allowedTabs), JSON.stringify(features), !!requiresApproval, !!allowMultiBusiness]
-        );
+        const plan = await prisma.plan.create({
+            data: {
+                id: id.trim().toLowerCase(),
+                name: name.trim(),
+                price: parseFloat(price),
+                billingCycle,
+                allowedTabs: allowedTabs,
+                features: features,
+                requiresApproval: !!requiresApproval,
+                allowMultiBusiness: !!allowMultiBusiness
+            }
+        });
 
         await logActivity(null, 'ADMIN_PLAN_CREATED', 'Admin', `Created plan '${name}' (${id})`);
-        res.status(201).json({ success: true, plan: result.rows[0] });
+        res.status(201).json({ success: true, plan });
     } catch (error) {
         console.error('🚨 Error creating plan:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -90,32 +126,26 @@ export const updatePlan = async (req, res) => {
     const { id } = req.params;
     const { name, price, billingCycle, allowedTabs, features, requiresApproval, allowMultiBusiness } = req.body;
     try {
-        const result = await db.query(
-            `UPDATE "Plan"
-             SET "name" = COALESCE($1, "name"),
-                 "price" = COALESCE($2, "price"),
-                 "billingCycle" = COALESCE($3, "billingCycle"),
-                 "allowedTabs" = COALESCE($4, "allowedTabs"),
-                 "features" = COALESCE($5, "features"),
-                 "requiresApproval" = COALESCE($6, "requiresApproval"),
-                 "allowMultiBusiness" = COALESCE($7, "allowMultiBusiness"),
-                 "updatedAt" = NOW()
-             WHERE id = $8 RETURNING *`,
-            [
-                name !== undefined ? name : null,
-                price !== undefined ? parseFloat(price) : null,
-                billingCycle !== undefined ? billingCycle : null,
-                allowedTabs ? JSON.stringify(allowedTabs) : null,
-                features ? JSON.stringify(features) : null,
-                requiresApproval !== undefined ? requiresApproval : null,
-                allowMultiBusiness !== undefined ? allowMultiBusiness : null,
-                id
-            ]
-        );
-        if (result.rows.length === 0) return res.status(404).json({ error: 'Plan not found.' });
+        const existing = await prisma.plan.findUnique({ where: { id } });
+        if (!existing) return res.status(404).json({ error: 'Plan not found.' });
+
+        const data = {};
+        if (name !== undefined) data.name = name.trim();
+        if (price !== undefined) data.price = parseFloat(price);
+        if (billingCycle !== undefined) data.billingCycle = billingCycle;
+        if (allowedTabs !== undefined) data.allowedTabs = allowedTabs;
+        if (features !== undefined) data.features = features;
+        if (requiresApproval !== undefined) data.requiresApproval = !!requiresApproval;
+        if (allowMultiBusiness !== undefined) data.allowMultiBusiness = !!allowMultiBusiness;
+        data.updatedAt = new Date();
+
+        const plan = await prisma.plan.update({
+            where: { id },
+            data
+        });
 
         await logActivity(null, 'ADMIN_PLAN_UPDATED', 'Admin', `Updated plan '${name || id}'`);
-        res.json({ success: true, plan: result.rows[0] });
+        res.json({ success: true, plan });
     } catch (error) {
         console.error('🚨 Error updating plan:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -129,8 +159,10 @@ export const deletePlan = async (req, res) => {
         return res.status(400).json({ error: 'Cannot delete core system plans.' });
     }
     try {
-        const result = await db.query('DELETE FROM "Plan" WHERE id = $1 RETURNING *', [id]);
-        if (result.rows.length === 0) return res.status(404).json({ error: 'Plan not found.' });
+        const existing = await prisma.plan.findUnique({ where: { id } });
+        if (!existing) return res.status(404).json({ error: 'Plan not found.' });
+
+        await prisma.plan.delete({ where: { id } });
 
         await logActivity(null, 'ADMIN_PLAN_DELETED', 'Admin', `Deleted plan ID '${id}'`);
         res.json({ success: true, message: 'Plan deleted successfully.' });
@@ -151,33 +183,44 @@ export const registerShop = async (req, res) => {
 
     try {
         // Fetch plan to verify and check requiresApproval
-        const planRes = await db.query('SELECT * FROM "Plan" WHERE id = $1', [plan]);
-        if (planRes.rows.length === 0) {
+        const planDetails = await prisma.plan.findUnique({ where: { id: plan } });
+        if (!planDetails) {
             return res.status(400).json({ error: 'Invalid plan selected.' });
         }
-        const planDetails = planRes.rows[0];
 
         // Clean up any rejected shops with the same email and businessName to allow re-registration
-        await db.query(
-            `DELETE FROM "Shop" WHERE LOWER("email") = $1 AND "businessName" = $2 AND "status" = 'rejected'`,
-            [email.toLowerCase().trim(), businessName.trim()]
-        );
+        await prisma.shop.deleteMany({
+            where: {
+                email: { equals: email.toLowerCase().trim(), mode: 'insensitive' },
+                businessName: businessName.trim(),
+                status: 'rejected'
+            }
+        });
 
-        const existing = await db.query(
-            `SELECT id FROM "Shop" WHERE "email" = $1 AND "businessName" = $2`,
-            [email.toLowerCase().trim(), businessName.trim()]
-        );
-        if (existing.rows.length > 0) {
+        const existing = await prisma.shop.findFirst({
+            where: {
+                email: { equals: email.toLowerCase().trim(), mode: 'insensitive' },
+                businessName: businessName.trim()
+            },
+            select: { id: true }
+        });
+        if (existing) {
             return res.status(409).json({ error: 'A workspace with this business name and email already exists. Please log in instead.' });
         }
 
         let passwordHash = '';
         if (!password) {
-            const existingOwner = await db.query('SELECT "passwordHash" FROM "Shop" WHERE LOWER("email") = $1 AND "passwordHash" IS NOT NULL LIMIT 1', [email.toLowerCase().trim()]);
-            if (existingOwner.rows.length === 0) {
+            const existingOwner = await prisma.shop.findFirst({
+                where: {
+                    email: { equals: email.toLowerCase().trim(), mode: 'insensitive' },
+                    passwordHash: { not: null }
+                },
+                select: { passwordHash: true }
+            });
+            if (!existingOwner) {
                 return res.status(400).json({ error: 'Password is required to register a new account.' });
             }
-            passwordHash = existingOwner.rows[0].passwordHash;
+            passwordHash = existingOwner.passwordHash;
         } else {
             if (password.length < 6) {
                 return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
@@ -186,21 +229,22 @@ export const registerShop = async (req, res) => {
         }
         
         // Check for existing shop (parent-child logic)
-        const existingShops = await db.query(
-            `SELECT plan, status, "isActive", "subscriptionExpiresAt" 
-             FROM "Shop" 
-             WHERE LOWER("email") = $1 AND "status" != 'rejected' 
-             ORDER BY "createdAt" ASC LIMIT 1`,
-            [email.toLowerCase().trim()]
-        );
+        const existingShops = await prisma.shop.findMany({
+            where: {
+                email: { equals: email.toLowerCase().trim(), mode: 'insensitive' },
+                status: { not: 'rejected' }
+            },
+            orderBy: { createdAt: 'asc' },
+            take: 1
+        });
 
         let finalPlan = plan;
         let status = !planDetails.requiresApproval ? 'active' : 'pending';
         let isActive = !planDetails.requiresApproval;
         let expiryDate = calculateExpiryDate(planDetails.billingCycle);
 
-        if (existingShops.rows.length > 0) {
-            const parent = existingShops.rows[0];
+        if (existingShops.length > 0) {
+            const parent = existingShops[0];
             finalPlan = parent.plan;
             status = parent.status;
             isActive = parent.isActive;
@@ -210,17 +254,24 @@ export const registerShop = async (req, res) => {
         const directApprove = status === 'active';
 
         // Fetch planDetails for finalPlan (for emails and logs)
-        const finalPlanRes = await db.query('SELECT * FROM "Plan" WHERE id = $1', [finalPlan]);
-        const finalPlanDetails = finalPlanRes.rows[0] || planDetails;
+        const finalPlanRes = await prisma.plan.findUnique({ where: { id: finalPlan } });
+        const finalPlanDetails = finalPlanRes || planDetails;
 
-        const newShop = await db.query(
-            `INSERT INTO "Shop" ("businessName", "ownerName", "email", "phone", "passwordHash", "plan", "status", "isActive", "subscriptionExpiresAt")
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             RETURNING ${SAFE_SHOP_FIELDS}`,
-             [businessName.trim(), ownerName.trim(), email.toLowerCase().trim(), phone || null, passwordHash, finalPlan, status, isActive, expiryDate]
-        );
+        const shop = await prisma.shop.create({
+            data: {
+                businessName: businessName.trim(),
+                ownerName: ownerName.trim(),
+                email: email.toLowerCase().trim(),
+                phone: phone || null,
+                passwordHash,
+                plan: finalPlan,
+                status,
+                isActive,
+                subscriptionExpiresAt: expiryDate
+            }
+        });
 
-        const shop = newShop.rows[0];
+        const safeShop = toSafeShop(shop);
 
         // Fetch admin support contact details dynamically
         const { supportPhone, supportEmail, frontendUrl, adminUrl } = await getSupportContacts();
@@ -278,11 +329,11 @@ export const registerShop = async (req, res) => {
 
         const response = {
             message: directApprove ? 'Registration successful!' : 'Registration submitted. Your workspace is under review.',
-            shop,
+            shop: safeShop,
             pending: !directApprove
         };
         if (directApprove) {
-            response.token = signShopToken(shop);
+            response.token = signShopToken(safeShop);
         }
         return res.status(201).json(response);
     } catch (error) {
@@ -301,25 +352,22 @@ export const loginShop = async (req, res) => {
     }
 
     try {
-        let query = `SELECT * FROM "Shop" WHERE "email" = $1`;
-        const params = [email.toLowerCase().trim()];
-
+        const where = { email: { equals: email.toLowerCase().trim(), mode: 'insensitive' } };
         if (businessName) {
-            query += ` AND "businessName" = $2`;
-            params.push(businessName.trim());
+            where.businessName = businessName.trim();
         }
 
-        const result = await db.query(query, params);
+        const shops = await prisma.shop.findMany({ where });
 
-        if (result.rows.length === 0) {
+        if (shops.length === 0) {
             return res.status(404).json({ error: 'No workspace found with this email address.' });
         }
 
         // Multiple shops — ask user to pick one
-        if (result.rows.length > 1 && !businessName) {
+        if (shops.length > 1 && !businessName) {
             return res.status(200).json({
                 message: 'Multiple workspaces found',
-                shops: result.rows.map(s => ({
+                shops: shops.map(s => ({
                     id: s.id,
                     businessName: s.businessName,
                     ownerName: s.ownerName,
@@ -331,18 +379,22 @@ export const loginShop = async (req, res) => {
             });
         }
 
-        const shop = result.rows[0];
+        const shop = shops[0];
 
         // Subscription Expiration Check
         if (shop.subscriptionExpiresAt && new Date() > new Date(shop.subscriptionExpiresAt)) {
             if (shop.plan === 'trial') {
                 // Trial expired -> auto downgrade to starter, keep active, do not block login
-                await db.query(
-                    `UPDATE "Shop" 
-                     SET plan = 'starter', "subscriptionExpiresAt" = NULL, "trialWarning10Sent" = FALSE, "trialWarning14Sent" = FALSE, "updatedAt" = NOW() 
-                     WHERE id = $1`,
-                    [shop.id]
-                );
+                await prisma.shop.update({
+                    where: { id: shop.id },
+                    data: {
+                        plan: 'starter',
+                        subscriptionExpiresAt: null,
+                        trialWarning10Sent: false,
+                        trialWarning14Sent: false,
+                        updatedAt: new Date()
+                    }
+                });
                 shop.plan = 'starter';
                 shop.subscriptionExpiresAt = null;
 
@@ -367,7 +419,14 @@ export const loginShop = async (req, res) => {
                 await logActivity(shop.id, 'SHOP_TRIAL_EXPIRED_DOWNGRADED', 'System', 'Trial expired, downgraded to starter during login');
             } else {
                 if (shop.status === 'active') {
-                    await db.query('UPDATE "Shop" SET "status" = \'suspended\', "isActive" = FALSE WHERE id = $1', [shop.id]);
+                    await prisma.shop.update({
+                        where: { id: shop.id },
+                        data: {
+                            status: 'suspended',
+                            isActive: false,
+                            updatedAt: new Date()
+                        }
+                    });
                     shop.status = 'suspended';
                     shop.isActive = false;
 
@@ -422,13 +481,17 @@ export const loginShop = async (req, res) => {
             return res.status(401).json({ error: 'Incorrect password. Please try again.' });
         }
 
-        const { passwordHash: _, ...safeShop } = shop;
+        const safeShop = toSafeShop(shop);
         
         // Fetch Allowed Tabs dynamically from Plan table
-        const planRes = await db.query('SELECT "allowedTabs", "allowMultiBusiness" FROM "Plan" WHERE id = $1', [safeShop.plan]);
-        if (planRes.rows.length > 0) {
-            safeShop.allowedTabs = planRes.rows[0].allowedTabs;
-            safeShop.allowMultiBusiness = !!planRes.rows[0].allowMultiBusiness;
+        const planDetails = await prisma.plan.findUnique({
+            where: { id: safeShop.plan },
+            select: { allowedTabs: true, allowMultiBusiness: true }
+        });
+
+        if (planDetails) {
+            safeShop.allowedTabs = planDetails.allowedTabs;
+            safeShop.allowMultiBusiness = !!planDetails.allowMultiBusiness;
         } else {
             safeShop.allowedTabs = [
                 'dashboard', 'cust_list', 'supp_list', 'sale_ledger',
@@ -457,20 +520,25 @@ export const requestPasswordResetOtp = async (req, res) => {
 
     try {
         const normalizedEmail = email.toLowerCase().trim();
-        const result = await db.query('SELECT id, "ownerName" FROM "Shop" WHERE "email" = $1 LIMIT 1', [normalizedEmail]);
-        if (result.rows.length === 0) {
+        const shop = await prisma.shop.findFirst({
+            where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+            select: { id: true, ownerName: true }
+        });
+        if (!shop) {
             return res.status(404).json({ error: 'No workspace found with this email address.' });
         }
-        const shop = result.rows[0];
 
         // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
-        await db.query(
-            'UPDATE "Shop" SET "otpCode" = $1, "otpExpiresAt" = $2 WHERE LOWER("email") = $3',
-            [otp, expires, normalizedEmail]
-        );
+        await prisma.shop.updateMany({
+            where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+            data: {
+                otpCode: otp,
+                otpExpiresAt: expires
+            }
+        });
 
         const { supportPhone, supportEmail } = await getSupportContacts();
 
@@ -512,25 +580,27 @@ export const resetPasswordWithOtp = async (req, res) => {
 
     try {
         const normalizedEmail = email.toLowerCase().trim();
-        const result = await db.query(
-            `SELECT id, "ownerName", "otpCode", "otpExpiresAt"
-             FROM "Shop" WHERE LOWER("email") = $1`,
-            [normalizedEmail]
-        );
-        if (result.rows.length === 0) return res.status(404).json({ error: 'Shop not found.' });
+        const shops = await prisma.shop.findMany({
+            where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+            select: { id: true, ownerName: true, otpCode: true, otpExpiresAt: true }
+        });
+        if (shops.length === 0) return res.status(404).json({ error: 'Shop not found.' });
 
-        const shop = result.rows[0];
+        const shop = shops[0];
         if (!shop.otpCode || shop.otpCode !== otp || new Date() > new Date(shop.otpExpiresAt)) {
             return res.status(400).json({ error: 'Invalid or expired OTP code.' });
         }
 
         const passwordHash = await bcrypt.hash(newPassword, 12);
-        await db.query(
-            `UPDATE "Shop"
-             SET "passwordHash" = $1, "otpCode" = NULL, "otpExpiresAt" = NULL, "updatedAt" = NOW()
-             WHERE LOWER("email") = $2`,
-            [passwordHash, normalizedEmail]
-        );
+        await prisma.shop.updateMany({
+            where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+            data: {
+                passwordHash,
+                otpCode: null,
+                otpExpiresAt: null,
+                updatedAt: new Date()
+            }
+        });
 
         const { supportPhone, supportEmail, frontendUrl } = await getSupportContacts();
 
@@ -571,37 +641,37 @@ export const updateShopSettings = async (req, res) => {
     } = req.body;
 
     try {
-        const finalLogoUrl = req.body.hasOwnProperty('logoUrl') ? logoUrl : 'UNTOUCHED';
-        const finalSignatureUrl = req.body.hasOwnProperty('signatureUrl') ? signatureUrl : 'UNTOUCHED';
-
-        const updatedShop = await db.query(
-            `UPDATE "Shop"
-             SET "logoUrl"        = CASE WHEN $1 = 'UNTOUCHED' THEN "logoUrl" ELSE $1 END,
-                 "signatureUrl"   = CASE WHEN $2 = 'UNTOUCHED' THEN "signatureUrl" ELSE $2 END,
-                 "language"       = COALESCE($3,  "language"),
-                 "address"        = COALESCE($4,  "address"),
-                 "businessPhone"  = COALESCE($5,  "businessPhone"),
-                 "businessEmail"  = COALESCE($6,  "businessEmail"),
-                 "gstin"          = COALESCE($7,  "gstin"),
-                 "state"          = COALESCE($8,  "state"),
-                 "vpa"            = COALESCE($9,  "vpa"),
-                 "ownerName"      = COALESCE($10, "ownerName"),
-                 "businessName"   = COALESCE($11, "businessName"),
-                 "updatedAt"      = NOW()
-             WHERE "id" = $12
-             RETURNING ${SAFE_SHOP_FIELDS}`,
-            [finalLogoUrl, finalSignatureUrl, language, address, businessPhone, businessEmail,
-             gstin, state, vpa, ownerName, businessName, shopId]
-        );
-
-        if (updatedShop.rows.length === 0) {
+        const existing = await prisma.shop.findUnique({ where: { id: shopId } });
+        if (!existing) {
             return res.status(404).json({ error: 'Shop not found' });
         }
 
-        const shop = updatedShop.rows[0];
+        const data = {};
+        if (logoUrl !== undefined && logoUrl !== 'UNTOUCHED') data.logoUrl = logoUrl;
+        if (signatureUrl !== undefined && signatureUrl !== 'UNTOUCHED') data.signatureUrl = signatureUrl;
+        if (language !== undefined && language !== null) data.language = language;
+        if (address !== undefined && address !== null) data.address = address;
+        if (businessPhone !== undefined && businessPhone !== null) data.businessPhone = businessPhone;
+        if (businessEmail !== undefined && businessEmail !== null) data.businessEmail = businessEmail;
+        if (gstin !== undefined && gstin !== null) data.gstin = gstin;
+        if (state !== undefined && state !== null) data.state = state;
+        if (vpa !== undefined && vpa !== null) data.vpa = vpa;
+        if (ownerName !== undefined && ownerName !== null) data.ownerName = ownerName;
+        if (businessName !== undefined && businessName !== null) data.businessName = businessName;
+        data.updatedAt = new Date();
+
+        const updatedShop = await prisma.shop.update({
+            where: { id: shopId },
+            data
+        });
+
+        const shop = toSafeShop(updatedShop);
         
-        const planRes = await db.query('SELECT "allowedTabs" FROM "Plan" WHERE id = $1', [shop.plan]);
-        shop.allowedTabs = planRes.rows.length > 0 ? planRes.rows[0].allowedTabs : [];
+        const planRes = await prisma.plan.findUnique({
+            where: { id: shop.plan },
+            select: { allowedTabs: true }
+        });
+        shop.allowedTabs = planRes ? planRes.allowedTabs : [];
 
         await logActivity(shopId, 'SETTINGS_UPDATED', 'Owner', 'Business profile settings modified');
         res.json({ message: 'Settings synced', shop });
@@ -614,15 +684,29 @@ export const updateShopSettings = async (req, res) => {
 // ─── ADMIN: LIST ALL SHOPS ────────────────────────────────────────────────────
 export const getAdminShops = async (req, res) => {
     try {
-        const result = await db.query(
-            `SELECT id, "businessName" as businessname, "ownerName" as ownername, "email", "phone",
-                    "isActive" as isactive, "language", "plan", "status",
-                    "approvedAt" as approvedat, "approvedBy" as approvedby, "rejectionReason" as rejectionreason,
-                    "subscriptionExpiresAt" as subscriptionexpiresat, "createdAt" as createdat, "updatedAt" as updatedat,
-                    "requestedPlan" as requestedplan, "planRequestStatus" as planrequeststatus
-             FROM "Shop" ORDER BY "createdAt" DESC`
-        );
-        res.json({ success: true, shops: result.rows });
+        const shops = await prisma.shop.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+        const mappedShops = shops.map(s => ({
+            id: s.id,
+            businessname: s.businessName,
+            ownername: s.ownerName,
+            email: s.email,
+            phone: s.phone,
+            isactive: s.isActive,
+            language: s.language,
+            plan: s.plan,
+            status: s.status,
+            approvedat: s.approvedAt,
+            approvedby: s.approvedBy,
+            rejectionreason: s.rejectionReason,
+            subscriptionexpiresat: s.subscriptionExpiresAt,
+            createdat: s.createdAt,
+            updatedat: s.updatedAt,
+            requestedplan: s.requestedPlan,
+            planrequeststatus: s.planRequestStatus
+        }));
+        res.json({ success: true, shops: mappedShops });
     } catch (error) {
         console.error('🚨 Error fetching admin shops:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -634,34 +718,50 @@ export const toggleShopStatus = async (req, res) => {
     const { id } = req.params;
     const { isActive } = req.body;
     try {
+        const existing = await prisma.shop.findUnique({ where: { id } });
+        if (!existing) return res.status(404).json({ error: 'Shop not found' });
+
         const status = isActive ? 'active' : 'suspended';
-        const result = await db.query(
-            `UPDATE "Shop" SET "isActive" = $1, "status" = $2,
-                     "trialWarning10Sent" = CASE WHEN $1 = TRUE THEN FALSE ELSE "trialWarning10Sent" END,
-                     "trialWarning14Sent" = CASE WHEN $1 = TRUE THEN FALSE ELSE "trialWarning14Sent" END,
-                     "paidWarning5Sent" = CASE WHEN $1 = TRUE THEN FALSE ELSE "paidWarning5Sent" END,
-                     "paidWarning1Sent" = CASE WHEN $1 = TRUE THEN FALSE ELSE "paidWarning1Sent" END,
-                     "updatedAt" = NOW()
-             WHERE id = $3 RETURNING id, "ownerName" as ownername, "businessName" as businessname, "email", "isActive" as isactive, "status"`,
-            [isActive, status, id]
-        );
-        if (result.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
-        const shop = result.rows[0];
+        const data = {
+            isActive,
+            status,
+            updatedAt: new Date()
+        };
+        if (isActive === true) {
+            data.trialWarning10Sent = false;
+            data.trialWarning14Sent = false;
+            data.paidWarning5Sent = false;
+            data.paidWarning1Sent = false;
+        }
+
+        const shop = await prisma.shop.update({
+            where: { id },
+            data
+        });
+
+        const mappedShop = {
+            id: shop.id,
+            ownername: shop.ownerName,
+            businessname: shop.businessName,
+            email: shop.email,
+            isactive: shop.isActive,
+            status: shop.status
+        };
 
         const { supportPhone, supportEmail, frontendUrl } = await getSupportContacts();
 
         // Send Email Notice
         const subject = `GallaMitra Account Status Update: ${isActive ? 'Activated' : 'Suspended'}`;
-        const body = `Hello ${shop.ownername},\nYour GallaMitra workspace "${shop.businessname}" has been ${isActive ? 'reactivated' : 'suspended'} by the platform administrator.`;
+        const body = `Hello ${shop.ownerName},\nYour GallaMitra workspace "${shop.businessName}" has been ${isActive ? 'reactivated' : 'suspended'} by the platform administrator.`;
         
         const toggleHtml = generateHtmlEmail({
             title: `Account Status Update: ${isActive ? 'Activated 🎉' : 'Suspended ⚠️'}`,
-            greeting: `Hello ${shop.ownername},`,
+            greeting: `Hello ${shop.ownerName},`,
             leadText: isActive 
-                ? `Your GallaMitra workspace "${shop.businessname}" has been reactivated by the platform administrator. You can now log back in.`
-                : `Your GallaMitra workspace "${shop.businessname}" has been temporarily suspended by the platform administrator. Access has been blocked.`,
+                ? `Your GallaMitra workspace "${shop.businessName}" has been reactivated by the platform administrator. You can now log back in.`
+                : `Your GallaMitra workspace "${shop.businessName}" has been temporarily suspended by the platform administrator. Access has been blocked.`,
             details: [
-                { label: 'Workspace Name', value: shop.businessname },
+                { label: 'Workspace Name', value: shop.businessName },
                 { label: 'Account Status', value: isActive ? 'Active' : 'Suspended' }
             ],
             actionUrl: isActive ? `${frontendUrl}/login` : undefined,
@@ -672,9 +772,9 @@ export const toggleShopStatus = async (req, res) => {
 
         await sendNotificationEmail(shop.email, subject, body, toggleHtml);
         await logActivity(id, isActive ? 'SHOP_ACTIVATED' : 'SHOP_SUSPENDED', 'Admin', `Status updated by Admin`);
-        await logActivity(null, isActive ? 'ADMIN_SHOP_ACTIVATED' : 'ADMIN_SHOP_SUSPENDED', 'Admin', `Updated shop '${shop.businessname}' to ${status}`);
+        await logActivity(null, isActive ? 'ADMIN_SHOP_ACTIVATED' : 'ADMIN_SHOP_SUSPENDED', 'Admin', `Updated shop '${shop.businessName}' to ${status}`);
 
-        res.json({ success: true, shop });
+        res.json({ success: true, shop: mappedShop });
     } catch (error) {
         console.error('🚨 Error toggling shop status:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -686,35 +786,38 @@ export const approveShop = async (req, res) => {
     const { id } = req.params;
     const { plan } = req.body; // admin can override plan
     try {
-        const shopRes = await db.query('SELECT * FROM "Shop" WHERE id = $1', [id]);
-        if (shopRes.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
-        const shop = shopRes.rows[0];
+        const shop = await prisma.shop.findUnique({ where: { id } });
+        if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
         const targetPlan = plan || shop.plan;
-        const planRes = await db.query('SELECT * FROM "Plan" WHERE id = $1', [targetPlan]);
-        const planDetails = planRes.rows[0] || { billingCycle: 'free', name: 'Starter' };
+        const planDetails = await prisma.plan.findUnique({ where: { id: targetPlan } });
+        const planDetailsObj = planDetails || { billingCycle: 'free', name: 'Starter' };
 
-        const expiryDate = calculateExpiryDate(planDetails.billingCycle);
+        const expiryDate = calculateExpiryDate(planDetailsObj.billingCycle);
 
-        const result = await db.query(
-            `UPDATE "Shop"
-             SET "status" = 'active', "isActive" = TRUE,
-                 "plan" = $1,
-                 "approvedAt" = NOW(), "approvedBy" = 'super_admin',
-                 "rejectionReason" = NULL, "subscriptionExpiresAt" = $2,
-                 "trialWarning10Sent" = FALSE, "trialWarning14Sent" = FALSE,
-                 "paidWarning5Sent" = FALSE, "paidWarning1Sent" = FALSE,
-                 "updatedAt" = NOW()
-             WHERE id = $3
-             RETURNING ${SAFE_SHOP_FIELDS}`,
-            [targetPlan, expiryDate, id]
-        );
+        const updatedShop = await prisma.shop.update({
+            where: { id },
+            data: {
+                status: 'active',
+                isActive: true,
+                plan: targetPlan,
+                approvedAt: new Date(),
+                approvedBy: 'super_admin',
+                rejectionReason: null,
+                subscriptionExpiresAt: expiryDate,
+                trialWarning10Sent: false,
+                trialWarning14Sent: false,
+                paidWarning5Sent: false,
+                paidWarning1Sent: false,
+                updatedAt: new Date()
+            }
+        });
 
         const { supportPhone, supportEmail, frontendUrl } = await getSupportContacts();
 
         // Send approval email
         const subject = 'GallaMitra Account Status Update: APPROVED! 🎉';
-        const body = `Hello ${shop.ownerName},\nYour GallaMitra workspace "${shop.businessName}" has been approved by the administrator!\nYou can now log in and manage your ledger under the "${planDetails.name}" plan.\n${expiryDate ? `Your current billing period is active until: ${new Date(expiryDate).toLocaleDateString()}` : 'Your plan is free forever.'}\n\nLog in here: ${frontendUrl}/login\n\nBest regards,\nGallaMitra Team`;
+        const body = `Hello ${shop.ownerName},\nYour GallaMitra workspace "${shop.businessName}" has been approved by the administrator!\nYou can now log in and manage your ledger under the "${planDetailsObj.name}" plan.\n${expiryDate ? `Your current billing period is active until: ${new Date(expiryDate).toLocaleDateString()}` : 'Your plan is free forever.'}\n\nLog in here: ${frontendUrl}/login\n\nBest regards,\nGallaMitra Team`;
 
         const approvalHtml = generateHtmlEmail({
             title: 'Account Status Update: APPROVED! 🎉',
@@ -722,7 +825,7 @@ export const approveShop = async (req, res) => {
             leadText: `Your GallaMitra workspace "${shop.businessName}" has been approved by the administrator! You can now log in and manage your ledger.`,
             details: [
                 { label: 'Workspace Name', value: shop.businessName },
-                { label: 'Active Plan', value: planDetails.name },
+                { label: 'Active Plan', value: planDetailsObj.name },
                 { label: 'Billing Period', value: expiryDate ? `Active until ${new Date(expiryDate).toLocaleDateString('en-IN')}` : 'Free Forever' }
             ],
             actionUrl: `${frontendUrl}/login`,
@@ -732,10 +835,10 @@ export const approveShop = async (req, res) => {
         });
 
         await sendNotificationEmail(shop.email, subject, body, approvalHtml);
-        await logActivity(id, 'SHOP_APPROVED', 'Admin', `Approved under plan ${planDetails.name}`);
-        await logActivity(null, 'ADMIN_SHOP_APPROVED', 'Admin', `Approved shop '${shop.businessName}' under plan ${planDetails.name}`);
+        await logActivity(id, 'SHOP_APPROVED', 'Admin', `Approved under plan ${planDetailsObj.name}`);
+        await logActivity(null, 'ADMIN_SHOP_APPROVED', 'Admin', `Approved shop '${shop.businessName}' under plan ${planDetailsObj.name}`);
 
-        res.json({ success: true, message: 'Shop approved successfully', shop: result.rows[0] });
+        res.json({ success: true, message: 'Shop approved successfully', shop: toSafeShop(updatedShop) });
     } catch (error) {
         console.error('🚨 Error approving shop:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -747,18 +850,18 @@ export const rejectShop = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
     try {
-        const shopRes = await db.query('SELECT * FROM "Shop" WHERE id = $1', [id]);
-        if (shopRes.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
-        const shop = shopRes.rows[0];
+        const shop = await prisma.shop.findUnique({ where: { id } });
+        if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
-        const result = await db.query(
-            `UPDATE "Shop"
-             SET "status" = 'rejected', "isActive" = FALSE,
-                 "rejectionReason" = $1, "updatedAt" = NOW()
-             WHERE id = $2
-             RETURNING id, "status", "rejectionReason"`,
-            [reason || 'Registration rejected by admin.', id]
-        );
+        const updatedShop = await prisma.shop.update({
+            where: { id },
+            data: {
+                status: 'rejected',
+                isActive: false,
+                rejectionReason: reason || 'Registration rejected by admin.',
+                updatedAt: new Date()
+            }
+        });
 
         const { supportPhone, supportEmail } = await getSupportContacts();
 
@@ -782,7 +885,15 @@ export const rejectShop = async (req, res) => {
         await logActivity(id, 'SHOP_REJECTED', 'Admin', reason);
         await logActivity(null, 'ADMIN_SHOP_REJECTED', 'Admin', `Rejected shop '${shop.businessName}'`);
 
-        res.json({ success: true, message: 'Shop rejected', shop: result.rows[0] });
+        res.json({
+            success: true,
+            message: 'Shop rejected',
+            shop: {
+                id: updatedShop.id,
+                status: updatedShop.status,
+                rejectionReason: updatedShop.rejectionReason
+            }
+        });
     } catch (error) {
         console.error('🚨 Error rejecting shop:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -795,29 +906,29 @@ export const changeShopPlan = async (req, res) => {
     const { plan } = req.body;
 
     try {
-        const planRes = await db.query('SELECT * FROM "Plan" WHERE id = $1', [plan]);
-        if (planRes.rows.length === 0) return res.status(400).json({ error: 'Invalid plan.' });
-        const planDetails = planRes.rows[0];
+        const planDetails = await prisma.plan.findUnique({ where: { id: plan } });
+        if (!planDetails) return res.status(400).json({ error: 'Invalid plan.' });
 
-        const shopRes = await db.query('SELECT * FROM "Shop" WHERE id = $1', [id]);
-        if (shopRes.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
-        const shop = shopRes.rows[0];
+        const shop = await prisma.shop.findUnique({ where: { id } });
+        if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
         const expiryDate = calculateExpiryDate(planDetails.billingCycle);
 
-        const result = await db.query(
-            `UPDATE "Shop" 
-             SET "plan" = $1, "subscriptionExpiresAt" = $2,
-                 "trialWarning10Sent" = FALSE, "trialWarning14Sent" = FALSE,
-                 "paidWarning5Sent" = FALSE, "paidWarning1Sent" = FALSE,
-                 "updatedAt" = NOW()
-             WHERE id = $3
-             RETURNING ${SAFE_SHOP_FIELDS}`,
-            [plan, expiryDate, id]
-        );
+        const updatedShop = await prisma.shop.update({
+            where: { id },
+            data: {
+                plan,
+                subscriptionExpiresAt: expiryDate,
+                trialWarning10Sent: false,
+                trialWarning14Sent: false,
+                paidWarning5Sent: false,
+                paidWarning1Sent: false,
+                updatedAt: new Date()
+            }
+        });
 
-        const updatedShop = result.rows[0];
-        updatedShop.allowedTabs = planDetails.allowedTabs;
+        const safeShop = toSafeShop(updatedShop);
+        safeShop.allowedTabs = planDetails.allowedTabs;
 
         const { supportPhone, supportEmail, frontendUrl } = await getSupportContacts();
 
@@ -844,7 +955,7 @@ export const changeShopPlan = async (req, res) => {
         await logActivity(id, 'SHOP_PLAN_CHANGED', 'Admin', `Plan changed to ${planDetails.name}`);
         await logActivity(null, 'ADMIN_SHOP_PLAN_CHANGED', 'Admin', `Changed plan of shop '${shop.businessName}' to ${planDetails.name}`);
 
-        res.json({ success: true, message: `Plan updated to ${planDetails.name}`, shop: updatedShop });
+        res.json({ success: true, message: `Plan updated to ${planDetails.name}`, shop: safeShop });
     } catch (error) {
         console.error('🚨 Error changing plan:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -855,29 +966,29 @@ export const changeShopPlan = async (req, res) => {
 export const getAdminStats = async (req, res) => {
     try {
         const [total, active, pending, rejected, customers, suppliers, invoices, ledger, purchases] = await Promise.all([
-            db.query('SELECT COUNT(*) FROM "Shop"'),
-            db.query(`SELECT COUNT(*) FROM "Shop" WHERE "status" = 'active'`),
-            db.query(`SELECT COUNT(*) FROM "Shop" WHERE "status" = 'pending'`),
-            db.query(`SELECT COUNT(*) FROM "Shop" WHERE "status" = 'rejected'`),
-            db.query('SELECT COUNT(*) FROM "Customer" WHERE "isDeleted" = FALSE'),
-            db.query('SELECT COUNT(*) FROM "Supplier" WHERE "isDeleted" = FALSE'),
-            db.query('SELECT COUNT(*) FROM "Invoice"'),
-            db.query('SELECT COUNT(*) FROM "LedgerEntry"'),
-            db.query('SELECT COUNT(*) FROM "PurchaseBill"'),
+            prisma.shop.count(),
+            prisma.shop.count({ where: { status: 'active' } }),
+            prisma.shop.count({ where: { status: 'pending' } }),
+            prisma.shop.count({ where: { status: 'rejected' } }),
+            prisma.customer.count({ where: { isDeleted: false } }),
+            prisma.supplier.count({ where: { isDeleted: false } }),
+            prisma.invoice.count(),
+            prisma.ledgerEntry.count(),
+            prisma.purchaseBill.count()
         ]);
 
         res.json({
             success: true,
             stats: {
-                totalShops:        parseInt(total.rows[0].count || 0),
-                activeShops:       parseInt(active.rows[0].count || 0),
-                pendingShops:      parseInt(pending.rows[0].count || 0),
-                rejectedShops:     parseInt(rejected.rows[0].count || 0),
-                totalCustomers:    parseInt(customers.rows[0].count || 0),
-                totalSuppliers:    parseInt(suppliers.rows[0].count || 0),
-                totalInvoices:     parseInt(invoices.rows[0].count || 0),
-                totalLedger:       parseInt(ledger.rows[0].count || 0),
-                totalPurchaseBills:parseInt(purchases.rows[0].count || 0),
+                totalShops:        total,
+                activeShops:       active,
+                pendingShops:      pending,
+                rejectedShops:     rejected,
+                totalCustomers:    customers,
+                totalSuppliers:    suppliers,
+                totalInvoices:     invoices,
+                totalLedger:       ledger,
+                totalPurchaseBills:purchases,
             }
         });
     } catch (error) {
@@ -890,25 +1001,37 @@ export const getAdminStats = async (req, res) => {
 export const inspectShopWorkspace = async (req, res) => {
     const { id } = req.params;
     try {
-        const [custRes, suppRes, invRes, recRes, pbRes, ledRes] = await Promise.all([
-            db.query('SELECT COUNT(*) FROM "Customer" WHERE "shopId" = $1 AND "isDeleted" = FALSE', [id]),
-            db.query('SELECT COUNT(*) FROM "Supplier" WHERE "shopId" = $1 AND "isDeleted" = FALSE', [id]),
-            db.query('SELECT COUNT(*), COALESCE(SUM("grandTotal"), 0) as total FROM "Invoice" WHERE "shopId" = $1', [id]),
-            db.query('SELECT COUNT(*), COALESCE(SUM("amount"), 0) as total FROM "PaymentReceipt" WHERE "shopId" = $1', [id]),
-            db.query('SELECT COUNT(*), COALESCE(SUM("totalAmount"), 0) as total FROM "PurchaseBill" WHERE "shopId" = $1', [id]),
-            db.query('SELECT COUNT(*) FROM "LedgerEntry" WHERE "shopId" = $1', [id])
+        const [custCount, suppCount, invAgg, recAgg, pbAgg, ledCount] = await Promise.all([
+            prisma.customer.count({ where: { shopId: id, isDeleted: false } }),
+            prisma.supplier.count({ where: { shopId: id, isDeleted: false } }),
+            prisma.invoice.aggregate({
+                where: { shopId: id },
+                _count: true,
+                _sum: { grandTotal: true }
+            }),
+            prisma.paymentReceipt.aggregate({
+                where: { shopId: id },
+                _count: true,
+                _sum: { amount: true }
+            }),
+            prisma.purchaseBill.aggregate({
+                where: { shopId: id },
+                _count: true,
+                _sum: { totalAmount: true }
+            }),
+            prisma.ledgerEntry.count({ where: { shopId: id } })
         ]);
 
         res.json({
-            customersCount:     parseInt(custRes.rows[0].count || 0),
-            suppliersCount:     parseInt(suppRes.rows[0].count || 0),
-            invoicesCount:      parseInt(invRes.rows[0].count || 0),
-            invoicesTotal:      parseFloat(invRes.rows[0].total || 0),
-            receiptsCount:      parseInt(recRes.rows[0].count || 0),
-            receiptsTotal:      parseFloat(recRes.rows[0].total || 0),
-            purchaseBillsCount: parseInt(pbRes.rows[0].count || 0),
-            purchaseBillsTotal: parseFloat(pbRes.rows[0].total || 0),
-            ledgerEntriesCount: parseInt(ledRes.rows[0].count || 0)
+            customersCount:     custCount,
+            suppliersCount:     suppCount,
+            invoicesCount:      invAgg._count || 0,
+            invoicesTotal:      parseFloat(invAgg._sum.grandTotal || 0),
+            receiptsCount:      recAgg._count || 0,
+            receiptsTotal:      parseFloat(recAgg._sum.amount || 0),
+            purchaseBillsCount: pbAgg._count || 0,
+            purchaseBillsTotal: parseFloat(pbAgg._sum.totalAmount || 0),
+            ledgerEntriesCount: ledCount
         });
     } catch (error) {
         console.error('🚨 Error inspecting shop workspace:', error);
@@ -920,14 +1043,22 @@ export const inspectShopWorkspace = async (req, res) => {
 // GET /api/shops/admin/activities (Tenant events)
 export const getAdminActivities = async (req, res) => {
     try {
-        const result = await db.query(
-            `SELECT a.*, s."businessName" as businessname 
-             FROM "ActivityLog" a 
-             LEFT JOIN "Shop" s ON a."shopId" = s.id 
-             WHERE a."shopId" IS NOT NULL 
-             ORDER BY a."createdAt" DESC LIMIT 100`
-        );
-        res.json({ success: true, activities: result.rows });
+        const activities = await prisma.activityLog.findMany({
+            where: { shopId: { not: null } },
+            orderBy: { createdAt: 'desc' },
+            take: 100,
+            include: { shop: { select: { businessName: true } } }
+        });
+        const mappedActivities = activities.map(a => ({
+            id: a.id,
+            shopId: a.shopId,
+            type: a.type,
+            actor: a.actor,
+            target: a.target,
+            createdAt: a.createdAt,
+            businessname: a.shop?.businessName || null
+        }));
+        res.json({ success: true, activities: mappedActivities });
     } catch (error) {
         console.error('🚨 Error fetching admin activities:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -937,12 +1068,12 @@ export const getAdminActivities = async (req, res) => {
 // GET /api/shops/admin/audit-logs (System events)
 export const getAdminAuditLogs = async (req, res) => {
     try {
-        const result = await db.query(
-            `SELECT * FROM "ActivityLog" 
-             WHERE "shopId" IS NULL 
-             ORDER BY "createdAt" DESC LIMIT 100`
-        );
-        res.json({ success: true, logs: result.rows });
+        const logs = await prisma.activityLog.findMany({
+            where: { shopId: null },
+            orderBy: { createdAt: 'desc' },
+            take: 100
+        });
+        res.json({ success: true, logs });
     } catch (error) {
         console.error('🚨 Error fetching admin audit logs:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -953,24 +1084,24 @@ export const getAdminAuditLogs = async (req, res) => {
 export const getAdminDbHealth = async (req, res) => {
     try {
         const start = Date.now();
-        const latencyRes = await db.query('SELECT 1');
+        await prisma.$queryRaw`SELECT 1`;
         const dbLatency = Date.now() - start;
 
-        const sizeRes = await db.query(`
+        const sizeRes = await prisma.$queryRaw`
             SELECT pg_size_pretty(pg_database_size(current_database())) as size
-        `);
-        const dbSize = sizeRes.rows[0]?.size || 'N/A';
+        `;
+        const dbSize = sizeRes[0]?.size || 'N/A';
 
         const tables = ["Shop", "Customer", "Supplier", "LedgerEntry", "Invoice", "PurchaseBill", "PaymentReceipt", "Plan", "ActivityLog"];
         const tablesDetails = [];
 
         for (const t of tables) {
-            const rowCount = await db.query(`SELECT COUNT(*) FROM "${t}"`);
-            const tableSize = await db.query(`SELECT pg_size_pretty(pg_total_relation_size('"${t}"')) as size`);
+            const rowCount = await prisma.$queryRawUnsafe(`SELECT COUNT(*) FROM "${t}"`);
+            const tableSize = await prisma.$queryRawUnsafe(`SELECT pg_size_pretty(pg_total_relation_size('"${t}"')) as size`);
             tablesDetails.push({
                 name: t,
-                rows: parseInt(rowCount.rows[0].count || 0),
-                size: tableSize.rows[0]?.size || 'N/A'
+                rows: Number(rowCount[0]?.count || 0),
+                size: tableSize[0]?.size || 'N/A'
             });
         }
 
@@ -990,8 +1121,11 @@ export const getAdminDbHealth = async (req, res) => {
 // GET /api/shops/admin/sent-emails
 export const getAdminSentEmails = async (req, res) => {
     try {
-        const result = await db.query('SELECT * FROM "EmailQueue" ORDER BY "createdAt" DESC LIMIT 100');
-        const list = result.rows.map(row => ({
+        const emails = await prisma.emailQueue.findMany({
+            orderBy: { createdAt: 'desc' },
+            take: 100
+        });
+        const list = emails.map(row => ({
             id: row.id,
             time: row.createdAt,
             to: row.toEmail,
@@ -1014,8 +1148,10 @@ export const broadcastEmail = async (req, res) => {
     if (!subject || !text) return res.status(400).json({ error: 'Subject and body text are required.' });
 
     try {
-        const shopsRes = await db.query('SELECT email, "ownerName" FROM "Shop" WHERE "isActive" = TRUE AND "status" = \'active\'');
-        const activeShops = shopsRes.rows;
+        const activeShops = await prisma.shop.findMany({
+            where: { isActive: true, status: 'active' },
+            select: { email: true, ownerName: true }
+        });
 
         const { supportPhone, supportEmail } = await getSupportContacts();
 
@@ -1053,11 +1189,12 @@ export const loginAdmin = async (req, res) => {
         return res.status(400).json({ error: 'Username and password are required.' });
     }
     try {
-        const result = await db.query('SELECT * FROM "AdminUser" WHERE "username" = $1', [username.trim().toLowerCase()]);
-        if (result.rows.length === 0) {
+        const admin = await prisma.adminUser.findUnique({
+            where: { username: username.trim().toLowerCase() }
+        });
+        if (!admin) {
             return res.status(401).json({ error: 'Invalid admin credentials.' });
         }
-        const admin = result.rows[0];
         
         const isMatch = await bcrypt.compare(password, admin.passwordHash);
         if (!isMatch) {
@@ -1067,7 +1204,10 @@ export const loginAdmin = async (req, res) => {
         const crypto = await import('crypto');
         const token = 'Admin-Token-' + crypto.randomBytes(24).toString('hex');
         
-        await db.query('UPDATE "AdminUser" SET "token" = $1 WHERE id = $2', [token, admin.id]);
+        await prisma.adminUser.update({
+            where: { id: admin.id },
+            data: { token }
+        });
         
         await logActivity(null, 'ADMIN_LOGIN', 'Admin', `Super Admin logged in from portal`);
         
@@ -1086,12 +1226,17 @@ export const updateShopPasswordFromAdmin = async (req, res) => {
         return res.status(400).json({ error: 'Password must be at least 6 characters.' });
     }
     try {
+        const shop = await prisma.shop.findUnique({ where: { id } });
+        if (!shop) return res.status(404).json({ error: 'Shop not found' });
+
         const passwordHash = await bcrypt.hash(password, 12);
-        const result = await db.query(
-            `UPDATE "Shop" SET "passwordHash" = $1, "updatedAt" = NOW() WHERE id = $2 RETURNING id, "businessName"`,
-            [passwordHash, id]
-        );
-        if (result.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
+        await prisma.shop.update({
+            where: { id },
+            data: {
+                passwordHash,
+                updatedAt: new Date()
+            }
+        });
         
         await logActivity(id, 'ADMIN_SHOP_PASSWORD_UPDATED', 'Admin', `Password reset by administrator`);
         res.json({ success: true, message: 'Shop owner password updated successfully.' });
@@ -1108,27 +1253,28 @@ export const requestPlanChange = async (req, res) => {
         return res.status(400).json({ error: 'Shop ID and target Plan ID are required.' });
     }
     try {
-        const planRes = await db.query('SELECT * FROM "Plan" WHERE id = $1', [planId]);
-        if (planRes.rows.length === 0) return res.status(400).json({ error: 'Invalid plan selected.' });
-        const requestedPlanDetails = planRes.rows[0];
+        const requestedPlanDetails = await prisma.plan.findUnique({ where: { id: planId } });
+        if (!requestedPlanDetails) return res.status(400).json({ error: 'Invalid plan selected.' });
 
         // Fetch full shop details for email notification
-        const shopRes = await db.query('SELECT * FROM "Shop" WHERE id = $1', [shopId]);
-        if (shopRes.rows.length === 0) return res.status(404).json({ error: 'Shop workspace not found.' });
-        const shop = shopRes.rows[0];
+        const shop = await prisma.shop.findUnique({ where: { id: shopId } });
+        if (!shop) return res.status(404).json({ error: 'Shop workspace not found.' });
 
         // Fetch current plan name
-        const currentPlanRes = await db.query('SELECT name FROM "Plan" WHERE id = $1', [shop.plan]);
-        const currentPlanName = currentPlanRes.rows[0]?.name || shop.plan;
+        const currentPlanRes = await prisma.plan.findUnique({
+            where: { id: shop.plan },
+            select: { name: true }
+        });
+        const currentPlanName = currentPlanRes?.name || shop.plan;
 
-        const result = await db.query(
-            `UPDATE "Shop" 
-             SET "requestedPlan" = $1, "planRequestStatus" = 'pending', "updatedAt" = NOW() 
-             WHERE id = $2 
-             RETURNING id, "plan", "requestedPlan", "planRequestStatus"`,
-            [planId, shopId]
-        );
-        if (result.rows.length === 0) return res.status(404).json({ error: 'Shop workspace not found.' });
+        const updatedShop = await prisma.shop.update({
+            where: { id: shopId },
+            data: {
+                requestedPlan: planId,
+                planRequestStatus: 'pending',
+                updatedAt: new Date()
+            }
+        });
 
         const { supportPhone, supportEmail, adminUrl } = await getSupportContacts();
 
@@ -1158,7 +1304,14 @@ export const requestPlanChange = async (req, res) => {
         await sendNotificationEmail(supportEmail, adminSubject, adminBody, adminHtml);
 
         await logActivity(shopId, 'SHOP_PLAN_REQUESTED', 'Owner', `Requested plan upgrade to ${requestedPlanDetails.name}`);
-        res.json({ success: true, message: 'Plan upgrade request submitted for review.', shop: result.rows[0] });
+        
+        const mappedShop = {
+            id: updatedShop.id,
+            plan: updatedShop.plan,
+            requestedPlan: updatedShop.requestedPlan,
+            planRequestStatus: updatedShop.planRequestStatus
+        };
+        res.json({ success: true, message: 'Plan upgrade request submitted for review.', shop: mappedShop });
     } catch (error) {
         console.error('🚨 Error requesting plan change:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -1169,35 +1322,37 @@ export const requestPlanChange = async (req, res) => {
 export const approvePlanChange = async (req, res) => {
     const { id } = req.params;
     try {
-        const shopRes = await db.query('SELECT * FROM "Shop" WHERE id = $1', [id]);
-        if (shopRes.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
-        const shop = shopRes.rows[0];
+        const shop = await prisma.shop.findUnique({ where: { id } });
+        if (!shop) return res.status(404).json({ error: 'Shop not found' });
         
         if (shop.planRequestStatus !== 'pending' || !shop.requestedPlan) {
             return res.status(400).json({ error: 'No pending plan change request found for this shop.' });
         }
         
-        const planRes = await db.query('SELECT * FROM "Plan" WHERE id = $1', [shop.requestedPlan]);
-        if (planRes.rows.length === 0) return res.status(400).json({ error: 'Invalid target plan.' });
-        const planDetails = planRes.rows[0];
+        const planDetails = await prisma.plan.findUnique({ where: { id: shop.requestedPlan } });
+        if (!planDetails) return res.status(400).json({ error: 'Invalid target plan.' });
         
         const expiryDate = calculateExpiryDate(planDetails.billingCycle);
         
-        const result = await db.query(
-            `UPDATE "Shop"
-             SET "plan" = $1, "subscriptionExpiresAt" = $2,
-                 "requestedPlan" = NULL, "planRequestStatus" = 'none',
-                 "status" = 'active', "isActive" = TRUE,
-                 "trialWarning10Sent" = FALSE, "trialWarning14Sent" = FALSE,
-                 "paidWarning5Sent" = FALSE, "paidWarning1Sent" = FALSE,
-                 "updatedAt" = NOW()
-             WHERE id = $3
-             RETURNING ${SAFE_SHOP_FIELDS}`,
-            [shop.requestedPlan, expiryDate, id]
-        );
+        const updatedShop = await prisma.shop.update({
+            where: { id },
+            data: {
+                plan: shop.requestedPlan,
+                subscriptionExpiresAt: expiryDate,
+                requestedPlan: null,
+                planRequestStatus: 'none',
+                status: 'active',
+                isActive: true,
+                trialWarning10Sent: false,
+                trialWarning14Sent: false,
+                paidWarning5Sent: false,
+                paidWarning1Sent: false,
+                updatedAt: new Date()
+            }
+        });
         
-        const updatedShop = result.rows[0];
-        updatedShop.allowedTabs = planDetails.allowedTabs;
+        const safeShop = toSafeShop(updatedShop);
+        safeShop.allowedTabs = planDetails.allowedTabs;
         
         const { supportPhone, supportEmail, frontendUrl } = await getSupportContacts();
 
@@ -1224,7 +1379,7 @@ export const approvePlanChange = async (req, res) => {
         await logActivity(id, 'SHOP_PLAN_APPROVED', 'Admin', `Plan changed to ${planDetails.name}`);
         await logActivity(null, 'ADMIN_PLAN_REQUEST_APPROVED', 'Admin', `Approved plan change for '${shop.businessName}' to ${planDetails.name}`);
 
-        res.json({ success: true, message: `Plan request approved. New plan: ${planDetails.name}`, shop: updatedShop });
+        res.json({ success: true, message: `Plan request approved. New plan: ${planDetails.name}`, shop: safeShop });
     } catch (error) {
         console.error('🚨 Error approving plan change:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -1236,23 +1391,27 @@ export const rejectPlanChange = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
     try {
-        const shopRes = await db.query('SELECT * FROM "Shop" WHERE id = $1', [id]);
-        if (shopRes.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
-        const shop = shopRes.rows[0];
+        const shop = await prisma.shop.findUnique({ where: { id } });
+        if (!shop) return res.status(404).json({ error: 'Shop not found' });
         
         if (shop.planRequestStatus !== 'pending' || !shop.requestedPlan) {
             return res.status(400).json({ error: 'No pending plan change request found.' });
         }
         
-        const planRes = await db.query('SELECT name FROM "Plan" WHERE id = $1', [shop.requestedPlan]);
-        const planName = planRes.rows[0]?.name || shop.requestedPlan;
+        const planRes = await prisma.plan.findUnique({
+            where: { id: shop.requestedPlan },
+            select: { name: true }
+        });
+        const planName = planRes?.name || shop.requestedPlan;
         
-        await db.query(
-            `UPDATE "Shop"
-             SET "requestedPlan" = NULL, "planRequestStatus" = 'rejected', "updatedAt" = NOW()
-             WHERE id = $1`,
-            [id]
-        );
+        await prisma.shop.update({
+            where: { id },
+            data: {
+                requestedPlan: null,
+                planRequestStatus: 'rejected',
+                updatedAt: new Date()
+            }
+        });
         
         const { supportPhone, supportEmail } = await getSupportContacts();
 
@@ -1288,49 +1447,41 @@ export const rejectPlanChange = async (req, res) => {
 export const getShopProfile = async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await db.query(
-            `SELECT id, "businessName" as businessname, "ownerName" as ownername, "email", "phone",
-                    "logoUrl" as logourl, "signatureUrl" as signatureurl, "address", "businessPhone" as businessphone,
-                    "businessEmail" as businessemail, "gstin", "state", "vpa", "isActive" as isactive, "language",
-                    "plan", "status", "approvedAt" as approvedat, "subscriptionExpiresAt" as subscriptionexpiresat,
-                    "requestedPlan" as requestedplan, "planRequestStatus" as planrequeststatus,
-                    "bankDetails" as bankdetails, "invoiceTerms" as invoiceterms
-             FROM "Shop" WHERE id = $1`,
-            [id]
-        );
-        if (result.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
-        
-        const shop = result.rows[0];
-        
+        const shop = await prisma.shop.findUnique({ where: { id } });
+        if (!shop) return res.status(404).json({ error: 'Shop not found' });
+
         const mappedShop = {
             id: shop.id,
-            businessName: shop.businessname,
-            ownerName: shop.ownername,
+            businessName: shop.businessName,
+            ownerName: shop.ownerName,
             email: shop.email,
             phone: shop.phone,
-            logoUrl: shop.logourl,
-            signatureUrl: shop.signatureurl,
+            logoUrl: shop.logoUrl,
+            signatureUrl: shop.signatureUrl,
             address: shop.address,
-            businessPhone: shop.businessphone,
-            businessEmail: shop.businessemail,
+            businessPhone: shop.businessPhone,
+            businessEmail: shop.businessEmail,
             gstin: shop.gstin,
             state: shop.state,
             vpa: shop.vpa,
-            isActive: shop.isactive,
+            isActive: shop.isActive,
             language: shop.language,
             plan: shop.plan,
             status: shop.status,
-            approvedAt: shop.approvedat,
-            subscriptionExpiresAt: shop.subscriptionexpiresat,
-            requestedPlan: shop.requestedplan,
-            planRequestStatus: shop.planrequeststatus,
-            bankDetails: shop.bankdetails,
-            invoiceTerms: shop.invoiceterms
+            approvedAt: shop.approvedAt,
+            subscriptionExpiresAt: shop.subscriptionExpiresAt,
+            requestedPlan: shop.requestedPlan,
+            planRequestStatus: shop.planRequestStatus,
+            bankDetails: shop.bankDetails,
+            invoiceTerms: shop.invoiceTerms
         };
 
-        const planRes = await db.query('SELECT "allowedTabs", "allowMultiBusiness" FROM "Plan" WHERE id = $1', [shop.plan]);
-        mappedShop.allowedTabs = planRes.rows.length > 0 ? planRes.rows[0].allowedTabs : [];
-        mappedShop.allowMultiBusiness = planRes.rows.length > 0 ? !!planRes.rows[0].allowMultiBusiness : false;
+        const planRes = await prisma.plan.findUnique({
+            where: { id: shop.plan },
+            select: { allowedTabs: true, allowMultiBusiness: true }
+        });
+        mappedShop.allowedTabs = planRes ? planRes.allowedTabs : [];
+        mappedShop.allowMultiBusiness = planRes ? !!planRes.allowMultiBusiness : false;
 
         res.json({ success: true, shop: mappedShop });
     } catch (error) {
@@ -1346,28 +1497,33 @@ export const getMyWorkspaces = async (req, res) => {
         return res.status(400).json({ error: 'Email parameter is required.' });
     }
     try {
-        const result = await db.query(
-            `SELECT s.id, s."businessName" as businessname, s."ownerName" as ownername, s."email", s."phone",
-                    s."plan", s."status", s."isActive" as isactive, s."subscriptionExpiresAt" as subscriptionexpiresat,
-                    p."allowMultiBusiness" as allowmultibusiness
-             FROM "Shop" s
-             LEFT JOIN "Plan" p ON s.plan = p.id
-             WHERE LOWER(s."email") = $1 AND s."status" = 'active' AND s."isActive" = TRUE
-             ORDER BY s."businessName" ASC`,
-            [email.toLowerCase().trim()]
-        );
+        const activeShops = await prisma.shop.findMany({
+            where: {
+                email: { equals: email.toLowerCase().trim(), mode: 'insensitive' },
+                status: 'active',
+                isActive: true
+            },
+            orderBy: { businessName: 'asc' }
+        });
+
+        const planIds = [...new Set(activeShops.map(s => s.plan).filter(Boolean))];
+        const plans = await prisma.plan.findMany({
+            where: { id: { in: planIds } },
+            select: { id: true, allowMultiBusiness: true }
+        });
+        const planMap = new Map(plans.map(p => [p.id, p.allowMultiBusiness]));
         
-        const shops = result.rows.map(s => ({
+        const shops = activeShops.map(s => ({
             id: s.id,
-            businessName: s.businessname,
-            ownerName: s.ownername,
+            businessName: s.businessName,
+            ownerName: s.ownerName,
             email: s.email,
             phone: s.phone,
             plan: s.plan,
             status: s.status,
-            isActive: s.isactive,
-            subscriptionExpiresAt: s.subscriptionexpiresat,
-            allowMultiBusiness: !!s.allowmultibusiness
+            isActive: s.isActive,
+            subscriptionExpiresAt: s.subscriptionExpiresAt,
+            allowMultiBusiness: !!planMap.get(s.plan)
         }));
 
         res.json({ success: true, shops });
@@ -1381,53 +1537,47 @@ export const getMyWorkspaces = async (req, res) => {
 export const getShopStatus = async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await db.query(
-            `SELECT id, "businessName" as businessname, "ownerName" as ownername, "email", "phone",
-                    "logoUrl" as logourl, "signatureUrl" as signatureurl, "address", "businessPhone" as businessphone,
-                    "businessEmail" as businessemail, "gstin", "state", "vpa", "isActive" as isactive, "language",
-                    "plan", "status", "approvedAt" as approvedat, "subscriptionExpiresAt" as subscriptionexpiresat,
-                    "requestedPlan" as requestedplan, "planRequestStatus" as planrequeststatus,
-                    "bankDetails" as bankdetails, "invoiceTerms" as invoiceterms
-             FROM "Shop" WHERE id = $1`,
-            [id]
-        );
-        if (result.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
-        
-        const shop = result.rows[0];
+        const shop = await prisma.shop.findUnique({ where: { id } });
+        if (!shop) return res.status(404).json({ error: 'Shop not found' });
+
         const mappedShop = {
             id: shop.id,
-            businessName: shop.businessname,
-            ownerName: shop.ownername,
+            businessName: shop.businessName,
+            ownerName: shop.ownerName,
             email: shop.email,
             phone: shop.phone,
-            logoUrl: shop.logourl,
-            signatureUrl: shop.signatureurl,
+            logoUrl: shop.logoUrl,
+            signatureUrl: shop.signatureUrl,
             address: shop.address,
-            businessPhone: shop.businessphone,
-            businessEmail: shop.businessemail,
+            businessPhone: shop.businessPhone,
+            businessEmail: shop.businessEmail,
             gstin: shop.gstin,
             state: shop.state,
             vpa: shop.vpa,
-            isActive: shop.isactive,
+            isActive: shop.isActive,
             language: shop.language,
             plan: shop.plan,
             status: shop.status,
-            approvedAt: shop.approvedat,
-            subscriptionExpiresAt: shop.subscriptionexpiresat,
-            requestedPlan: shop.requestedplan,
-            planRequestStatus: shop.planrequeststatus,
-            bankDetails: shop.bankdetails,
-            invoiceTerms: shop.invoiceterms
+            approvedAt: shop.approvedAt,
+            subscriptionExpiresAt: shop.subscriptionExpiresAt,
+            requestedPlan: shop.requestedPlan,
+            planRequestStatus: shop.planRequestStatus,
+            bankDetails: shop.bankDetails,
+            invoiceTerms: shop.invoiceTerms
         };
 
-        const planRes = await db.query('SELECT "allowedTabs", "allowMultiBusiness" FROM "Plan" WHERE id = $1', [shop.plan]);
-        mappedShop.allowedTabs = planRes.rows.length > 0 ? planRes.rows[0].allowedTabs : [];
-        mappedShop.allowMultiBusiness = planRes.rows.length > 0 ? !!planRes.rows[0].allowMultiBusiness : false;
+        const planRes = await prisma.plan.findUnique({
+            where: { id: shop.plan },
+            select: { allowedTabs: true, allowMultiBusiness: true }
+        });
+        mappedShop.allowedTabs = planRes ? planRes.allowedTabs : [];
+        mappedShop.allowMultiBusiness = planRes ? !!planRes.allowMultiBusiness : false;
 
-        // Fetch support contact details dynamically from first AdminUser record
-        const adminRes = await db.query('SELECT "supportPhone" as supportphone, "supportEmail" as supportemail FROM "AdminUser" LIMIT 1');
-        const supportPhone = adminRes.rows.length > 0 ? adminRes.rows[0].supportphone : '+91 97732 72749';
-        const supportEmail = adminRes.rows.length > 0 ? adminRes.rows[0].supportemail : 'jainishdabgar2901@gmail.com';
+        const adminRes = await prisma.adminUser.findFirst({
+            select: { supportPhone: true, supportEmail: true }
+        });
+        const supportPhone = adminRes?.supportPhone || '+91 97732 72749';
+        const supportEmail = adminRes?.supportEmail || 'jainishdabgar2901@gmail.com';
 
         const response = {
             success: true,
@@ -1436,7 +1586,7 @@ export const getShopStatus = async (req, res) => {
             supportPhone,
             supportEmail
         };
-        if (shop.status === 'active' && shop.isactive) {
+        if (shop.status === 'active' && shop.isActive) {
             response.token = signShopToken(mappedShop);
         }
         res.json(response);
@@ -1449,17 +1599,22 @@ export const getShopStatus = async (req, res) => {
 // ─── ADMIN: GET SETTINGS ───────────────────────────────────────────────────────
 export const getAdminSettings = async (req, res) => {
     try {
-        const adminRes = await db.query('SELECT "supportPhone" as supportphone, "supportEmail" as supportemail FROM "AdminUser" WHERE id = $1', [req.admin.id]);
+        const adminRes = await prisma.adminUser.findUnique({
+            where: { id: req.admin.id },
+            select: { supportPhone: true, supportEmail: true }
+        });
         let supportPhone = '+91 97732 72749';
         let supportEmail = 'jainishdabgar2901@gmail.com';
-        if (adminRes.rows.length > 0) {
-            supportPhone = adminRes.rows[0].supportphone || supportPhone;
-            supportEmail = adminRes.rows[0].supportemail || supportEmail;
+        if (adminRes) {
+            supportPhone = adminRes.supportPhone || supportPhone;
+            supportEmail = adminRes.supportEmail || supportEmail;
         } else {
-            const fallbackRes = await db.query('SELECT "supportPhone" as supportphone, "supportEmail" as supportemail FROM "AdminUser" LIMIT 1');
-            if (fallbackRes.rows.length > 0) {
-                supportPhone = fallbackRes.rows[0].supportphone || supportPhone;
-                supportEmail = fallbackRes.rows[0].supportemail || supportEmail;
+            const fallbackRes = await prisma.adminUser.findFirst({
+                select: { supportPhone: true, supportEmail: true }
+            });
+            if (fallbackRes) {
+                supportPhone = fallbackRes.supportPhone || supportPhone;
+                supportEmail = fallbackRes.supportEmail || supportEmail;
             }
         }
         res.json({
@@ -1483,14 +1638,13 @@ export const updateAdminSettings = async (req, res) => {
         return res.status(400).json({ error: 'Support phone and support email are both required.' });
     }
     try {
-        await db.query(
-            'UPDATE "AdminUser" SET "supportPhone" = $1, "supportEmail" = $2 WHERE id = $3',
-            [
-                supportPhone.trim(), 
-                supportEmail.trim().toLowerCase(), 
-                req.admin.id
-            ]
-        );
+        await prisma.adminUser.update({
+            where: { id: req.admin.id },
+            data: {
+                supportPhone: supportPhone.trim(),
+                supportEmail: supportEmail.trim().toLowerCase()
+            }
+        });
         res.json({ success: true, message: 'Platform support settings updated successfully.' });
     } catch (error) {
         console.error('🚨 Error updating admin settings:', error);
@@ -1501,12 +1655,14 @@ export const updateAdminSettings = async (req, res) => {
 // ─── PUBLIC: GET PLATFORM SETTINGS ─────────────────────────────────────────────
 export const getPublicConfig = async (req, res) => {
     try {
-        const result = await db.query('SELECT "supportPhone" as supportphone, "supportEmail" as supportemail FROM "AdminUser" LIMIT 1');
+        const result = await prisma.adminUser.findFirst({
+            select: { supportPhone: true, supportEmail: true }
+        });
         let supportPhone = '+91 97732 72749';
         let supportEmail = 'jainishdabgar2901@gmail.com';
-        if (result.rows.length > 0) {
-            supportPhone = result.rows[0].supportphone || supportPhone;
-            supportEmail = result.rows[0].supportemail || supportEmail;
+        if (result) {
+            supportPhone = result.supportPhone || supportPhone;
+            supportEmail = result.supportEmail || supportEmail;
         }
         res.json({
             success: true,
@@ -1528,49 +1684,40 @@ export const deleteShopWorkspace = async (req, res) => {
     if (!id) {
         return res.status(400).json({ error: 'Shop ID is required.' });
     }
-    const client = await db.connect();
     try {
-        await client.query('BEGIN');
+        const deletedShop = await prisma.$transaction(async (tx) => {
+            await tx.activityLog.deleteMany({ where: { shopId: id } });
+            
+            const shop = await tx.shop.findUnique({ where: { id } });
+            if (!shop) return null;
 
-        await client.query('DELETE FROM "ActivityLog" WHERE "shopId" = $1', [id]);
-        const result = await client.query(
-            'DELETE FROM "Shop" WHERE id = $1 RETURNING "businessName"',
-            [id]
-        );
+            await tx.shop.delete({ where: { id } });
+            return shop;
+        });
 
-        if (result.rows.length === 0) {
-            await client.query('ROLLBACK');
+        if (!deletedShop) {
             return res.status(404).json({ error: 'Shop workspace not found.' });
         }
 
-        await client.query('COMMIT');
-        res.json({ success: true, message: `Workspace "${result.rows[0].businessName}" deleted successfully.` });
+        res.json({ success: true, message: `Workspace "${deletedShop.businessName}" deleted successfully.` });
     } catch (error) {
-        await client.query('ROLLBACK');
         console.error('🚨 Error deleting shop workspace:', error);
         res.status(500).json({ error: 'Internal Server Error' });
-    } finally {
-        client.release();
     }
 };
 
 // ─── PUBLIC: GET SYSTEM STATUS STATISTICS ──────────────────────────────────────
 export const getPublicStats = async (req, res) => {
     try {
-        const [activeShopsRes, ledgerRes, invoiceRes, purchaseRes, receiptRes] = await Promise.all([
-            db.query(`SELECT COUNT(*) FROM "Shop" WHERE "status" = 'active'`),
-            db.query('SELECT COUNT(*) FROM "LedgerEntry"'),
-            db.query('SELECT COUNT(*) FROM "Invoice"'),
-            db.query('SELECT COUNT(*) FROM "PurchaseBill"'),
-            db.query('SELECT COUNT(*) FROM "PaymentReceipt"'),
+        const [activeShopsCount, ledgerCount, invoiceCount, purchaseCount, receiptCount] = await Promise.all([
+            prisma.shop.count({ where: { status: 'active' } }),
+            prisma.ledgerEntry.count(),
+            prisma.invoice.count(),
+            prisma.purchaseBill.count(),
+            prisma.paymentReceipt.count()
         ]);
 
-        const activeShopsCount = parseInt(activeShopsRes.rows[0].count || 0);
-        const totalTxCount = 
-            parseInt(ledgerRes.rows[0].count || 0) +
-            parseInt(invoiceRes.rows[0].count || 0) +
-            parseInt(purchaseRes.rows[0].count || 0) +
-            parseInt(receiptRes.rows[0].count || 0);
+        const totalTxCount = ledgerCount + invoiceCount + purchaseCount + receiptCount;
 
         res.json({
             success: true,
@@ -1590,16 +1737,27 @@ export const processSubscriptionChecks = async () => {
         const now = new Date();
 
         // 1. Check for warning emails (10th day: 5 days remaining; 14th day: 1 day remaining)
-        // Find active shops with plan = 'trial' and subscriptionExpiresAt not null
-        const shops = await db.query(
-            `SELECT id, "ownerName", "businessName", "email", "subscriptionExpiresAt", "trialWarning10Sent", "trialWarning14Sent" 
-             FROM "Shop" 
-             WHERE plan = 'trial' AND status = 'active' AND "isActive" = TRUE AND "subscriptionExpiresAt" IS NOT NULL`
-        );
+        const shops = await prisma.shop.findMany({
+            where: {
+                plan: 'trial',
+                status: 'active',
+                isActive: true,
+                subscriptionExpiresAt: { not: null }
+            },
+            select: {
+                id: true,
+                ownerName: true,
+                businessName: true,
+                email: true,
+                subscriptionExpiresAt: true,
+                trialWarning10Sent: true,
+                trialWarning14Sent: true
+            }
+        });
 
         const { supportPhone, supportEmail } = await getSupportContacts();
 
-        for (const shop of shops.rows) {
+        for (const shop of shops) {
             const expiryDate = new Date(shop.subscriptionExpiresAt);
             const msDiff = expiryDate.getTime() - now.getTime();
             const daysLeft = Math.ceil(msDiff / (1000 * 60 * 60 * 24));
@@ -1623,7 +1781,10 @@ export const processSubscriptionChecks = async () => {
                 });
 
                 await sendNotificationEmail(shop.email, subject, body, html);
-                await db.query('UPDATE "Shop" SET "trialWarning10Sent" = TRUE WHERE id = $1', [shop.id]);
+                await prisma.shop.update({
+                    where: { id: shop.id },
+                    data: { trialWarning10Sent: true }
+                });
                 console.log(`[Subscription Worker] Sent 10th-day trial warning to ${shop.email}`);
             } else if (daysLeft === 1 && !shop.trialWarning14Sent) {
                 // Send 14th-day warning email (1 day left)
@@ -1644,19 +1805,35 @@ export const processSubscriptionChecks = async () => {
                 });
 
                 await sendNotificationEmail(shop.email, subject, body, html);
-                await db.query('UPDATE "Shop" SET "trialWarning14Sent" = TRUE WHERE id = $1', [shop.id]);
+                await prisma.shop.update({
+                    where: { id: shop.id },
+                    data: { trialWarning14Sent: true }
+                });
                 console.log(`[Subscription Worker] Sent 14th-day trial warning to ${shop.email}`);
             }
         }
 
         // 1B. Check for warning emails for paid plans (5 days remaining; 1 day remaining)
-        const paidShops = await db.query(
-            `SELECT id, "ownerName", "businessName", "email", "subscriptionExpiresAt", "paidWarning5Sent", "paidWarning1Sent", plan 
-             FROM "Shop" 
-             WHERE plan != 'starter' AND plan != 'trial' AND status = 'active' AND "isActive" = TRUE AND "subscriptionExpiresAt" IS NOT NULL`
-        );
+        const paidShops = await prisma.shop.findMany({
+            where: {
+                plan: { notIn: ['starter', 'trial'] },
+                status: 'active',
+                isActive: true,
+                subscriptionExpiresAt: { not: null }
+            },
+            select: {
+                id: true,
+                ownerName: true,
+                businessName: true,
+                email: true,
+                subscriptionExpiresAt: true,
+                paidWarning5Sent: true,
+                paidWarning1Sent: true,
+                plan: true
+            }
+        });
 
-        for (const shop of paidShops.rows) {
+        for (const shop of paidShops) {
             const expiryDate = new Date(shop.subscriptionExpiresAt);
             const msDiff = expiryDate.getTime() - now.getTime();
             const daysLeft = Math.ceil(msDiff / (1000 * 60 * 60 * 24));
@@ -1680,7 +1857,10 @@ export const processSubscriptionChecks = async () => {
                 });
 
                 await sendNotificationEmail(shop.email, subject, body, html);
-                await db.query('UPDATE "Shop" SET "paidWarning5Sent" = TRUE WHERE id = $1', [shop.id]);
+                await prisma.shop.update({
+                    where: { id: shop.id },
+                    data: { paidWarning5Sent: true }
+                });
                 console.log(`[Subscription Worker] Sent 5-day paid warning to ${shop.email}`);
             } else if (daysLeft === 1 && !shop.paidWarning1Sent) {
                 // Send 1-day remaining warning email
@@ -1701,29 +1881,43 @@ export const processSubscriptionChecks = async () => {
                 });
 
                 await sendNotificationEmail(shop.email, subject, body, html);
-                await db.query('UPDATE "Shop" SET "paidWarning1Sent" = TRUE WHERE id = $1', [shop.id]);
+                await prisma.shop.update({
+                    where: { id: shop.id },
+                    data: { paidWarning1Sent: true }
+                });
                 console.log(`[Subscription Worker] Sent 1-day paid warning to ${shop.email}`);
             }
         }
 
         // 2. Check for expired trial plans -> downgrade to 'starter'
-        const expiredTrials = await db.query(
-            `SELECT id, "ownerName", "businessName", "email", "subscriptionExpiresAt" 
-             FROM "Shop" 
-             WHERE plan = 'trial' AND "subscriptionExpiresAt" < $1`,
-            [now]
-        );
+        const expiredTrials = await prisma.shop.findMany({
+            where: {
+                plan: 'trial',
+                subscriptionExpiresAt: { lt: now }
+            },
+            select: {
+                id: true,
+                ownerName: true,
+                businessName: true,
+                email: true,
+                subscriptionExpiresAt: true
+            }
+        });
 
-        for (const shop of expiredTrials.rows) {
+        for (const shop of expiredTrials) {
             // Downgrade to 'starter' plan (free plan) and clear subscriptionExpiresAt
-            await db.query(
-                `UPDATE "Shop" 
-                 SET plan = 'starter', "subscriptionExpiresAt" = NULL, 
-                     "trialWarning10Sent" = FALSE, "trialWarning14Sent" = FALSE, 
-                     "paidWarning5Sent" = FALSE, "paidWarning1Sent" = FALSE, "updatedAt" = NOW() 
-                 WHERE id = $1`,
-                [shop.id]
-            );
+            await prisma.shop.update({
+                where: { id: shop.id },
+                data: {
+                    plan: 'starter',
+                    subscriptionExpiresAt: null,
+                    trialWarning10Sent: false,
+                    trialWarning14Sent: false,
+                    paidWarning5Sent: false,
+                    paidWarning1Sent: false,
+                    updatedAt: new Date()
+                }
+            });
 
             // Send Expired / Downgrade Email
             const subject = 'Your GallaMitra Free Trial Has Expired';
@@ -1748,22 +1942,34 @@ export const processSubscriptionChecks = async () => {
         }
 
         // 3. Check for expired paid plans (growth, professional, etc.) -> suspend them
-        const expiredPaidShops = await db.query(
-            `SELECT id, "ownerName", "businessName", "email", "subscriptionExpiresAt" 
-             FROM "Shop" 
-             WHERE plan != 'starter' AND plan != 'trial' AND status = 'active' AND "subscriptionExpiresAt" < $1`,
-            [now]
-        );
+        const expiredPaidShops = await prisma.shop.findMany({
+            where: {
+                plan: { notIn: ['starter', 'trial'] },
+                status: 'active',
+                subscriptionExpiresAt: { lt: now }
+            },
+            select: {
+                id: true,
+                ownerName: true,
+                businessName: true,
+                email: true,
+                subscriptionExpiresAt: true
+            }
+        });
 
-        for (const shop of expiredPaidShops.rows) {
-            await db.query(
-                `UPDATE "Shop" 
-                 SET "status" = 'suspended', "isActive" = FALSE, 
-                     "trialWarning10Sent" = FALSE, "trialWarning14Sent" = FALSE, 
-                     "paidWarning5Sent" = FALSE, "paidWarning1Sent" = FALSE, "updatedAt" = NOW() 
-                 WHERE id = $1`,
-                [shop.id]
-            );
+        for (const shop of expiredPaidShops) {
+            await prisma.shop.update({
+                where: { id: shop.id },
+                data: {
+                    status: 'suspended',
+                    isActive: false,
+                    trialWarning10Sent: false,
+                    trialWarning14Sent: false,
+                    paidWarning5Sent: false,
+                    paidWarning1Sent: false,
+                    updatedAt: new Date()
+                }
+            });
             
             // Send Paid Expiration Email
             const subject = 'GallaMitra Account Status Update: Subscription Expired';

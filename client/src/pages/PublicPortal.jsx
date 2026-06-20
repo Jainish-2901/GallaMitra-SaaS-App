@@ -1268,6 +1268,11 @@ export default function PublicPortal() {
                           <p className="text-slate-400 text-[10px] font-mono mt-0.5 flex items-center gap-1">
                             <Calendar size={9} /> {new Date(i.date).toLocaleDateString('en-IN')}
                           </p>
+                          {i.attachedImgUrl && (
+                            <a href={i.attachedImgUrl} target="_blank" rel="noreferrer" className="text-[10px] text-blue-600 underline block mt-1 font-sans font-bold">
+                              View attachment ↗
+                            </a>
+                          )}
                         </div>
                       </div>
                       <span className="text-base font-black font-mono text-slate-900">₹{parseFloat(i.grandTotal).toFixed(2)}</span>
@@ -1626,8 +1631,24 @@ export default function PublicPortal() {
                     {selectedDoc.description && (
                       <div className="space-y-1">
                         <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest font-mono block">Remarks</span>
-                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] text-slate-650 leading-relaxed font-semibold">
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] text-slate-655 leading-relaxed font-semibold">
                           {selectedDoc.description}
+                        </div>
+                      </div>
+                    )}
+                    {selectedDoc.attachedImgUrl && (
+                      <div className="space-y-1">
+                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest font-mono block">Attachment</span>
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center justify-between">
+                          <span className="text-xs font-semibold text-slate-705">Document/Bill Attachment</span>
+                          <a
+                            href={selectedDoc.attachedImgUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold py-1.5 px-3 rounded-lg border border-blue-100 hover:underline transition-all"
+                          >
+                            View Document ↗
+                          </a>
                         </div>
                       </div>
                     )}

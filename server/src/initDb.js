@@ -7,7 +7,7 @@ export const initDatabase = async () => {
     CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
     CREATE TABLE IF NOT EXISTS "Shop" (
-      "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       "businessName" VARCHAR(255) NOT NULL,
       "ownerName" VARCHAR(255) NOT NULL,
       "email" VARCHAR(255) NOT NULL,
@@ -28,7 +28,7 @@ export const initDatabase = async () => {
     );
 
     CREATE TABLE IF NOT EXISTS "Customer" (
-      "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       "shopId" UUID NOT NULL,
       "name" VARCHAR(255) NOT NULL,
       "shopName" VARCHAR(255),
@@ -47,7 +47,7 @@ export const initDatabase = async () => {
     );
 
     CREATE TABLE IF NOT EXISTS "Supplier" (
-      "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       "shopId" UUID NOT NULL,
       "name" VARCHAR(255) NOT NULL,
       "shopName" VARCHAR(255),
@@ -66,7 +66,7 @@ export const initDatabase = async () => {
     );
 
     CREATE TABLE IF NOT EXISTS "LedgerEntry" (
-      "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       "shopId" UUID NOT NULL,
       "customerId" UUID,
       "supplierId" UUID,
@@ -84,7 +84,7 @@ export const initDatabase = async () => {
     );
 
     CREATE TABLE IF NOT EXISTS "Invoice" (
-      "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       "invoiceNo" VARCHAR(100) NOT NULL,
       "shopId" UUID NOT NULL,
       "customerId" UUID NOT NULL,
@@ -105,7 +105,7 @@ export const initDatabase = async () => {
     );
 
     CREATE TABLE IF NOT EXISTS "PurchaseBill" (
-      "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       "billNo" VARCHAR(100),
       "shopId" UUID NOT NULL,
       "supplierId" UUID NOT NULL,
@@ -121,7 +121,7 @@ export const initDatabase = async () => {
     );
 
     CREATE TABLE IF NOT EXISTS "PaymentReceipt" (
-      "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       "receiptNo" VARCHAR(100) NOT NULL,
       "shopId" UUID NOT NULL,
       "customerId" UUID,
@@ -187,7 +187,7 @@ export const initDatabase = async () => {
     );
 
     CREATE TABLE IF NOT EXISTS "ActivityLog" (
-      "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       "shopId" UUID,
       "type" VARCHAR(100) NOT NULL,
       "actor" VARCHAR(255) NOT NULL,
@@ -205,7 +205,7 @@ export const initDatabase = async () => {
     ALTER TABLE "Shop" ADD COLUMN IF NOT EXISTS "planRequestStatus" VARCHAR(20) DEFAULT 'none';
 
     CREATE TABLE IF NOT EXISTS "AdminUser" (
-      "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       "username" VARCHAR(100) UNIQUE NOT NULL,
       "passwordHash" TEXT NOT NULL,
       "token" TEXT,
@@ -220,7 +220,7 @@ export const initDatabase = async () => {
     ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "adminUrl" TEXT;
 
     CREATE TABLE IF NOT EXISTS "EmailQueue" (
-      "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       "toEmail" VARCHAR(255) NOT NULL,
       "subject" VARCHAR(255) NOT NULL,
       "body" TEXT NOT NULL,

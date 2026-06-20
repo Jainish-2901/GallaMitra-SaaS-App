@@ -11,7 +11,7 @@ export default function Sidebar({ activeTab, setActiveTab, setSearchTerm }) {
   const t = translations[activeLang] || translations.en;
 
   return (
-    <aside className="hidden md:flex w-72 lg:w-80 bg-white border-r border-slate-200 flex-col overflow-hidden shrink-0 shadow-sm">
+    <aside className="hidden md:flex w-64 lg:w-72 xl:w-80 bg-white border-r border-slate-200 flex-col overflow-hidden shrink-0 shadow-sm">
 
       {/* Owner Tabs Navigation */}
       <div className="flex-1 p-3 space-y-0.5 overflow-y-auto">
@@ -31,7 +31,7 @@ export default function Sidebar({ activeTab, setActiveTab, setSearchTerm }) {
                     key={tab.id}
                     id={`sidebar-tab-${tab.id}`}
                     onClick={() => { setActiveTab(tab.id); setSearchTerm(''); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-xl transition-all group ${isActive
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-xl transition-all group sidebar-tab-btn ${isActive
                       ? 'bg-[#0F172A] text-white shadow-sm'
                       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                       }`}
@@ -51,7 +51,7 @@ export default function Sidebar({ activeTab, setActiveTab, setSearchTerm }) {
 
       {/* Trial Expiry Countdown Widget */}
       {activeShop?.plan === 'trial' && (
-        <div className="mx-3 my-2.5 p-3.5 bg-gradient-to-br from-blue-50/80 to-indigo-50/80 border border-blue-100 rounded-2xl shadow-xs space-y-2.5">
+        <div className="mx-3 my-2.5 p-3.5 bg-gradient-to-br from-blue-50/80 to-indigo-50/80 border border-blue-100 rounded-2xl shadow-xs space-y-2.5 sidebar-trial-card">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Clock size={12} className="text-blue-600 animate-pulse" />
@@ -107,7 +107,7 @@ export default function Sidebar({ activeTab, setActiveTab, setSearchTerm }) {
         <button
           id="sidebar-logout-btn"
           onClick={terminateSessionLogout}
-          className="w-full flex items-center justify-center gap-2 bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 hover:border-rose-200 transition-all font-bold py-2 rounded-xl text-xs"
+          className="w-full flex items-center justify-center gap-2 bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 hover:border-rose-200 transition-all font-bold py-2 rounded-xl text-xs sidebar-logout-btn"
         >
           <LogOut size={13} /> {t.closeSession}
         </button>

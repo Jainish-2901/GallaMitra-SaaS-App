@@ -1,4 +1,4 @@
-import { db } from '../db.js';
+import { prisma } from '../utils/prisma.js';
 import { logActivity } from '../activityLogger.js';
 import { verifyPortalToken, signPortalToken } from '../utils/tokens.js';
 
@@ -24,17 +24,17 @@ const validatePortalAccess = (req, res, expectedRole, partyId) => {
 export const getPortalShareToken = async (req, res) => {
     const { id } = req.params;
     const role = req.query.role === 'supplier' ? 'supplier' : 'customer';
-    const table = role === 'supplier' ? 'Supplier' : 'Customer';
+    const model = role === 'supplier' ? prisma.supplier : prisma.customer;
 
     try {
-        const result = await db.query(
-            `SELECT id, "shopId" FROM "${table}" WHERE id = $1 AND "isDeleted" = FALSE`,
-            [id]
-        );
-        if (result.rows.length === 0) {
+        const party = await model.findFirst({
+            where: { id, isDeleted: false },
+            select: { id: true, shopId: true }
+        });
+        if (!party) {
             return res.status(404).json({ error: 'Profile not found or inactive.' });
         }
-        if (result.rows[0].shopId !== req.shop.id) {
+        if (party.shopId !== req.shop.id) {
             return res.status(403).json({ error: 'Forbidden.' });
         }
 
@@ -49,43 +49,39 @@ export const getPortalShareToken = async (req, res) => {
     }
 };
 
-
-// 1. Core Create Action Wrapper for Parties (with full multi-fields)
+// 1. Core Create Action Wrapper for Parties
 export const createParty = async (req, res) => {
     const {
         shopId, name, shopName, phone, role,
         email, billingAddress, shippingAddress,
         gstin, state, creditLimit, openingBalance
-    } = req.body; // role can be 'customer' or 'supplier'
+    } = req.body;
 
     if (!shopId || !name) {
         return res.status(400).json({ error: "Shop ID and Profile Name are required fields!" });
     }
 
-    const targetTable = role === 'supplier' ? 'Supplier' : 'Customer';
+    const model = role === 'supplier' ? prisma.supplier : prisma.customer;
 
     try {
-        const result = await db.query(
-            `INSERT INTO "${targetTable}" (
-                "shopId", "name", "shopName", "phone", "email", 
-                "billingAddress", "shippingAddress", "gstin", "state", 
-                "creditLimit", "openingBalance"
-             )
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-             RETURNING *`,
-            [
-                shopId, name, shopName || null, phone || null, email || null,
-                billingAddress || null, shippingAddress || null,
-                gstin || null, state || null,
-                parseFloat(creditLimit || 0.00), parseFloat(openingBalance || 0.00)
-            ]
-        );
+        const party = await model.create({
+            data: {
+                shopId,
+                name,
+                shopName: shopName || null,
+                phone: phone || null,
+                email: email || null,
+                billingAddress: billingAddress || null,
+                shippingAddress: shippingAddress || null,
+                gstin: gstin || null,
+                state: state || null,
+                creditLimit: parseFloat(creditLimit || 0.00),
+                openingBalance: parseFloat(openingBalance || 0.00)
+            }
+        });
 
-        const party = result.rows[0];
         const openBal = parseFloat(openingBalance || 0);
         if (openBal !== 0) {
-            // For customer: positive opening balance means they owe us (DEBIT), negative means we owe them (CREDIT)
-            // For supplier: positive opening balance means we owe them (CREDIT), negative means they owe us (DEBIT)
             const isCustomer = role !== 'supplier';
             let entryType = '';
             if (isCustomer) {
@@ -94,11 +90,16 @@ export const createParty = async (req, res) => {
                 entryType = openBal > 0 ? 'CREDIT' : 'DEBIT';
             }
 
-            await db.query(
-                `INSERT INTO "LedgerEntry" ("shopId", "${isCustomer ? 'customerId' : 'supplierId'}", "particulars", "type", "amount", "date")
-                 VALUES ($1, $2, $3, $4, $5, NOW())`,
-                [shopId, party.id, 'Opening Balance', entryType, Math.abs(openBal)]
-            );
+            await prisma.ledgerEntry.create({
+                data: {
+                    shopId,
+                    customerId: isCustomer ? party.id : null,
+                    supplierId: !isCustomer ? party.id : null,
+                    particulars: 'Opening Balance',
+                    type: entryType,
+                    amount: Math.abs(openBal)
+                }
+            });
         }
 
         const actionType = role === 'supplier' ? 'SUPPLIER_ADDED' : 'CUSTOMER_ADDED';
@@ -106,7 +107,7 @@ export const createParty = async (req, res) => {
 
         res.status(201).json(party);
     } catch (error) {
-        console.error(`🚨 Error adding item to ${targetTable}:`, error);
+        console.error(`🚨 Error adding item to party model:`, error);
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
@@ -114,30 +115,28 @@ export const createParty = async (req, res) => {
 // 2. Fetch Active Non-Deleted Parties per Tenant Stream
 export const getActiveParties = async (req, res) => {
     const { shopId } = req.params;
-    const { role } = req.query; // 'customer' or 'supplier'
+    const { role } = req.query;
 
     try {
-        let queryStr = '';
+        let result = [];
         if (role === 'supplier') {
-            queryStr = `
+            result = await prisma.$queryRaw`
                 SELECT s.*, 
                   COALESCE((SELECT SUM(CASE WHEN l.type = 'CREDIT' THEN l.amount ELSE -l.amount END) FROM "LedgerEntry" l WHERE l."supplierId" = s.id), 0.00) AS balance
                 FROM "Supplier" s
-                WHERE s."shopId" = $1 AND s."isDeleted" = FALSE 
+                WHERE s."shopId" = ${shopId}::uuid AND s."isDeleted" = FALSE 
                 ORDER BY s."createdAt" DESC
             `;
         } else {
-            queryStr = `
+            result = await prisma.$queryRaw`
                 SELECT c.*, 
                   COALESCE((SELECT SUM(CASE WHEN l.type = 'DEBIT' THEN l.amount ELSE -l.amount END) FROM "LedgerEntry" l WHERE l."customerId" = c.id), 0.00) AS balance
                 FROM "Customer" c
-                WHERE c."shopId" = $1 AND c."isDeleted" = FALSE 
+                WHERE c."shopId" = ${shopId}::uuid AND c."isDeleted" = FALSE 
                 ORDER BY c."createdAt" DESC
             `;
         }
-
-        const result = await db.query(queryStr, [shopId]);
-        res.json(result.rows);
+        res.json(result);
     } catch (error) {
         console.error(`🚨 Error fetching active list for role ${role}:`, error);
         res.status(500).json({ error: "Internal Server Error" });
@@ -147,23 +146,22 @@ export const getActiveParties = async (req, res) => {
 // 3. Strict Soft-Delete Logic for Parties to Retain Historical Integrity
 export const softDeleteParty = async (req, res) => {
     const { id } = req.params;
-    const { role } = req.query; // 'customer' or 'supplier'
-    const targetTable = role === 'supplier' ? 'Supplier' : 'Customer';
+    const { role } = req.query;
+    const model = role === 'supplier' ? prisma.supplier : prisma.customer;
 
     try {
-        const patchResult = await db.query(
-            `UPDATE "${targetTable}"
-       SET "isDeleted" = TRUE
-       WHERE "id" = $1
-       RETURNING *`,
-            [id]
-        );
-
-        if (patchResult.rows.length === 0) {
+        const existing = await model.findUnique({
+            where: { id }
+        });
+        if (!existing) {
             return res.status(404).json({ error: "Target registry profile record not active" });
         }
 
-        const party = patchResult.rows[0];
+        const party = await model.update({
+            where: { id },
+            data: { isDeleted: true }
+        });
+
         const actionType = role === 'supplier' ? 'SUPPLIER_REMOVED' : 'CUSTOMER_REMOVED';
         await logActivity(party.shopId, actionType, 'Owner', `${party.name} (${role}) removed from list`);
 
@@ -181,45 +179,44 @@ export const getCustomerPublicProfile = async (req, res) => {
     if (!validatePortalAccess(req, res, 'customer', id)) return;
 
     try {
-        // 1. Fetch Customer Info & Shop Details (with banking, print details)
-        const customerQuery = await db.query(
-            `SELECT c.*, s."businessName", s."phone" as "shopPhone", s."logoUrl", s."vpa", s."address" as "shopAddress",
+        // 1. Fetch Customer Info & Shop Details
+        const customerQuery = await prisma.$queryRaw`
+            SELECT c.*, s."businessName", s."phone" as "shopPhone", s."logoUrl", s."vpa", s."address" as "shopAddress",
                s."businessPhone", s."businessEmail", s."gstin" as "shopGstin", s."state" as "shopState", s."signatureUrl" as "shopSignatureUrl",
                s."bankDetails" as "shopBankDetails", s."invoiceTerms" as "shopInvoiceTerms",
                COALESCE((SELECT SUM(CASE WHEN l.type = 'DEBIT' THEN l.amount ELSE -l.amount END) FROM "LedgerEntry" l WHERE l."customerId" = c.id), 0.00) AS balance 
-               FROM "Customer" c
-               JOIN "Shop" s ON c."shopId" = s."id"
-               WHERE c."id" = $1 AND c."isDeleted" = FALSE`,
-            [id]
-        );
+            FROM "Customer" c
+            JOIN "Shop" s ON c."shopId" = s."id"
+            WHERE c."id" = ${id}::uuid AND c."isDeleted" = FALSE
+        `;
 
-        if (customerQuery.rows.length === 0) {
+        if (!customerQuery || customerQuery.length === 0) {
             return res.status(404).json({ error: "Customer profile not found or inactive." });
         }
 
         // 2. Fetch Personalized Ledger Timeline
-        const ledgerQuery = await db.query(
-            `SELECT * FROM "LedgerEntry" WHERE "customerId" = $1 ORDER BY "date" DESC`,
-            [id]
-        );
+        const ledgers = await prisma.ledgerEntry.findMany({
+            where: { customerId: id },
+            orderBy: { date: 'desc' }
+        });
 
         // 3. Fetch Invoices Copies
-        const invoiceQuery = await db.query(
-            `SELECT * FROM "Invoice" WHERE "customerId" = $1 ORDER BY "date" DESC`,
-            [id]
-        );
+        const invoices = await prisma.invoice.findMany({
+            where: { customerId: id },
+            orderBy: { date: 'desc' }
+        });
 
         // 4. Fetch Completed Vouchers Payment Receipts
-        const receiptQuery = await db.query(
-            `SELECT * FROM "PaymentReceipt" WHERE "customerId" = $1 ORDER BY "date" DESC`,
-            [id]
-        );
+        const receipts = await prisma.paymentReceipt.findMany({
+            where: { customerId: id },
+            orderBy: { date: 'desc' }
+        });
 
         res.json({
-            customer: customerQuery.rows[0],
-            ledgers: ledgerQuery.rows[0] ? ledgerQuery.rows : [],
-            invoices: invoiceQuery.rows ? invoiceQuery.rows : [],
-            receipts: receiptQuery.rows ? receiptQuery.rows : []
+            customer: customerQuery[0],
+            ledgers: ledgers || [],
+            invoices: invoices || [],
+            receipts: receipts || []
         });
     } catch (error) {
         console.error('🚨 Error fetching public customer portal metadata:', error);
@@ -234,41 +231,40 @@ export const getSupplierPublicProfile = async (req, res) => {
     if (!validatePortalAccess(req, res, 'supplier', id)) return;
 
     try {
-        const supplierQuery = await db.query(
-            `SELECT s.*, sh."businessName", sh."phone" as "shopPhone", sh."logoUrl", sh."vpa", sh."address" as "shopAddress",
+        const supplierQuery = await prisma.$queryRaw`
+            SELECT s.*, sh."businessName", sh."phone" as "shopPhone", sh."logoUrl", sh."vpa", sh."address" as "shopAddress",
                sh."businessPhone", sh."businessEmail", sh."gstin" as "shopGstin", sh."state" as "shopState", sh."signatureUrl" as "shopSignatureUrl",
                sh."bankDetails" as "shopBankDetails", sh."invoiceTerms" as "shopInvoiceTerms",
                COALESCE((SELECT SUM(CASE WHEN l.type = 'CREDIT' THEN l.amount ELSE -l.amount END) FROM "LedgerEntry" l WHERE l."supplierId" = s.id), 0.00) AS balance
-               FROM "Supplier" s
-               JOIN "Shop" sh ON s."shopId" = sh."id"
-               WHERE s."id" = $1 AND s."isDeleted" = FALSE`,
-            [id]
-        );
+            FROM "Supplier" s
+            JOIN "Shop" sh ON s."shopId" = sh."id"
+            WHERE s."id" = ${id}::uuid AND s."isDeleted" = FALSE
+        `;
 
-        if (supplierQuery.rows.length === 0) {
+        if (!supplierQuery || supplierQuery.length === 0) {
             return res.status(404).json({ error: "Supplier profile not found or inactive." });
         }
 
-        const ledgerQuery = await db.query(
-            `SELECT * FROM "LedgerEntry" WHERE "supplierId" = $1 ORDER BY "date" DESC`,
-            [id]
-        );
+        const ledgers = await prisma.ledgerEntry.findMany({
+            where: { supplierId: id },
+            orderBy: { date: 'desc' }
+        });
 
-        const pBillQuery = await db.query(
-            `SELECT * FROM "PurchaseBill" WHERE "supplierId" = $1 ORDER BY "date" DESC`,
-            [id]
-        );
+        const purchaseBills = await prisma.purchaseBill.findMany({
+            where: { supplierId: id },
+            orderBy: { date: 'desc' }
+        });
 
-        const receiptQuery = await db.query(
-            `SELECT * FROM "PaymentReceipt" WHERE "supplierId" = $1 ORDER BY "date" DESC`,
-            [id]
-        );
+        const receipts = await prisma.paymentReceipt.findMany({
+            where: { supplierId: id },
+            orderBy: { date: 'desc' }
+        });
 
         res.json({
-            supplier: supplierQuery.rows[0],
-            ledgers: ledgerQuery.rows[0] ? ledgerQuery.rows : [],
-            purchaseBills: pBillQuery.rows ? pBillQuery.rows : [],
-            receipts: receiptQuery.rows ? receiptQuery.rows : []
+            supplier: supplierQuery[0],
+            ledgers: ledgers || [],
+            purchaseBills: purchaseBills || [],
+            receipts: receipts || []
         });
     } catch (error) {
         console.error('🚨 Error fetching public supplier portal metadata:', error);
@@ -276,28 +272,27 @@ export const getSupplierPublicProfile = async (req, res) => {
     }
 };
 
-// 4. Fetch Single Party Full Details (GET /api/parties/detail/:id)
+// 4. Fetch Single Party Full Details
 export const getPartyDetail = async (req, res) => {
     const { id } = req.params;
     const { role } = req.query;
-    const targetTable = role === 'supplier' ? 'Supplier' : 'Customer';
+    const model = role === 'supplier' ? prisma.supplier : prisma.customer;
 
     try {
-        const result = await db.query(
-            `SELECT * FROM "${targetTable}" WHERE "id" = $1 AND "isDeleted" = FALSE`,
-            [id]
-        );
-        if (result.rows.length === 0) {
+        const party = await model.findFirst({
+            where: { id, isDeleted: false }
+        });
+        if (!party) {
             return res.status(404).json({ error: "Profile not found or inactive" });
         }
-        res.json(result.rows[0]);
+        res.json(party);
     } catch (error) {
-        console.error(`🚨 Error fetching details for ${targetTable}:`, error);
+        console.error(`🚨 Error fetching details for party:`, error);
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
 
-// 5. Update Party Registry (PUT /api/parties/update/:id)
+// 5. Update Party Registry
 export const updateParty = async (req, res) => {
     const { id } = req.params;
     const { role } = req.query;
@@ -306,36 +301,32 @@ export const updateParty = async (req, res) => {
         gstin, state, creditLimit, openingBalance
     } = req.body;
 
-    const targetTable = role === 'supplier' ? 'Supplier' : 'Customer';
+    const model = role === 'supplier' ? prisma.supplier : prisma.customer;
 
     try {
-        const result = await db.query(
-            `UPDATE "${targetTable}"
-             SET "name" = COALESCE($1, "name"),
-                 "phone" = COALESCE($2, "phone"),
-                 "email" = COALESCE($3, "email"),
-                 "billingAddress" = COALESCE($4, "billingAddress"),
-                 "shippingAddress" = COALESCE($5, "shippingAddress"),
-                 "gstin" = COALESCE($6, "gstin"),
-                 "state" = COALESCE($7, "state"),
-                 "creditLimit" = COALESCE($8, "creditLimit"),
-                 "openingBalance" = COALESCE($9, "openingBalance"),
-                 "shopName" = COALESCE($11, "shopName"),
-                 "updatedAt" = NOW()
-             WHERE "id" = $10 RETURNING *`,
-            [
-                name, phone, email, billingAddress, shippingAddress,
-                gstin, state, creditLimit !== undefined ? parseFloat(creditLimit) : null,
-                openingBalance !== undefined ? parseFloat(openingBalance) : null, id,
-                shopName !== undefined ? shopName : null
-            ]
-        );
-
-        if (result.rows.length === 0) {
+        const existing = await model.findUnique({
+            where: { id }
+        });
+        if (!existing) {
             return res.status(404).json({ error: "Profile not found or inactive" });
         }
 
-        const party = result.rows[0];
+        const party = await model.update({
+            where: { id },
+            data: {
+                name: name !== undefined ? name : undefined,
+                phone: phone !== undefined ? phone : undefined,
+                email: email !== undefined ? email : undefined,
+                billingAddress: billingAddress !== undefined ? billingAddress : undefined,
+                shippingAddress: shippingAddress !== undefined ? shippingAddress : undefined,
+                gstin: gstin !== undefined ? gstin : undefined,
+                state: state !== undefined ? state : undefined,
+                creditLimit: creditLimit !== undefined ? parseFloat(creditLimit) : undefined,
+                openingBalance: openingBalance !== undefined ? parseFloat(openingBalance) : undefined,
+                shopName: shopName !== undefined ? shopName : undefined,
+                updatedAt: new Date()
+            }
+        });
 
         if (openingBalance !== undefined) {
             const openBal = parseFloat(openingBalance || 0);
@@ -347,35 +338,48 @@ export const updateParty = async (req, res) => {
                 entryType = openBal > 0 ? 'CREDIT' : 'DEBIT';
             }
 
-            const checkLedger = await db.query(
-                `SELECT id FROM "LedgerEntry" WHERE "${isCustomer ? 'customerId' : 'supplierId'}" = $1 AND "particulars" = 'Opening Balance'`,
-                [id]
-            );
+            const checkLedger = await prisma.ledgerEntry.findFirst({
+                where: {
+                    customerId: isCustomer ? id : undefined,
+                    supplierId: !isCustomer ? id : undefined,
+                    particulars: 'Opening Balance'
+                }
+            });
 
-            if (checkLedger.rows.length > 0) {
+            if (checkLedger) {
                 if (openBal === 0) {
-                    await db.query(`DELETE FROM "LedgerEntry" WHERE id = $1`, [checkLedger.rows[0].id]);
+                    await prisma.ledgerEntry.delete({
+                        where: { id: checkLedger.id }
+                    });
                 } else {
-                    await db.query(
-                        `UPDATE "LedgerEntry" SET "type" = $1, "amount" = $2 WHERE id = $3`,
-                        [entryType, Math.abs(openBal), checkLedger.rows[0].id]
-                    );
+                    await prisma.ledgerEntry.update({
+                        where: { id: checkLedger.id },
+                        data: {
+                            type: entryType,
+                            amount: Math.abs(openBal)
+                        }
+                    });
                 }
             } else if (openBal !== 0) {
-                await db.query(
-                    `INSERT INTO "LedgerEntry" ("shopId", "${isCustomer ? 'customerId' : 'supplierId'}", "particulars", "type", "amount", "date")
-                     VALUES ($1, $2, $3, $4, $5, NOW())`,
-                    [party.shopId, id, 'Opening Balance', entryType, Math.abs(openBal)]
-                );
+                await prisma.ledgerEntry.create({
+                    data: {
+                        shopId: party.shopId,
+                        customerId: isCustomer ? id : null,
+                        supplierId: !isCustomer ? id : null,
+                        particulars: 'Opening Balance',
+                        type: entryType,
+                        amount: Math.abs(openBal)
+                    }
+                });
             }
         }
 
         const actionType = role === 'supplier' ? 'SUPPLIER_UPDATED' : 'CUSTOMER_UPDATED';
-        await logActivity(party.shopId, actionType, 'Owner', `Updated profile of ${name} (${role})`);
+        await logActivity(party.shopId, actionType, 'Owner', `Updated profile of ${name || party.name} (${role})`);
 
         res.json(party);
     } catch (error) {
-        console.error(`🚨 Error updating ${targetTable}:`, error);
+        console.error(`🚨 Error updating party registry:`, error);
         res.status(500).json({ error: "Internal Server Error" });
     }
 };

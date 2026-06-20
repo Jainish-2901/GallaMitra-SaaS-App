@@ -1,13 +1,5 @@
-import { db } from '../db.js';
+import { prisma } from '../utils/prisma.js';
 import { verifyShopToken } from '../utils/tokens.js';
-
-const SAFE_SHOP_FIELDS = `
-    id, "businessName", "ownerName", "email", "phone",
-    "logoUrl", "signatureUrl", "address", "businessPhone", "businessEmail",
-    "gstin", "state", "vpa", "isActive", "language",
-    "plan", "status", "approvedAt", "subscriptionExpiresAt", "createdAt", "updatedAt",
-    "requestedPlan", "planRequestStatus", "bankDetails", "invoiceTerms"
-`;
 
 export const shopAuth = async (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -21,24 +13,30 @@ export const shopAuth = async (req, res, next) => {
 
     try {
         const payload = verifyShopToken(token);
-        const result = await db.query(
-            `SELECT ${SAFE_SHOP_FIELDS} FROM "Shop"
-             WHERE id = $1 AND "isActive" = TRUE AND "status" = 'active'`,
-            [payload.shopId]
-        );
+        const shop = await prisma.shop.findFirst({
+            where: {
+                id: payload.shopId,
+                isActive: true,
+                status: 'active'
+            }
+        });
 
-        if (result.rows.length === 0) {
+        if (!shop) {
             return res.status(401).json({ error: 'Session expired or workspace inactive.' });
         }
 
-        const shop = result.rows[0];
-        const planRes = await db.query(
-            'SELECT "allowedTabs", "allowMultiBusiness" FROM "Plan" WHERE id = $1',
-            [shop.plan]
-        );
-        if (planRes.rows.length > 0) {
-            shop.allowedTabs = planRes.rows[0].allowedTabs;
-            shop.allowMultiBusiness = !!planRes.rows[0].allowMultiBusiness;
+        // Clean password hash and OTP fields
+        delete shop.passwordHash;
+        delete shop.otpCode;
+        delete shop.otpExpiresAt;
+
+        const plan = await prisma.plan.findUnique({
+            where: { id: shop.plan || '' }
+        });
+
+        if (plan) {
+            shop.allowedTabs = plan.allowedTabs;
+            shop.allowMultiBusiness = !!plan.allowMultiBusiness;
         } else {
             shop.allowedTabs = [
                 'dashboard', 'cust_list', 'supp_list', 'sale_ledger',

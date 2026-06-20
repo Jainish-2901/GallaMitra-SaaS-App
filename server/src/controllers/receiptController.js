@@ -1,6 +1,5 @@
-import { db } from '../db.js';
+import { prisma } from '../utils/prisma.js';
 import { logActivity } from '../activityLogger.js';
-
 
 // 1. Action: Generate Independent Payment Voucher Receipt (Customer / Supplier Contexts)
 export const createPaymentReceipt = async (req, res) => {
@@ -10,57 +9,65 @@ export const createPaymentReceipt = async (req, res) => {
         return res.status(400).json({ error: "Missing required metadata parameters for voucher mapping!" });
     }
 
-    const client = await db.connect();
     try {
-        await client.query('BEGIN');
-
         const parsedAmount = parseFloat(amount);
+        let createdReceipt = null;
 
-        // A. Log the parent payment receipt entry node
-        const receiptResult = await client.query(
-            `INSERT INTO "PaymentReceipt" ("receiptNo", "shopId", "customerId", "supplierId", "amount", "paymentMode", "remark")
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING *`,
-            [receiptNo, shopId, customerId || null, supplierId || null, parsedAmount, paymentMode || 'CASH', remark || null]
-        );
+        await prisma.$transaction(async (tx) => {
+            // A. Log the parent payment receipt entry node
+            createdReceipt = await tx.paymentReceipt.create({
+                data: {
+                    receiptNo,
+                    shopId,
+                    customerId: customerId || null,
+                    supplierId: supplierId || null,
+                    amount: parsedAmount,
+                    paymentMode: paymentMode || 'CASH',
+                    remark: remark || null
+                }
+            });
 
-        const receiptId = receiptResult.rows[0].id;
+            // B. Calculate shadow ledger parameters
+            const lastLedgerRow = await tx.ledgerEntry.findFirst({
+                where: { shopId },
+                orderBy: [
+                    { date: 'desc' },
+                    { id: 'desc' }
+                ],
+                select: { runningBalance: true }
+            });
+            let runningBal = parseFloat(lastLedgerRow?.runningBalance || 0);
 
-        // B. Calculate shadow ledger parameters
-        const lastLedgerRow = await client.query(
-            `SELECT "runningBalance" FROM "LedgerEntry" WHERE "shopId" = $1 ORDER BY "date" DESC, "id" DESC LIMIT 1`,
-            [shopId]
-        );
-        let runningBal = parseFloat(lastLedgerRow.rows[0]?.runningBalance || 0);
+            // Dynamic directional balance checking rules
+            let transactionType = 'CREDIT';
+            let particularsSummary = `Payment Voucher received from Customer via ${paymentMode || 'CASH'}. Code #${receiptNo}`;
 
-        // Dynamic directional balance checking rules
-        // Customer paying you reduces aggregate dues (CREDIT entry)
-        // You paying a supplier reduces your total liability (DEBIT entry)
-        let transactionType = 'CREDIT';
-        let particularsSummary = `Payment Voucher received from Customer via ${paymentMode}. Code #${receiptNo}`;
+            if (supplierId) {
+                transactionType = 'DEBIT';
+                particularsSummary = `Payment Voucher remitted to Supplier via ${paymentMode || 'CASH'}. Code #${receiptNo}`;
+            }
 
-        if (supplierId) {
-            transactionType = 'DEBIT';
-            particularsSummary = `Payment Voucher remitted to Supplier via ${paymentMode}. Code #${receiptNo}`;
-        }
+            runningBal += (transactionType === 'DEBIT' ? parsedAmount : -parsedAmount);
 
-        runningBal += (transactionType === 'DEBIT' ? parsedAmount : -parsedAmount);
+            await tx.ledgerEntry.create({
+                data: {
+                    shopId,
+                    customerId: customerId || null,
+                    supplierId: supplierId || null,
+                    particulars: particularsSummary,
+                    type: transactionType,
+                    amount: parsedAmount,
+                    runningBalance: runningBal,
+                    referenceId: createdReceipt.id
+                }
+            });
+        });
 
-        await client.query(
-            `INSERT INTO "LedgerEntry" ("shopId", "customerId", "supplierId", "particulars", "type", "amount", "runningBalance", "referenceId")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-            [shopId, customerId || null, supplierId || null, particularsSummary, transactionType, parsedAmount, runningBal, receiptId]
-        );
-
-        await client.query('COMMIT');
         await logActivity(shopId, 'PAYMENT_RECEIPT_CREATED', 'Owner', `Receipt #${receiptNo} (₹${parsedAmount})`);
-        res.status(201).json({ message: "Voucher processed cleanly", receipt: receiptResult.rows[0] });
+        res.status(201).json({ message: "Voucher processed cleanly", receipt: createdReceipt });
     } catch (error) {
-        await client.query('ROLLBACK');
         console.error('🚨 Error processing independent payment receipt voucher:', error);
         res.status(500).json({ error: "Internal Server Processing Error" });
-    } finally {
-        client.release();
     }
 };
 
@@ -68,40 +75,47 @@ export const createPaymentReceipt = async (req, res) => {
 export const deletePaymentReceipt = async (req, res) => {
     const { id } = req.params;
 
-    const client = await db.connect();
     try {
-        await client.query('BEGIN');
-
-        const receiptCheck = await client.query(`SELECT * FROM "PaymentReceipt" WHERE "id" = $1`, [id]);
-        if (receiptCheck.rows.length === 0) {
-            await client.query('ROLLBACK');
+        const receiptCheck = await prisma.paymentReceipt.findUnique({
+            where: { id }
+        });
+        if (!receiptCheck) {
             return res.status(404).json({ error: "Target voucher copy not active." });
         }
-        const shopId = receiptCheck.rows[0].shopId;
+        const shopId = receiptCheck.shopId;
 
-        await client.query(`DELETE FROM "PaymentReceipt" WHERE "id" = $1`, [id]);
-        await client.query(`DELETE FROM "LedgerEntry" WHERE "referenceId" = $1`, [id]);
+        await prisma.$transaction(async (tx) => {
+            await tx.paymentReceipt.delete({
+                where: { id }
+            });
+            await tx.ledgerEntry.deleteMany({
+                where: { referenceId: id }
+            });
 
-        const remainingEntries = await client.query(
-            `SELECT * FROM "LedgerEntry" WHERE "shopId" = $1 ORDER BY "date" ASC, "id" ASC`,
-            [shopId]
-        );
-        let rollingBalance = 0;
-        for (let row of remainingEntries.rows) {
-            const amt = parseFloat(row.amount);
-            rollingBalance += (row.type === 'DEBIT' ? amt : -amt);
-            await client.query(`UPDATE "LedgerEntry" SET "runningBalance" = $1 WHERE "id" = $2`, [rollingBalance, row.id]);
-        }
+            const remainingEntries = await tx.ledgerEntry.findMany({
+                where: { shopId },
+                orderBy: [
+                    { date: 'asc' },
+                    { id: 'asc' }
+                ]
+            });
 
-        await client.query('COMMIT');
-        await logActivity(shopId, 'PAYMENT_RECEIPT_DELETED', 'Owner', `Receipt #${receiptCheck.rows[0].receiptNo} deleted`);
+            let rollingBalance = 0;
+            for (let row of remainingEntries) {
+                const amt = parseFloat(row.amount);
+                rollingBalance += (row.type === 'DEBIT' ? amt : -amt);
+                await tx.ledgerEntry.update({
+                    where: { id: row.id },
+                    data: { runningBalance: rollingBalance }
+                });
+            }
+        });
+
+        await logActivity(shopId, 'PAYMENT_RECEIPT_DELETED', 'Owner', `Receipt #${receiptCheck.receiptNo} deleted`);
         res.json({ message: "Payment voucher deleted and audit balances synced safely!" });
     } catch (error) {
-        await client.query('ROLLBACK');
         console.error('🚨 Error inside independent voucher purge routine:', error);
         res.status(500).json({ error: "Internal Server Processing Error" });
-    } finally {
-        client.release();
     }
 };
 
@@ -109,11 +123,11 @@ export const deletePaymentReceipt = async (req, res) => {
 export const getShopReceiptHistoryList = async (req, res) => {
     const { shopId } = req.params;
     try {
-        const result = await db.query(
-            `SELECT * FROM "PaymentReceipt" WHERE "shopId" = $1 ORDER BY "createdAt" DESC`,
-            [shopId]
-        );
-        res.json(result.rows);
+        const result = await prisma.paymentReceipt.findMany({
+            where: { shopId },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(result);
     } catch (error) {
         console.error('🚨 Error pulling receipt history arrays:', error);
         res.status(500).json({ error: "Internal Server Error" });
@@ -125,95 +139,81 @@ export const editPaymentReceipt = async (req, res) => {
     const { id } = req.params;
     const { receiptNo, customerId, supplierId, amount, paymentMode, remark, date } = req.body;
 
-    const client = await db.connect();
     try {
-        await client.query('BEGIN');
-
-        const originalReceipt = await client.query(`SELECT * FROM "PaymentReceipt" WHERE "id" = $1`, [id]);
-        if (originalReceipt.rows.length === 0) {
-            await client.query('ROLLBACK');
+        const originalReceipt = await prisma.paymentReceipt.findUnique({
+            where: { id }
+        });
+        if (!originalReceipt) {
             return res.status(404).json({ error: "Target payment receipt identity mapping not found." });
         }
 
         const parsedAmount = parseFloat(amount);
-        const shopId = originalReceipt.rows[0].shopId;
+        const shopId = originalReceipt.shopId;
 
-        // A. Update PaymentReceipt table
-        const updatedReceipt = await client.query(
-            `UPDATE "PaymentReceipt"
-             SET "receiptNo" = COALESCE($1, "receiptNo"),
-                 "customerId" = COALESCE($2, "customerId"),
-                 "supplierId" = COALESCE($3, "supplierId"),
-                 "amount" = $4,
-                 "paymentMode" = COALESCE($5, "paymentMode"),
-                 "remark" = COALESCE($6, "remark"),
-                 "date" = COALESCE($7, "date"),
-                 "isEdited" = TRUE
-             WHERE "id" = $8
-             RETURNING *`,
-            [
-                receiptNo || null,
-                customerId || null,
-                supplierId || null,
-                parsedAmount,
-                paymentMode || null,
-                remark || null,
-                date || null,
-                id
-            ]
-        );
+        let updatedReceipt = null;
 
-        // B. Update corresponding LedgerEntry
-        let transactionType = 'CREDIT';
-        let particularsSummary = `Payment Voucher received from Customer via ${paymentMode || originalReceipt.rows[0].paymentMode}. Code #${receiptNo || originalReceipt.rows[0].receiptNo}`;
+        await prisma.$transaction(async (tx) => {
+            // A. Update PaymentReceipt table
+            updatedReceipt = await tx.paymentReceipt.update({
+                where: { id },
+                data: {
+                    receiptNo: receiptNo || undefined,
+                    customerId: customerId || null,
+                    supplierId: supplierId || null,
+                    amount: parsedAmount,
+                    paymentMode: paymentMode || undefined,
+                    remark: remark || null,
+                    date: date ? new Date(date) : undefined,
+                    isEdited: true
+                }
+            });
 
-        if (supplierId || (!customerId && originalReceipt.rows[0].supplierId)) {
-            transactionType = 'DEBIT';
-            particularsSummary = `Payment Voucher remitted to Supplier via ${paymentMode || originalReceipt.rows[0].paymentMode}. Code #${receiptNo || originalReceipt.rows[0].receiptNo}`;
-        }
+            // B. Update corresponding LedgerEntry
+            let transactionType = 'CREDIT';
+            let particularsSummary = `Payment Voucher received from Customer via ${paymentMode || originalReceipt.paymentMode}. Code #${receiptNo || originalReceipt.receiptNo}`;
 
-        await client.query(
-            `UPDATE "LedgerEntry"
-             SET "customerId" = COALESCE($1, "customerId"),
-                 "supplierId" = COALESCE($2, "supplierId"),
-                 "amount" = $3,
-                 "type" = $4,
-                 "particulars" = $5,
-                 "date" = COALESCE($6, "date"),
-                 "isEdited" = TRUE,
-                 "lastEditedAt" = NOW()
-             WHERE "referenceId" = $7`,
-            [
-                customerId || null,
-                supplierId || null,
-                parsedAmount,
-                transactionType,
-                particularsSummary,
-                date || null,
-                id
-            ]
-        );
+            if (supplierId || (!customerId && originalReceipt.supplierId)) {
+                transactionType = 'DEBIT';
+                particularsSummary = `Payment Voucher remitted to Supplier via ${paymentMode || originalReceipt.paymentMode}. Code #${receiptNo || originalReceipt.receiptNo}`;
+            }
 
-        // C. Recalculate running balance cascades for this shop
-        const remainingEntries = await client.query(
-            `SELECT * FROM "LedgerEntry" WHERE "shopId" = $1 ORDER BY "date" ASC, "id" ASC`,
-            [shopId]
-        );
-        let rollingBalance = 0;
-        for (let row of remainingEntries.rows) {
-            const amt = parseFloat(row.amount);
-            rollingBalance += (row.type === 'DEBIT' ? amt : -amt);
-            await client.query(`UPDATE "LedgerEntry" SET "runningBalance" = $1 WHERE "id" = $2`, [rollingBalance, row.id]);
-        }
+            await tx.ledgerEntry.updateMany({
+                where: { referenceId: id },
+                data: {
+                    customerId: customerId || null,
+                    supplierId: supplierId || null,
+                    amount: parsedAmount,
+                    type: transactionType,
+                    particulars: particularsSummary,
+                    date: date ? new Date(date) : undefined,
+                    isEdited: true,
+                    lastEditedAt: new Date()
+                }
+            });
 
-        await client.query('COMMIT');
-        await logActivity(shopId, 'PAYMENT_RECEIPT_EDITED', 'Owner', `Receipt #${receiptNo || originalReceipt.rows[0].receiptNo} updated (New Amount: ₹${parsedAmount})`);
-        res.json({ message: "Payment receipt updated and ledgers synced!", receipt: updatedReceipt.rows[0] });
+            // C. Recalculate running balance cascades for this shop
+            const remainingEntries = await tx.ledgerEntry.findMany({
+                where: { shopId },
+                orderBy: [
+                    { date: 'asc' },
+                    { id: 'asc' }
+                ]
+            });
+            let rollingBalance = 0;
+            for (let row of remainingEntries) {
+                const amt = parseFloat(row.amount);
+                rollingBalance += (row.type === 'DEBIT' ? amt : -amt);
+                await tx.ledgerEntry.update({
+                    where: { id: row.id },
+                    data: { runningBalance: rollingBalance }
+                });
+            }
+        });
+
+        await logActivity(shopId, 'PAYMENT_RECEIPT_EDITED', 'Owner', `Receipt #${receiptNo || originalReceipt.receiptNo} updated (New Amount: ₹${parsedAmount})`);
+        res.json({ message: "Payment receipt updated and ledgers synced!", receipt: updatedReceipt });
     } catch (error) {
-        await client.query('ROLLBACK');
         console.error('🚨 Error inside payment receipt editor pipeline:', error);
         res.status(500).json({ error: "Internal Server Processing Error" });
-    } finally {
-        client.release();
     }
 };

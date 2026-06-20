@@ -8,7 +8,7 @@ GallaMitra (ગલ્લામિત્ર) is a premium, feature-rich SaaS plat
 
 ## ⚡ Subscription Plans & Feature Matrix
 
-GallaMitra features a tiered SaaS plan architecture. Available workspace tabs and features dynamically adapt based on the active shop's plan. Subscription plans can be dynamically configured by Super Admins with custom pricing and flexible billing cycles, supporting:
+GallaMitra features a tiered SaaS plan architecture. Available workspace tabs and features dynamically adapt based on the active shop's plan. Subscription plans can be dynamically configured by Super Admins with custom pricing and flexible billing cycles (supporting Free/Forever, Trial, Monthly, 3-Month, 6-Month, and Yearly configurations), supporting:
 * **Starter** (₹0 Free): Core ledger management, Customer/Supplier lists, Sale/Purchase ledgers, Payment receipts.
 * **15-Day Free Trial** (₹0 Free Trial): Grants 15 days of full Professional features, including Reports, Export, and Deep Analytics.
 * **Growth** (₹299/mo): Starter features + Invoice builder, Purchase bills, Voucher list, Item registry, Logo upload.

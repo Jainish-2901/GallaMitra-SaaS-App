@@ -1,4 +1,4 @@
-import { db } from './db.js';
+import { prisma } from './utils/prisma.js';
 
 /**
  * Log an activity event to the database
@@ -9,11 +9,14 @@ import { db } from './db.js';
  */
 export const logActivity = async (shopId, type, actor, target) => {
     try {
-        await db.query(
-            `INSERT INTO "ActivityLog" ("shopId", "type", "actor", "target", "createdAt")
-             VALUES ($1, $2, $3, $4, NOW())`,
-            [shopId || null, type, actor, target]
-        );
+        await prisma.activityLog.create({
+            data: {
+                shopId: shopId || null,
+                type,
+                actor,
+                target
+            }
+        });
         console.log(`📝 Logged Activity: [${type}] by ${actor} on ${target}`);
     } catch (error) {
         console.error('🚨 Error saving activity log:', error);

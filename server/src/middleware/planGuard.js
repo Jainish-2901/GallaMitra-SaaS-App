@@ -1,12 +1,12 @@
-import { db } from '../db.js';
+import { prisma } from '../utils/prisma.js';
 
 export const requirePlanTab = (requiredTab) => async (req, res, next) => {
     try {
-        const planRes = await db.query(
-            'SELECT "allowedTabs" FROM "Plan" WHERE id = $1',
-            [req.shop.plan]
-        );
-        const allowedTabs = planRes.rows[0]?.allowedTabs || [];
+        const plan = await prisma.plan.findUnique({
+            where: { id: req.shop.plan || '' },
+            select: { allowedTabs: true }
+        });
+        const allowedTabs = plan?.allowedTabs || [];
         if (!allowedTabs.includes(requiredTab)) {
             return res.status(403).json({
                 error: `Your current plan does not include access to this feature (${requiredTab}).`

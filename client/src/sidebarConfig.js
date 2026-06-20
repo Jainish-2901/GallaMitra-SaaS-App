@@ -32,7 +32,7 @@ const buildPlanMeta = (plansList) => {
 
         acc[plan.id] = {
             label: plan.name,
-            price: isFree ? '₹0' : `₹${priceNum}/${plan.billingCycle === 'yearly' ? 'yr' : plan.billingCycle === '3_months' ? '3mo' : plan.billingCycle === '6_months' ? '6mo' : 'mo'}`,
+            price: isFree ? '₹0' : `₹${priceNum}/${plan.billingCycle === 'yearly' ? 'yr' : plan.billingCycle === 'trial' ? 'trial' : plan.billingCycle === '3_months' ? '3mo' : plan.billingCycle === '6_months' ? '6mo' : 'mo'}`,
             color: isFree ? '#059669' : isPremium ? '#7C3AED' : '#2563EB',
             bg: isFree ? '#ECFDF5' : isPremium ? '#F5F3FF' : '#EFF6FF',
             border: isFree ? '#A7F3D0' : isPremium ? '#DDD6FE' : '#BFDBFE',
@@ -132,7 +132,7 @@ export const getPlanMeta = (plansList) => {
 
         acc[plan.id] = {
             label: plan.name,
-            price: isFree ? '₹0' : `₹${priceNum}/${plan.billingCycle === 'yearly' ? 'yr' : plan.billingCycle === '3_months' ? '3mo' : plan.billingCycle === '6_months' ? '6mo' : 'mo'}`,
+            price: isFree ? '₹0' : `₹${priceNum}/${plan.billingCycle === 'yearly' ? 'yr' : plan.billingCycle === 'trial' ? 'trial' : plan.billingCycle === '3_months' ? '3mo' : plan.billingCycle === '6_months' ? '6mo' : 'mo'}`,
             color: isFree ? '#059669' : isPremium ? '#7C3AED' : '#2563EB',
             bg: isFree ? '#ECFDF5' : isPremium ? '#F5F3FF' : '#EFF6FF',
             border: isFree ? '#A7F3D0' : isPremium ? '#DDD6FE' : '#BFDBFE',

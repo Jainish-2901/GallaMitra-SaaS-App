@@ -17,7 +17,7 @@ The **GallaMitra Super Admin Dashboard** is a high-performance control console u
 
 ### 3. Plans & Module Permissions (`AdminSettingsPage.jsx`)
 * **Dynamic CRUD**: Add, edit, or delete billing plans in real-time.
-* **Flexible Durations**: Configure cycle frequencies, supporting **Free/Forever, Monthly, 3 Months, 6 Months, and Yearly** billing cycles.
+* **Flexible Durations**: Configure cycle frequencies, supporting **Free/Forever, 15-Day Trial, Monthly, 3 Months, 6 Months, and Yearly** billing cycles.
 * **Granular Tab Toggles**: Allocate page-level menu permissions (allowed tabs) dynamically per subscription tier (e.g., locking CSV reports to the Professional plan).
 * **Workspaces Rules**: Toggle auto-approval behaviors and multi-business capabilities on a plan level.
 

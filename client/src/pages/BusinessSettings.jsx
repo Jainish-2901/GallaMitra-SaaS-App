@@ -33,6 +33,8 @@ export default function BusinessSettings() {
     const formData = new FormData();
     formData.append('file', fileOrBase64);
     formData.append('upload_preset', uploadPreset);
+    formData.append('use_filename', 'true');
+    formData.append('unique_filename', 'false');
 
     const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
       method: 'POST',

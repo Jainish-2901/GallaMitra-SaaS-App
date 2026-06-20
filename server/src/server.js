@@ -4,7 +4,7 @@ import rateLimit from 'express-rate-limit';
 import http from 'http'; // Node internal HTTP module for self-ping loops
 import https from 'https'; // Node internal HTTPS module for deployed environments
 import { initDatabase } from './initDb.js';
-import { db } from './db.js';
+import { prisma } from './utils/prisma.js';
 import shopRoutes from './routes/shopRoutes.js';
 import partyRoutes from './routes/partyRoutes.js';
 import ledgerRoutes from './routes/ledgerRoutes.js';
@@ -58,9 +58,11 @@ app.use('/api/transactions', transactionalRoutes);
 app.get('/s/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await db.query('SELECT "fullUrl" FROM "SharedLinks" WHERE id = $1', [id]);
-        if (result.rows.length > 0) {
-            res.redirect(result.rows[0].fullUrl);
+        const link = await prisma.sharedLinks.findUnique({
+            where: { id }
+        });
+        if (link) {
+            res.redirect(link.fullUrl);
         } else {
             const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
             res.redirect(`${frontendUrl}/not-found?reason=invalid-link`);
@@ -78,10 +80,11 @@ app.post('/api/share/create', async (req, res) => {
         return res.status(400).json({ error: 'ID and fullUrl are required' });
     }
     try {
-        await db.query(
-            'INSERT INTO "SharedLinks" (id, "fullUrl") VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET "fullUrl" = $2',
-            [id, fullUrl]
-        );
+        await prisma.sharedLinks.upsert({
+            where: { id },
+            update: { fullUrl },
+            create: { id, fullUrl }
+        });
         res.json({ success: true });
     } catch (err) {
         console.error('Error saving short link:', err);
@@ -128,12 +131,12 @@ const startServer = async () => {
         keepServerAlive();
 
         // Run initial subscription checks on startup, then every 12 hours
-        console.log('dY" Starting periodic subscription warning/expiry check worker...');
+        console.log('⏰ Starting periodic subscription warning/expiry check worker...');
         processSubscriptionChecks().catch((err) => {
             console.error('Error running initial subscription checks:', err);
         });
         setInterval(() => {
-            console.log('dY" Running scheduled subscription warning/expiry check worker...');
+            console.log('⏰ Running scheduled subscription warning/expiry check worker...');
             processSubscriptionChecks().catch((err) => {
                 console.error('Error running scheduled subscription checks:', err);
             });

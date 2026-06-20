@@ -1,4 +1,4 @@
-import { db } from '../db.js';
+import { prisma } from '../utils/prisma.js';
 
 const assertBelongsToShop = async (res, shopId, resourceShopId) => {
     if (!resourceShopId) {
@@ -14,16 +14,16 @@ const assertBelongsToShop = async (res, shopId, resourceShopId) => {
 
 export const assertPartyAccess = (role) => async (req, res, next) => {
     const { id } = req.params;
-    const table = role === 'supplier' ? 'Supplier' : 'Customer';
+    const model = role === 'supplier' ? prisma.supplier : prisma.customer;
     try {
-        const result = await db.query(
-            `SELECT "shopId" FROM "${table}" WHERE id = $1 AND "isDeleted" = FALSE`,
-            [id]
-        );
-        if (result.rows.length === 0) {
+        const result = await model.findFirst({
+            where: { id, isDeleted: false },
+            select: { shopId: true }
+        });
+        if (!result) {
             return res.status(404).json({ error: 'Profile not found or inactive.' });
         }
-        if (!(await assertBelongsToShop(res, req.shop.id, result.rows[0].shopId))) return;
+        if (!(await assertBelongsToShop(res, req.shop.id, result.shopId))) return;
         next();
     } catch (error) {
         console.error('Party access check error:', error);
@@ -34,11 +34,14 @@ export const assertPartyAccess = (role) => async (req, res, next) => {
 export const assertLedgerAccess = async (req, res, next) => {
     const { id } = req.params;
     try {
-        const result = await db.query('SELECT "shopId" FROM "LedgerEntry" WHERE id = $1', [id]);
-        if (result.rows.length === 0) {
+        const result = await prisma.ledgerEntry.findUnique({
+            where: { id },
+            select: { shopId: true }
+        });
+        if (!result) {
             return res.status(404).json({ error: 'Ledger entry not found.' });
         }
-        if (!(await assertBelongsToShop(res, req.shop.id, result.rows[0].shopId))) return;
+        if (!(await assertBelongsToShop(res, req.shop.id, result.shopId))) return;
         next();
     } catch (error) {
         console.error('Ledger access check error:', error);
@@ -49,11 +52,14 @@ export const assertLedgerAccess = async (req, res, next) => {
 export const assertInvoiceAccess = async (req, res, next) => {
     const { id } = req.params;
     try {
-        const result = await db.query('SELECT "shopId" FROM "Invoice" WHERE id = $1', [id]);
-        if (result.rows.length === 0) {
+        const result = await prisma.invoice.findUnique({
+            where: { id },
+            select: { shopId: true }
+        });
+        if (!result) {
             return res.status(404).json({ error: 'Invoice not found.' });
         }
-        if (!(await assertBelongsToShop(res, req.shop.id, result.rows[0].shopId))) return;
+        if (!(await assertBelongsToShop(res, req.shop.id, result.shopId))) return;
         next();
     } catch (error) {
         console.error('Invoice access check error:', error);
@@ -64,11 +70,14 @@ export const assertInvoiceAccess = async (req, res, next) => {
 export const assertPurchaseBillAccess = async (req, res, next) => {
     const { id } = req.params;
     try {
-        const result = await db.query('SELECT "shopId" FROM "PurchaseBill" WHERE id = $1', [id]);
-        if (result.rows.length === 0) {
+        const result = await prisma.purchaseBill.findUnique({
+            where: { id },
+            select: { shopId: true }
+        });
+        if (!result) {
             return res.status(404).json({ error: 'Purchase bill not found.' });
         }
-        if (!(await assertBelongsToShop(res, req.shop.id, result.rows[0].shopId))) return;
+        if (!(await assertBelongsToShop(res, req.shop.id, result.shopId))) return;
         next();
     } catch (error) {
         console.error('Purchase bill access check error:', error);
@@ -84,11 +93,14 @@ export const assertPartyAccessFromQuery = async (req, res, next) => {
 export const assertReceiptAccess = async (req, res, next) => {
     const { id } = req.params;
     try {
-        const result = await db.query('SELECT "shopId" FROM "PaymentReceipt" WHERE id = $1', [id]);
-        if (result.rows.length === 0) {
+        const result = await prisma.paymentReceipt.findUnique({
+            where: { id },
+            select: { shopId: true }
+        });
+        if (!result) {
             return res.status(404).json({ error: 'Payment receipt not found.' });
         }
-        if (!(await assertBelongsToShop(res, req.shop.id, result.rows[0].shopId))) return;
+        if (!(await assertBelongsToShop(res, req.shop.id, result.shopId))) return;
         next();
     } catch (error) {
         console.error('Receipt access check error:', error);

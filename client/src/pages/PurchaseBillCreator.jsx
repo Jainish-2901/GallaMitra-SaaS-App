@@ -31,6 +31,8 @@ export default function PurchaseBillCreator({ t = {} }) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', uploadPreset);
+    formData.append('use_filename', 'true');
+    formData.append('unique_filename', 'false');
 
     const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
       method: 'POST',
