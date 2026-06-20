@@ -4,7 +4,7 @@ import { useToast } from '../context/ToastContext.jsx';
 import { Plus, Trash2, FileText, Loader2, Info, Tag, Percent, Zap, ChevronDown, Camera, Upload, Paperclip, X } from 'lucide-react';
 
 export default function PurchaseBillCreator({ t = {} }) {
-  const { activeShop, suppliers, postPurchaseBill } = useContext(AppContext);
+  const { activeShop, suppliers, postPurchaseBill, products } = useContext(AppContext);
   const toast = useToast();
 
   // Form states
@@ -12,8 +12,8 @@ export default function PurchaseBillCreator({ t = {} }) {
   const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
   
-  // Each item: { name, qty, rate, rowType }
-  const [items, setItems] = useState([{ name: '', qty: 1, rate: '', rowType: 'item' }]);
+  // Each item: { name, qty, rate, rowType, productId? }
+  const [items, setItems] = useState([{ name: '', qty: 1, rate: '', rowType: 'item', productId: '' }]);
   const [isGstActive, setIsGstActive] = useState(false);
   const [gstMode, setGstMode] = useState('WITHOUT_GST');
   const [customTaxRate, setCustomTaxRate] = useState(18);
@@ -22,6 +22,7 @@ export default function PurchaseBillCreator({ t = {} }) {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [discount, setDiscount] = useState('');
   const [customCharges, setCustomCharges] = useState([]);
+  const [useProduct, setUseProduct] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const uploadToCloudinary = async (file) => {
@@ -93,7 +94,7 @@ export default function PurchaseBillCreator({ t = {} }) {
   };
 
   const addNewItemRow = () => {
-    setItems([...items, { name: '', qty: 1, rate: '', rowType: 'item' }]);
+    setItems([...items, { name: '', qty: 1, rate: '', rowType: 'item', productId: '' }]);
   };
 
   const removeItemRow = (index) => {
@@ -124,6 +125,11 @@ export default function PurchaseBillCreator({ t = {} }) {
     e.preventDefault();
     if (!selectedSupplierId) {
       toast.warning(t.selectSupplierError || 'Please designate a target supplier profile!');
+      return;
+    }
+    const hasEmptyItem = items.some(it => !it.name || String(it.name).trim() === '');
+    if (hasEmptyItem) {
+      toast.warning('Please fill in all item descriptions before submitting.');
       return;
     }
 
@@ -168,7 +174,7 @@ export default function PurchaseBillCreator({ t = {} }) {
       toast.success(t.purchaseBillSuccess || 'Purchase bill logged and supplier ledger updated! 📦');
       setBillNo(`BILL-${Date.now().toString().slice(-6)}`);
       setBillDate(new Date().toISOString().split('T')[0]);
-      setItems([{ name: '', qty: 1, rate: '', rowType: 'item' }]);
+      setItems([{ name: '', qty: 1, rate: '', rowType: 'item', productId: '' }]);
       setDiscount('');
       setCustomCharges([]);
       setSlipDetails('');
@@ -300,7 +306,7 @@ export default function PurchaseBillCreator({ t = {} }) {
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-emerald-500 focus:bg-white font-bold text-slate-800"
                 >
                   <option value="">{t.chooseVendor || "-- Choose Vendor --"}</option>
-                  {suppliers.map(s => (
+                  {suppliers.filter(s => !s.isDeleted || s.id === selectedSupplierId).map(s => (
                     <option key={s.id} value={s.id}>{s.name} ({s.phone || 'No Contact'})</option>
                   ))}
                 </select>
@@ -364,6 +370,16 @@ export default function PurchaseBillCreator({ t = {} }) {
           </div>
 
           {/* 3. Items Table */}
+          <div className="flex items-center mb-2">
+            <label className="text-xs font-semibold mr-2" htmlFor="useProductTogglePB">Use Product List</label>
+            <input
+              id="useProductTogglePB"
+              type="checkbox"
+              checked={useProduct}
+              onChange={e => setUseProduct(e.target.checked)}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+            />
+          </div>
           <div className="space-y-3 pt-2">
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block font-mono border-b pb-1.5">
               {t.inventoryPurchaseRows || "Inventory Item purchase Rows"}
@@ -385,16 +401,48 @@ export default function PurchaseBillCreator({ t = {} }) {
                     return (
                       <tr key={index} className="bg-transparent hover:bg-slate-50/55 transition-colors">
                         {/* Description */}
-                        <td className="py-2 pl-1.5 pr-2.5">
-                          <input
-                            type="text"
-                            value={item.name}
-                            onChange={e => handleItemRowChange(index, 'name', e.target.value)}
-                            required
-                            placeholder={t.inventoryItemDetails || "Inventory Item / Service details"}
-                            className="w-full bg-transparent border-b border-transparent hover:border-slate-200 focus:border-slate-400 focus:bg-white rounded px-2 py-1 text-xs font-semibold text-slate-900 transition-all focus:outline-none"
-                          />
-                        </td>
+                         <td className="py-2 pl-1.5 pr-2.5">
+                           {useProduct ? (
+                             <>
+                               <select
+                                 value={item.productId || ''}
+                                 onChange={(e) => {
+                                   const val = e.target.value;
+                                   if (val) {
+                                     const prod = products.find(p => String(p.id) === String(val));
+                                     if (prod) {
+                                       const updated = [...items];
+                                       updated[index] = { ...updated[index], productId: val, name: prod.name, rate: prod.price || 0 };
+                                       setItems(updated);
+                                     }
+                                   } else {
+                                     const updated = [...items];
+                                     updated[index] = { ...updated[index], productId: '', name: '', rate: 0 };
+                                     setItems(updated);
+                                   }
+                                 }}
+                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-sans focus:outline-none text-slate-655 mb-1.5 block font-bold cursor-pointer"
+                               >
+                                 <option value="">-- Select Product --</option>
+                                 {products.map(p => (
+                                   <option key={p.id} value={String(p.id)}>{p.name} (₹{parseFloat(p.price || 0).toFixed(2)})</option>
+                                 ))}
+                               </select>
+                               {item.name && (
+                                 <span className="block mt-0.5 text-xs font-semibold text-slate-700">{item.name}</span>
+                               )}
+                             </>
+                           ) : (
+                              <input
+                                type="text"
+                                value={item.name}
+                                onChange={e => handleItemRowChange(index, 'name', e.target.value)}
+                                required
+                                placeholder={t.inventoryItemDetails || "Inventory Item / Service details"}
+                                className="w-full bg-transparent border-b border-transparent hover:border-slate-200 focus:border-slate-400 focus:bg-white rounded px-2 py-1 text-xs font-semibold text-slate-900 transition-all focus:outline-none"
+                              />
+                           )}
+                         </td>
 
                         {/* Qty */}
                         <td className="py-2 pr-2.5 text-center">

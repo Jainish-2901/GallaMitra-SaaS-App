@@ -2,15 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-primary: #2563EB;
+  --color-primary-light: #EFF6FF;
+  --color-primary-dark: #0F172A;
+  --gradient-primary: linear-gradient(135deg, #2563EB 0%, #60A5FA 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-primary: #7C3AED;
+    --color-primary-light: #F5F3FF;
+    --color-primary-dark: #F8FAFC;
+    --gradient-primary: linear-gradient(135deg, #7C3AED 0%, #C084FC 100%);
+  }
+}
+
 body {
   margin: 0;
   background-color: #F8FAFC;
-  /* Clean bright canvas background */
   color: #0F172A;
-  /* Deep solid dark text */
   font-family: 'Inter', sans-serif;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(12px) saturate(150%);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  color: var(--color-primary-dark);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 40px rgba(0, 0, 0, 0.15);
 }
 
 /* Vyapar Style High-Contrast Elevation Cards */

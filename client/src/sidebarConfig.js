@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Users, UserCheck, History, Scroll, FileSpreadsheet,
     FileCheck, FileDigit, PlusCircle, Layers, Receipt, Landmark,
-    BarChart3, Settings, Lock
+    BarChart3, Settings, Lock, Package
 } from 'lucide-react';
 
 // Helper to read cached plans from localStorage for fallback
@@ -90,13 +90,13 @@ const DEFAULT_PLAN_META = fallbackMeta || {
 
 const DEFAULT_PLAN_TABS = fallbackTabs || {
     starter: [
-        'dashboard', 'cust_list', 'supp_list',
+        'dashboard', 'cust_list', 'supp_list', 'product_list',
         'sale_ledger', 'purchase_ledger',
         'payment_receipt', 'receipt_list',
         'user_settings'
     ],
     growth: [
-        'dashboard', 'cust_list', 'supp_list',
+        'dashboard', 'cust_list', 'supp_list', 'product_list',
         'sale_ledger', 'sales_list',
         'purchase_ledger', 'purchase_list',
         'invoice_builder', 'invoice_list',
@@ -105,7 +105,7 @@ const DEFAULT_PLAN_TABS = fallbackTabs || {
         'user_settings', 'business_settings'
     ],
     professional: [
-        'dashboard', 'cust_list', 'supp_list',
+        'dashboard', 'cust_list', 'supp_list', 'product_list',
         'sale_ledger', 'sales_list',
         'purchase_ledger', 'purchase_list',
         'invoice_builder', 'invoice_list',
@@ -165,6 +165,8 @@ export const ownerTabs = [
     // ── Customers & Suppliers ───────────────────────────────────────────────
     { id: 'cust_list', label: 'Customer Management', icon: Users, group: 'Parties', plan: 'starter' },
     { id: 'supp_list', label: 'Supplier Registry', icon: UserCheck, group: 'Parties', plan: 'starter' },
+    { id: 'product_list', label: 'Products & Services', icon: Package, group: 'Parties', plan: 'starter' },
+    { id: 'product_management', label: 'Product Management', icon: Package, group: 'Parties', plan: 'starter' },
 
     // ── Ledgers ─────────────────────────────────────────────────────────────
     { id: 'sale_ledger', label: 'Sale Ledger', icon: History, group: 'Ledgers', plan: 'starter' },

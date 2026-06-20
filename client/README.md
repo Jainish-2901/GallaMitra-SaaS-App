@@ -9,7 +9,7 @@ GallaMitra (ગલ્લામિત્ર) is a premium, feature-rich SaaS plat
 ## ⚡ Subscription Plans & Feature Matrix
 
 GallaMitra features a tiered SaaS plan architecture. Available workspace tabs and features dynamically adapt based on the active shop's plan. Subscription plans can be dynamically configured by Super Admins with custom pricing and flexible billing cycles (supporting Free/Forever, Trial, Monthly, 3-Month, 6-Month, and Yearly configurations), supporting:
-* **Starter** (₹0 Free): Core ledger management, Customer/Supplier lists, Sale/Purchase ledgers, Payment receipts.
+* **Starter** (₹0 Free): Core ledger management, Customer/Supplier lists, Products & Services list, Sale/Purchase ledgers, Payment receipts.
 * **15-Day Free Trial** (₹0 Free Trial): Grants 15 days of full Professional features, including Reports, Export, and Deep Analytics.
 * **Growth** (₹299/mo): Starter features + Invoice builder, Purchase bills, Voucher list, Item registry, Logo upload.
 * **Scale** (₹799/3mo): Growth features + Reports & CSV exports, PDF exports, Deep Analytics, Unlimited entries.
@@ -26,6 +26,7 @@ Newly registered shop owners can test GallaMitra using the 15-day Free Trial. Th
 * **Dashboard Overview**: Continuous real-time sales & purchase indicators, quick entry panels.
 * **Customer Management (`cust_list`)**: Register customers, track credit/debit balances, view transaction history.
 * **Supplier Registry (`supp_list`)**: Track supplier liabilities, payments remitted, and balances.
+* **Products & Services (`product_list`)**: Register products/services, standard rates, and optional descriptions for billing auto-fill.
 * **Sale Ledger (`sale_ledger`)**: Simple tabular register of credit/cash sales.
 * **Purchase Ledger (`purchase_ledger`)**: Tabular register of inventory or goods purchased on credit.
 * **Payment Receipt Generator (`payment_receipt`)**: Issue immediate payment vouchers and receipts.

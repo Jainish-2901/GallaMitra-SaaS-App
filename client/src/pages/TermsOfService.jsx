@@ -12,7 +12,7 @@ export default function TermsOfService() {
             <FileText size={24} />
           </div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Terms of Service</h2>
-          <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">Last Updated: June 20, 2026</p>
+          <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">Last Updated: June 21, 2026</p>
         </div>
 
         {/* Content Matrix */}
@@ -37,7 +37,7 @@ export default function TermsOfService() {
               <AlertCircle size={18} className="text-blue-600" /> 2. Live Smart-Fetch Calculation Policy
             </h3>
             <p className="text-slate-500 text-xs md:text-sm">
-              GallaMitra processes values, taxes, and dynamic accounting totals based on raw inputs provided by the operator. The invoicing engine uses automated context lookups to separate GST and Non-GST records on the fly. These modules serve as tools for internal business optimization and do not substitute for official certified accounting records.
+              GallaMitra processes values, taxes, and dynamic accounting totals based on raw inputs provided by the operator. Saved products/services and their rates/prices serve as template data for auto-filling billing records and do not constitute legal value assessments. It is the operator's responsibility to verify that the final invoice/bill values are correct. The invoicing engine uses automated context lookups to separate GST and Non-GST records on the fly. These modules serve as tools for internal business optimization and do not substitute for official certified accounting records.
             </p>
           </div>
 

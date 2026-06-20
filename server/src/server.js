@@ -10,6 +10,7 @@ import partyRoutes from './routes/partyRoutes.js';
 import ledgerRoutes from './routes/ledgerRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
 import transactionalRoutes from './routes/transactionalRoutes.js';
+import productRoutes from './routes/productRoutes.js';
 import { processSubscriptionChecks } from './controllers/shopController.js';
 
 const app = express();
@@ -54,6 +55,7 @@ app.use('/api/parties', partyRoutes);
 app.use('/api/ledgers', ledgerRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/transactions', transactionalRoutes);
+app.use('/api/products', productRoutes);
 
 app.get('/s/:id', async (req, res) => {
     const { id } = req.params;

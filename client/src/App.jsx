@@ -20,6 +20,7 @@ import RegisterBusinessModal from './components/layout/RegisterBusinessModal.jsx
 import OwnerDashboard from './pages/OwnerDashboard.jsx';
 import CustomerManagement from './pages/CustomerManagement.jsx';
 import SupplierManagement from './pages/SupplierManagement.jsx';
+import ProductManagement from './pages/ProductManagement.jsx';
 import SaleLedger from './pages/SaleLedger.jsx';
 import PurchaseLedger from './pages/PurchaseLedger.jsx';
 import ReportsExport from './pages/ReportsExport.jsx';
@@ -243,6 +244,7 @@ export default function App() {
               {activeTab === 'dashboard' && <OwnerDashboard setActiveTab={setActiveTab} setSearchTerm={setSearchTerm} />}
               {activeTab === 'cust_list' && <CustomerManagement openTxModal={openTxModal} />}
               {activeTab === 'supp_list' && <SupplierManagement openTxModal={openTxModal} />}
+              {activeTab === 'product_list' && <ProductManagement />}
               {activeTab === 'sale_ledger' && <SaleLedger />}
               {activeTab === 'purchase_ledger' && <PurchaseLedger />}
               {activeTab === 'sales_list' && <SalesList t={t} />}

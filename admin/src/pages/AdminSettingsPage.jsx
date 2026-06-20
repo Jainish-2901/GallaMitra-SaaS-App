@@ -8,6 +8,8 @@ const TABS_REGISTRY = [
   { id: 'dashboard', label: 'Dashboard Overview', group: 'Overview' },
   { id: 'cust_list', label: 'Customer Management', group: 'Parties' },
   { id: 'supp_list', label: 'Supplier Registry', group: 'Parties' },
+  { id: 'product_list', label: 'Products & Services', group: 'Parties' },
+  { id: 'product_management', label: 'Product Management', group: 'Parties' },
   { id: 'sale_ledger', label: 'Sale Ledger', group: 'Ledgers' },
   { id: 'sales_list', label: 'Sales Item Registry', group: 'Ledgers' },
   { id: 'purchase_ledger', label: 'Purchase Ledger', group: 'Ledgers' },

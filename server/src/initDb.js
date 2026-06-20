@@ -142,6 +142,17 @@ export const initDatabase = async () => {
     "fullUrl" TEXT NOT NULL,
     "createdAt" TIMESTAMP DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS "Product" (
+      "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      "shopId" UUID NOT NULL,
+      "name" VARCHAR(255) NOT NULL,
+      "price" DECIMAL(12, 2) DEFAULT 0.00,
+      "description" TEXT,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      CONSTRAINT "fk_product_shop" FOREIGN KEY ("shopId") REFERENCES "Shop"("id") ON DELETE CASCADE
+    );
     `;
 
   // Safe column migrations — adds new columns without wiping data
@@ -251,13 +262,12 @@ export const initDatabase = async () => {
 
     -- Seed 15 Days Free Trial plan if not exists
     INSERT INTO "Plan" ("id", "name", "price", "billingCycle", "allowedTabs", "features", "requiresApproval", "allowMultiBusiness")
-    VALUES 
-    ('trial', '15 Days Free Trial', 0.00, 'trial', 
-     '["dashboard", "cust_list", "supp_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "user_settings", "business_settings"]',
-     '["Professional plan features", "Export PDF & CSV reports", "Deep financial analytics", "15 days free trial"]', 
-     FALSE, TRUE)
-    ON CONFLICT ("id") DO NOTHING;
-    `;
+    VALUES     ('trial', '15 Days Free Trial', 0.00, 'trial', 
+      '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "user_settings", "business_settings"]',
+      '["Professional plan features", "Export PDF & CSV reports", "Deep financial analytics", "15 days free trial"]', 
+      FALSE, TRUE)
+     ON CONFLICT ("id") DO NOTHING;
+     `;
 
   // High-speed query optimization indexes
   const createIndexesQuery = `
@@ -266,10 +276,11 @@ export const initDatabase = async () => {
     CREATE INDEX IF NOT EXISTS idx_ledger_shop_date  ON "LedgerEntry" ("shopId", "date");
     CREATE INDEX IF NOT EXISTS idx_ledger_cust_date  ON "LedgerEntry" ("customerId", "date");
     CREATE INDEX IF NOT EXISTS idx_ledger_supp_date  ON "LedgerEntry" ("supplierId", "date");
-    CREATE INDEX IF NOT EXISTS idx_invoice_shop      ON "Invoice" ("shopId", "createdAt");
-    CREATE INDEX IF NOT EXISTS idx_pbill_shop        ON "PurchaseBill" ("shopId", "createdAt");
-    CREATE INDEX IF NOT EXISTS idx_receipt_shop       ON "PaymentReceipt" ("shopId", "createdAt");
-    `;
+     CREATE INDEX IF NOT EXISTS idx_invoice_shop      ON "Invoice" ("shopId", "createdAt");
+     CREATE INDEX IF NOT EXISTS idx_pbill_shop        ON "PurchaseBill" ("shopId", "createdAt");
+     CREATE INDEX IF NOT EXISTS idx_receipt_shop       ON "PaymentReceipt" ("shopId", "createdAt");
+     CREATE INDEX IF NOT EXISTS idx_product_shop       ON "Product" ("shopId");
+     `;
 
   try {
     await db.query(createTablesQuery);
@@ -305,25 +316,45 @@ export const initDatabase = async () => {
             INSERT INTO "Plan" ("id", "name", "price", "billingCycle", "allowedTabs", "features", "requiresApproval", "allowMultiBusiness")
             VALUES 
             ('starter', 'Starter', 0.00, 'free', 
-             '["dashboard", "cust_list", "supp_list", "sale_ledger", "purchase_ledger", "payment_receipt", "receipt_list", "user_settings"]',
+             '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "purchase_ledger", "payment_receipt", "receipt_list", "user_settings"]',
              '["Core ledger management", "Customers & suppliers", "Sale & purchase ledgers", "Payment receipts"]', 
              FALSE, FALSE),
             ('growth', 'Growth', 149.00, 'monthly', 
-             '["dashboard", "cust_list", "supp_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "user_settings", "business_settings"]',
+             '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "user_settings", "business_settings"]',
              '["Starter plan features", "Invoice builder & purchase bills", "Voucher listings & history", "Business profile config"]', 
              TRUE, FALSE),
             ('professional', 'Professional', 299.00, 'monthly', 
-             '["dashboard", "cust_list", "supp_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "user_settings", "business_settings"]',
+             '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "user_settings", "business_settings"]',
              '["Growth plan features", "Export PDF & CSV reports", "Deep financial analytics", "Unlimited entries"]', 
              TRUE, TRUE),
             ('trial', '15 Days Free Trial', 0.00, 'trial', 
-             '["dashboard", "cust_list", "supp_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "user_settings", "business_settings"]',
+             '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "user_settings", "business_settings"]',
              '["Professional plan features", "Export PDF & CSV reports", "Deep financial analytics", "15 days free trial"]', 
              FALSE, TRUE)
             ON CONFLICT ("id") DO NOTHING;
             `;
       await db.query(seedPlansQuery);
       console.log('🌱 Seeded default subscription matrices (starter, growth, professional) safely.');
+    } else {
+      // Ensure existing default plans have the product_list tab
+      await db.query(`
+        UPDATE "Plan"
+        SET "allowedTabs" = '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "purchase_ledger", "payment_receipt", "receipt_list", "user_settings"]'
+        WHERE id = 'starter' AND NOT "allowedTabs"::jsonb @> '["product_list"]';
+
+        UPDATE "Plan"
+        SET "allowedTabs" = '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "user_settings", "business_settings"]'
+        WHERE id = 'growth' AND NOT "allowedTabs"::jsonb @> '["product_list"]';
+
+        UPDATE "Plan"
+        SET "allowedTabs" = '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "user_settings", "business_settings"]'
+        WHERE id = 'professional' AND NOT "allowedTabs"::jsonb @> '["product_list"]';
+
+        UPDATE "Plan"
+        SET "allowedTabs" = '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "user_settings", "business_settings"]'
+        WHERE id = 'trial' AND NOT "allowedTabs"::jsonb @> '["product_list"]';
+      `);
+      console.log('🔄 Checked and updated core plans to include Products & Services permissions.');
     }
 
     console.log('📚 GallaMitra Database schemas & migrations verified with 0% data loss loops.');

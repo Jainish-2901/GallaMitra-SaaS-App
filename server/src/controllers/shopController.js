@@ -494,7 +494,7 @@ export const loginShop = async (req, res) => {
             safeShop.allowMultiBusiness = !!planDetails.allowMultiBusiness;
         } else {
             safeShop.allowedTabs = [
-                'dashboard', 'cust_list', 'supp_list', 'sale_ledger',
+                'dashboard', 'cust_list', 'supp_list', 'product_list', 'sale_ledger',
                 'purchase_ledger', 'payment_receipt', 'receipt_list', 'user_settings'
             ]; // starter fallback
             safeShop.allowMultiBusiness = false;

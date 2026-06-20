@@ -212,7 +212,7 @@ export default function ReportsExport() {
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white font-bold text-slate-800"
               >
                 <option value="">-- Choose Target Customer Profile --</option>
-                {customers.map(c => (
+                {customers.filter(c => !c.isDeleted || c.id === selectedPartyId).map(c => (
                   <option key={c.id} value={c.id}>
                     {c.shopName ? `${c.shopName} (${c.name})` : c.name} {c.phone ? `(${c.phone})` : ''}
                   </option>
@@ -230,7 +230,7 @@ export default function ReportsExport() {
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white font-bold text-slate-800"
               >
                 <option value="">-- Choose Target Supplier Profile --</option>
-                {suppliers.map(s => (
+                {suppliers.filter(s => !s.isDeleted || s.id === selectedPartyId).map(s => (
                   <option key={s.id} value={s.id}>
                     {s.shopName ? `${s.shopName} (${s.name})` : s.name} {s.phone ? `(${s.phone})` : ''}
                   </option>

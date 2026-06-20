@@ -16,15 +16,15 @@ function getRowType(value) {
 }
 
 export default function InvoiceBuilder({ t = {} }) {
-  const { activeShop, customers, postInvoice } = useContext(AppContext);
+  const { activeShop, customers, postInvoice, products } = useContext(AppContext);
   const toast = useToast();
 
   // Form states
   const [invoiceNo, setInvoiceNo] = useState(`INV-${Date.now().toString().slice(-6)}`);
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
-  // Each item: { name, qty, rate, rowType }
-  const [items, setItems] = useState([{ name: '', qty: 1, rate: '', rowType: 'item' }]);
+  // Each item: { name, qty, rate, rowType, productId? }
+  const [items, setItems] = useState([{ name: '', qty: 1, rate: '', rowType: 'item', productId: '' }]);
   const [isGstActive, setIsGstActive] = useState(false);
   const [gstMode, setGstMode] = useState('WITHOUT_GST');
   const [customTaxRate, setCustomTaxRate] = useState(18);
@@ -34,11 +34,12 @@ export default function InvoiceBuilder({ t = {} }) {
   const [discount, setDiscount] = useState('');
   const [customCharges, setCustomCharges] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [useProduct, setUseProduct] = useState(true);
 
   const uploadToCloudinary = async (file) => {
     const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dopmlnvyg';
     const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'ml_default';
-    
+
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', uploadPreset);
@@ -49,12 +50,12 @@ export default function InvoiceBuilder({ t = {} }) {
       method: 'POST',
       body: formData
     });
-    
+
     if (!res.ok) {
       const errData = await res.json();
       throw new Error(errData.error?.message || 'Upload failed');
     }
-    
+
     const data = await res.json();
     return data.secure_url;
   };
@@ -104,7 +105,7 @@ export default function InvoiceBuilder({ t = {} }) {
   };
 
   const addNewItemRow = (type = 'item') => {
-    setItems([...items, { name: '', qty: 1, rate: '', rowType: type }]);
+    setItems([...items, { name: '', qty: 1, rate: '', rowType: type, productId: '' }]);
   };
 
   const removeItemRow = (index) => {
@@ -135,6 +136,11 @@ export default function InvoiceBuilder({ t = {} }) {
     e.preventDefault();
     if (!selectedCustomerId) {
       toast.warning(t.selectCustError || 'Please select a target customer profile!');
+      return;
+    }
+    const hasEmptyItem = items.some(it => !it.name || String(it.name).trim() === '');
+    if (hasEmptyItem) {
+      toast.warning('Please fill in all item descriptions before submitting.');
       return;
     }
     setSubmitting(true);
@@ -173,7 +179,7 @@ export default function InvoiceBuilder({ t = {} }) {
       toast.success(t.invoiceSuccess || 'Invoice processed and ledger updated! 🚀');
       setInvoiceNo(`INV-${Date.now().toString().slice(-6)}`);
       setInvoiceDate(new Date().toISOString().split('T')[0]);
-      setItems([{ name: '', qty: 1, rate: '', rowType: 'item' }]);
+      setItems([{ name: '', qty: 1, rate: '', rowType: 'item', productId: '' }]);
       setDiscount('');
       setCustomCharges([]);
       setDescription('');
@@ -202,8 +208,8 @@ export default function InvoiceBuilder({ t = {} }) {
             type="button"
             onClick={() => { setGstMode('WITH_GST'); setIsGstActive(true); }}
             className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all duration-200 ${gstMode === 'WITH_GST' && isGstActive
-                ? 'bg-slate-900 text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-900 font-semibold'
+              ? 'bg-slate-900 text-white shadow-sm'
+              : 'text-slate-500 hover:text-slate-900 font-semibold'
               }`}
           >
             With GST
@@ -212,8 +218,8 @@ export default function InvoiceBuilder({ t = {} }) {
             type="button"
             onClick={() => { setGstMode('WITHOUT_GST'); setIsGstActive(false); }}
             className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all duration-200 ${gstMode === 'WITHOUT_GST' && !isGstActive
-                ? 'bg-slate-900 text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-900 font-semibold'
+              ? 'bg-slate-900 text-white shadow-sm'
+              : 'text-slate-500 hover:text-slate-900 font-semibold'
               }`}
           >
             Non-GST
@@ -305,7 +311,7 @@ export default function InvoiceBuilder({ t = {} }) {
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:bg-white font-bold text-slate-800"
                 >
                   <option value="">{t.chooseParty || '-- Choose Customer Profile --'}</option>
-                  {customers.map(c => (
+                  {customers.filter(c => !c.isDeleted || c.id === selectedCustomerId).map(c => (
                     <option key={c.id} value={c.id}>{c.name} ({c.phone || 'No Phone'})</option>
                   ))}
                 </select>
@@ -370,6 +376,16 @@ export default function InvoiceBuilder({ t = {} }) {
 
           {/* 3. Items Table (Document layout) */}
           <div className="space-y-3 pt-2">
+            <div className="flex items-center mb-2">
+              <label className="text-xs font-semibold mr-2" htmlFor="useProductToggle">Use Product List</label>
+              <input
+                id="useProductToggle"
+                type="checkbox"
+                checked={useProduct}
+                onChange={e => setUseProduct(e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+              />
+            </div>
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block font-mono border-b pb-1.5">
               LINE ITEMS DESCRIPTION
             </span>
@@ -391,14 +407,46 @@ export default function InvoiceBuilder({ t = {} }) {
                       <tr key={index} className="bg-transparent hover:bg-slate-50/55 transition-colors">
                         {/* Description */}
                         <td className="py-2 pl-1.5 pr-2.5">
-                          <input
-                            type="text"
-                            value={item.name}
-                            onChange={e => handleItemRowChange(index, 'name', e.target.value)}
-                            required
-                            placeholder={t.itemDescPlaceholder || 'Item/Service Description'}
-                            className="w-full bg-transparent border-b border-transparent hover:border-slate-200 focus:border-slate-400 focus:bg-white rounded px-2 py-1 text-xs font-semibold text-slate-900 transition-all focus:outline-none"
-                          />
+                          {useProduct ? (
+                             <>
+                               <select
+                                 value={item.productId || ''}
+                                 onChange={(e) => {
+                                   const val = e.target.value;
+                                   if (val) {
+                                     const prod = products.find(p => String(p.id) === String(val));
+                                     if (prod) {
+                                       const updated = [...items];
+                                       updated[index] = { ...updated[index], productId: val, name: prod.name, rate: prod.price || 0 };
+                                       setItems(updated);
+                                     }
+                                   } else {
+                                     const updated = [...items];
+                                     updated[index] = { ...updated[index], productId: '', name: '', rate: 0 };
+                                     setItems(updated);
+                                   }
+                                 }}
+                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-sans focus:outline-none text-slate-655 mb-1.5 block font-bold cursor-pointer"
+                               >
+                                 <option value="">-- Select Product --</option>
+                                 {products.map(p => (
+                                   <option key={p.id} value={String(p.id)}>{p.name} (₹{parseFloat(p.price || 0).toFixed(2)})</option>
+                                 ))}
+                               </select>
+                               {item.name && (
+                                 <span className="block mt-0.5 text-xs font-semibold text-slate-700">{item.name}</span>
+                               )}
+                             </>
+                          ) : (
+                            <input
+                              type="text"
+                              value={item.name}
+                              onChange={e => handleItemRowChange(index, 'name', e.target.value)}
+                              required
+                              placeholder={t.itemDescPlaceholder || 'Item/Service Description'}
+                              className="w-full bg-transparent border-b border-transparent hover:border-slate-200 focus:border-slate-400 focus:bg-white rounded px-2 py-1 text-xs font-semibold text-slate-900 transition-all focus:outline-none"
+                            />
+                          )}
                         </td>
 
                         {/* Qty */}

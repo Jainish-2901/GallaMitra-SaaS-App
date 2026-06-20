@@ -86,8 +86,8 @@ export default function PaymentReceiptGen({ t = {} }) {
                         >
                             <option value="">{t.chooseProfileCard || "-- Choose Profile Card --"}</option>
                             {mode === 'customer'
-                                ? customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
-                                : suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)
+                                ? customers.filter(c => !c.isDeleted || c.id === selectedEntityId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+                                : suppliers.filter(s => !s.isDeleted || s.id === selectedEntityId).map(s => <option key={s.id} value={s.id}>{s.name}</option>)
                             }
                         </select>
                     </div>

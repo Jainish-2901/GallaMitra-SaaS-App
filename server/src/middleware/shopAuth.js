@@ -39,7 +39,7 @@ export const shopAuth = async (req, res, next) => {
             shop.allowMultiBusiness = !!plan.allowMultiBusiness;
         } else {
             shop.allowedTabs = [
-                'dashboard', 'cust_list', 'supp_list', 'sale_ledger',
+                'dashboard', 'cust_list', 'supp_list', 'product_list', 'sale_ledger',
                 'purchase_ledger', 'payment_receipt', 'receipt_list', 'user_settings'
             ];
             shop.allowMultiBusiness = false;

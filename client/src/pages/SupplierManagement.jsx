@@ -28,7 +28,7 @@ export default function SupplierManagement({ openTxModal }) {
   const [editingPartyId, setEditingPartyId] = useState(null);
 
   const filteredSuppliers = suppliers.filter(s =>
-    s.name.toLowerCase().includes(searchTerm.toLowerCase())
+    !s.isDeleted && s.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleSubmit = async (e) => {
@@ -50,7 +50,7 @@ export default function SupplierManagement({ openTxModal }) {
   };
 
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Remove "${name}" from your supplier list?`)) return;
+    if (!window.confirm(`Are you sure you want to delete supplier "${name}" from your active list? All of their historical bills, ledger entries, and payment history will be preserved in the system.`)) return;
     await removePartyRecord(id, 'supplier');
     toast.success(`Supplier "${name}" removed.`);
   };

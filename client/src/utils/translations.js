@@ -3,7 +3,7 @@
 
 export const translations = {
   en: {
-    dashboard: "Dashboard Overview", cust_list: "Customer Management", supp_list: "Supplier Registry",
+    dashboard: "Dashboard Overview", cust_list: "Customer Management", supp_list: "Supplier Registry", product_list: "Products & Services",
     sale_ledger: "Sale Ledger Reporting", sales_list: "Sales Registry List",
     purchase_ledger: "Purchase Ledger Reporting", purchase_list: "Purchase Tracking List",
     invoice_builder: "Invoice Builder Console", invoice_list: "Invoice List View",
@@ -156,7 +156,7 @@ export const translations = {
     saveVoucherBtn: "Save Payment Voucher",
   },
   gu: {
-    dashboard: "ડેશબોર્ડ વિહંગાવલોકન", cust_list: "ગ્રાહક સંચાલન", supp_list: "સપ્લાયર રજિસ્ટ્રી",
+    dashboard: "ડેશબોર્ડ વિહંગાવલોકન", cust_list: "ગ્રાહક સંચાલન", supp_list: "સપ્લાયર રજિસ્ટ્રી", product_list: "ઉત્પાદનો અને સેવાઓ",
     sale_ledger: "વેચાણ ખાતાવહી રિપોર્ટિંગ", sales_list: "વેચાણ રજિસ્ટ્રી સૂચિ",
     purchase_ledger: "ખરીદી ખાતાવહી રિપોર્ટિંગ", purchase_list: "ખરીદી ટ્રેકિંગ સૂચિ",
     invoice_builder: "ઇન્વોઇસ બિલ્ડર કન્સોલ", invoice_list: "ઇન્વોઇસ સૂચિ દૃશ્ય",
@@ -310,7 +310,7 @@ export const translations = {
     saveVoucherBtn: "ચુકવણી વાઉચર સાચવો",
   },
   hi: {
-    dashboard: "डैशबोर्ड सिंहावलोकन", cust_list: "ग्राहक प्रबंधन", supp_list: "आपूर्तिकर्ता रजिस्ट्री",
+    dashboard: "डैशबोर्ड सिंहावलोकन", cust_list: "ग्राहक प्रबंधन", supp_list: "आपूर्तिकर्ता रजिस्ट्री", product_list: "उत्पाद एवं सेवाएं",
     sale_ledger: "बिक्री बहीखाता रिपोर्टिंग", sales_list: "बिक्री रजिस्ट्री सूची",
     purchase_ledger: "खरीद बहीखाता रिपोर्टिंग", purchase_list: "खरीद ट्रैकिंग सूची",
     invoice_builder: "इन्वॉयस बिल्डर कंसोल", invoice_list: "इन्वॉयस सूची दृश्य",

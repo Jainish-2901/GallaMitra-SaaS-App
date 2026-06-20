@@ -117,7 +117,7 @@ export default function SaleLedger() {
             <select value={mlPartyId} onChange={e => setMlPartyId(e.target.value)} required
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 font-medium text-slate-800">
               <option value="">-- Select Customer --</option>
-              {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {customers.filter(c => !c.isDeleted).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div>

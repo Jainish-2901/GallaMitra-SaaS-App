@@ -6,7 +6,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 export default function DocumentListsView({ mode, t = {} }) {
-  const { activeShop, invoices, receipts, purchaseBills, deleteInvoice, editInvoice, deletePaymentReceipt, deletePurchaseBill, customers, suppliers, editPurchaseBill, editPaymentReceipt, fetchPortalShareLink, generateShortShareLink, loading } = useContext(AppContext);
+  const { activeShop, invoices, receipts, purchaseBills, deleteInvoice, editInvoice, deletePaymentReceipt, deletePurchaseBill, customers, suppliers, editPurchaseBill, editPaymentReceipt, fetchPortalShareLink, generateShortShareLink, loading, products } = useContext(AppContext);
   const toast = useToast();
 
   // Invoice Edit state variables
@@ -1461,7 +1461,7 @@ export default function DocumentListsView({ mode, t = {} }) {
                     required
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-semibold"
                   >
-                    {customers.map(c => (
+                    {customers.filter(c => !c.isDeleted || c.id === editCustomerId).map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
@@ -1474,14 +1474,34 @@ export default function DocumentListsView({ mode, t = {} }) {
                 <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
                   {editItems.map((item, index) => (
                     <div key={index} className="flex gap-2.5 items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
-                      <input
-                        type="text"
-                        value={item.name}
-                        onChange={e => handleEditRowChange(index, 'name', e.target.value)}
-                        required
-                        className="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold"
-                        placeholder="Item Description"
-                      />
+                      <div className="flex-1 flex flex-col gap-1">
+                        <select
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val) {
+                              const prod = products.find(p => p.id === val);
+                              if (prod) {
+                                handleEditRowChange(index, 'name', prod.name);
+                                handleEditRowChange(index, 'rate', prod.price || 0);
+                              }
+                            }
+                          }}
+                          className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-[9px] font-sans focus:outline-none text-slate-655 max-w-[150px] font-bold cursor-pointer"
+                        >
+                          <option value="">-- Saved Product --</option>
+                          {products.map(p => (
+                            <option key={p.id} value={p.id}>{p.name} (₹{parseFloat(p.price || 0).toFixed(2)})</option>
+                          ))}
+                        </select>
+                        <input
+                          type="text"
+                          value={item.name}
+                          onChange={e => handleEditRowChange(index, 'name', e.target.value)}
+                          required
+                          className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold"
+                          placeholder="Item Description"
+                        />
+                      </div>
                       <input
                         type="number"
                         min="1"
@@ -1696,7 +1716,7 @@ export default function DocumentListsView({ mode, t = {} }) {
                     required
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-semibold"
                   >
-                    {suppliers.map(s => (
+                    {suppliers.filter(s => !s.isDeleted || s.id === editPbSupplierId).map(s => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
@@ -1713,14 +1733,34 @@ export default function DocumentListsView({ mode, t = {} }) {
                     </div>
                   ) : editPbItems.map((item, index) => (
                     <div key={index} className="flex gap-2.5 items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
-                      <input
-                        type="text"
-                        value={item.name}
-                        onChange={e => handleEditPbRowChange(index, 'name', e.target.value)}
-                        required
-                        className="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold"
-                        placeholder="Item Description"
-                      />
+                      <div className="flex-1 flex flex-col gap-1">
+                        <select
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val) {
+                              const prod = products.find(p => p.id === val);
+                              if (prod) {
+                                handleEditPbRowChange(index, 'name', prod.name);
+                                handleEditPbRowChange(index, 'rate', prod.price || 0);
+                              }
+                            }
+                          }}
+                          className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-[9px] font-sans focus:outline-none text-slate-655 max-w-[150px] font-bold cursor-pointer"
+                        >
+                          <option value="">-- Saved Product --</option>
+                          {products.map(p => (
+                            <option key={p.id} value={p.id}>{p.name} (₹{parseFloat(p.price || 0).toFixed(2)})</option>
+                          ))}
+                        </select>
+                        <input
+                          type="text"
+                          value={item.name}
+                          onChange={e => handleEditPbRowChange(index, 'name', e.target.value)}
+                          required
+                          className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold"
+                          placeholder="Item Description"
+                        />
+                      </div>
                       <input
                         type="number"
                         min="1"
@@ -1940,7 +1980,7 @@ export default function DocumentListsView({ mode, t = {} }) {
                     required
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-semibold"
                   >
-                    {customers.map(c => (
+                    {customers.filter(c => !c.isDeleted || c.id === editReceiptCustomerId).map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
@@ -1951,7 +1991,7 @@ export default function DocumentListsView({ mode, t = {} }) {
                     required
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-semibold"
                   >
-                    {suppliers.map(s => (
+                    {suppliers.filter(s => !s.isDeleted || s.id === editReceiptSupplierId).map(s => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>

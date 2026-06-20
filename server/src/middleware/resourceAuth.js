@@ -107,3 +107,21 @@ export const assertReceiptAccess = async (req, res, next) => {
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+
+export const assertProductAccess = async (req, res, next) => {
+    const { id } = req.params;
+    try {
+        const result = await prisma.product.findUnique({
+            where: { id },
+            select: { shopId: true }
+        });
+        if (!result) {
+            return res.status(404).json({ error: 'Product not found.' });
+        }
+        if (!(await assertBelongsToShop(res, req.shop.id, result.shopId))) return;
+        next();
+    } catch (error) {
+        console.error('Product access check error:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+};

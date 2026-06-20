@@ -28,6 +28,7 @@ export const AppProvider = ({ children }) => {
     const [receipts, setReceipts] = useState([]);
     const [plans, setPlans] = useState([]);
     const [workspaces, setWorkspaces] = useState([]);
+    const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
 
     const [backendApiUrl, setBackendApiUrl] = useState(import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api');
@@ -152,6 +153,7 @@ export const AppProvider = ({ children }) => {
         setCustomers([]);
         setSuppliers([]);
         setLedgerHistory([]);
+        setProducts([]);
     };
 
     // Check if a pending shop got approved (re-try login)
@@ -183,15 +185,16 @@ export const AppProvider = ({ children }) => {
         setLoading(true);
         try {
             const headers = getAuthHeaders();
-            const [custRes, suppRes, ledgRes, invRes, pBillRes, recRes] = await Promise.all([
-                fetch(`${BACKEND_URL}/parties/list/${shopId}?role=customer`, { headers }),
-                fetch(`${BACKEND_URL}/parties/list/${shopId}?role=supplier`, { headers }),
+            const [custRes, suppRes, ledgRes, invRes, pBillRes, recRes, prodRes] = await Promise.all([
+                fetch(`${BACKEND_URL}/parties/list/${shopId}?role=customer&includeDeleted=true`, { headers }),
+                fetch(`${BACKEND_URL}/parties/list/${shopId}?role=supplier&includeDeleted=true`, { headers }),
                 fetch(`${BACKEND_URL}/ledgers/stream/${shopId}`, { headers }),
                 fetch(`${BACKEND_URL}/invoices/history/${shopId}`, { headers }),
                 fetch(`${BACKEND_URL}/transactions/purchase/history/${shopId}`, { headers }),
-                fetch(`${BACKEND_URL}/transactions/receipt/history/${shopId}`, { headers })
+                fetch(`${BACKEND_URL}/transactions/receipt/history/${shopId}`, { headers }),
+                fetch(`${BACKEND_URL}/products/list/${shopId}`, { headers })
             ]);
-            [custRes, suppRes, ledgRes, invRes, pBillRes, recRes].forEach(handleSessionExpiry);
+            [custRes, suppRes, ledgRes, invRes, pBillRes, recRes, prodRes].forEach(handleSessionExpiry);
 
             const parseList = async (res) => {
                 if (!res.ok) return [];
@@ -199,9 +202,9 @@ export const AppProvider = ({ children }) => {
                 return Array.isArray(data) ? data : [];
             };
 
-            const [custList, suppList, ledgList, invList, pBillList, recList] = await Promise.all([
+            const [custList, suppList, ledgList, invList, pBillList, recList, prodList] = await Promise.all([
                 parseList(custRes), parseList(suppRes), parseList(ledgRes),
-                parseList(invRes), parseList(pBillRes), parseList(recRes)
+                parseList(invRes), parseList(pBillRes), parseList(recRes), parseList(prodRes)
             ]);
 
             setCustomers(custList);
@@ -210,6 +213,7 @@ export const AppProvider = ({ children }) => {
             setInvoices(invList);
             setPurchaseBills(pBillList);
             setReceipts(recList);
+            setProducts(prodList);
         } catch (error) {
             console.error('🚨 Workspace sync crash:', error);
         } finally {
@@ -296,6 +300,63 @@ export const AppProvider = ({ children }) => {
             return { success: false };
         } catch (error) {
             return { success: false };
+        }
+    };
+
+    // 4.5. Products & Services CRUD
+    const addProductRecord = async (name, price, description) => {
+        if (!activeShop) return { success: false, error: 'Session context lost' };
+        try {
+            const response = await fetch(`${BACKEND_URL}/products/create`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ shopId: activeShop.id, name, price: parseFloat(price || 0), description })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                setProducts(prev => [data, ...prev]);
+                return { success: true, product: data };
+            }
+            return { success: false, error: data.error };
+        } catch (error) {
+            return { success: false, error: 'Server error' };
+        }
+    };
+
+    const updateProductRecord = async (id, name, price, description) => {
+        if (!activeShop) return { success: false, error: 'Session context lost' };
+        try {
+            const response = await fetch(`${BACKEND_URL}/products/update/${id}`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ name, price: parseFloat(price || 0), description })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                setProducts(prev => prev.map(p => p.id === id ? { ...p, ...data } : p));
+                return { success: true, product: data };
+            }
+            return { success: false, error: data.error };
+        } catch (error) {
+            return { success: false, error: 'Server error' };
+        }
+    };
+
+    const removeProductRecord = async (id) => {
+        if (!activeShop) return { success: false, error: 'Session context lost' };
+        try {
+            const response = await fetch(`${BACKEND_URL}/products/remove/${id}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            const data = await response.json();
+            if (response.ok) {
+                setProducts(prev => prev.filter(p => p.id !== id));
+                return { success: true };
+            }
+            return { success: false, error: data.error };
+        } catch (error) {
+            return { success: false, error: 'Server error' };
         }
     };
 
@@ -813,7 +874,7 @@ export const AppProvider = ({ children }) => {
 
     return (
         <AppContext.Provider value={{
-            activeShop, setActiveShop, pendingShop, setPendingShop, checkApprovalStatus, workspaces, fetchMyWorkspaces, customers, suppliers, ledgerHistory, invoices, purchaseBills, receipts, loading, plans,
+            activeShop, setActiveShop, pendingShop, setPendingShop, checkApprovalStatus, workspaces, fetchMyWorkspaces, customers, suppliers, ledgerHistory, invoices, purchaseBills, receipts, products, loading, plans,
             registerShopOwner, loginShopOwner, terminateSessionLogout,
             addPartyRecord, removePartyRecord, updatePartyRecord, fetchPartyDetail, postManualLedgerEntry,
             postInvoice, postPaymentReceipt, deleteInvoice, editInvoice, deletePaymentReceipt, postPurchaseBill,
@@ -821,7 +882,8 @@ export const AppProvider = ({ children }) => {
             fetchPublicCustomer, fetchPublicSupplier, fetchPlans, requestForgotPasswordOtp, submitResetPassword,
             requestPlanChange, installApp, isInstallable: !!installPrompt, editPurchaseBill, editManualLedgerEntry, deleteManualLedgerEntry,
             editPaymentReceipt, triggerReload: () => fetchAllWorkspaceData(activeShop?.id),
-            deleteBusinessWorkspace, platformUrls
+            deleteBusinessWorkspace, platformUrls,
+            addProductRecord, updateProductRecord, removeProductRecord
         }}>
             {children}
         </AppContext.Provider>

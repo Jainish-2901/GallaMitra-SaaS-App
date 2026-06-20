@@ -114,7 +114,7 @@ export default function PurchaseLedger() {
             <select value={mlPartyId} onChange={e => setMlPartyId(e.target.value)} required
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 font-medium text-slate-800">
               <option value="">-- Select Supplier --</option>
-              {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {suppliers.filter(s => !s.isDeleted).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div>

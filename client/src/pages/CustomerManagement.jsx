@@ -29,7 +29,7 @@ export default function CustomerManagement({ openTxModal }) {
   const [editingPartyId, setEditingPartyId] = useState(null);
 
   const filteredCustomers = customers.filter(c =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase())
+    !c.isDeleted && c.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleSubmit = async (e) => {
@@ -51,7 +51,7 @@ export default function CustomerManagement({ openTxModal }) {
   };
 
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Remove "${name}" from your customer list?`)) return;
+    if (!window.confirm(`Are you sure you want to delete customer "${name}" from your active list? All of their historical invoices, ledger entries, and payment history will be preserved in the system.`)) return;
     await removePartyRecord(id, 'customer');
     toast.success(`Customer "${name}" removed.`);
   };
