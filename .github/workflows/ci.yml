@@ -27,6 +27,8 @@ jobs:
           npm ci
 
       - name: Validate Prisma Schema
+        env:
+          DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
         run: |
           cd server
           npx prisma validate
