@@ -4,6 +4,9 @@ const ASSETS_TO_CACHE = [
   '/index.html',
   '/favicon.ico',
   '/logo.png',
+  '/logo-192.png',
+  '/logo-512.png',
+  '/logo-maskable.png',
   '/manifest.json'
 ];
 
@@ -50,9 +53,10 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
 
-  // Skip non-GET, API routes, and ALL Vite dev-server requests
+  // Skip non-GET, non-HTTP/HTTPS, API routes, and ALL Vite dev-server requests
   if (
     event.request.method !== 'GET' ||
+    !requestUrl.protocol.startsWith('http') ||
     requestUrl.pathname.startsWith('/api') ||
     isViteDevRequest(requestUrl)
   ) {

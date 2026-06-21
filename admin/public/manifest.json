@@ -3,19 +3,19 @@
   "name": "GallaMitra Super Admin Console",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/logo-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "/logo.png",
+      "src": "/logo-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "/logo.png",
+      "src": "/logo-maskable.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"

@@ -128,19 +128,19 @@ export default function PublicPortal() {
         name: cleanShopName,
         icons: [
           {
-            src: window.location.origin + "/logo.png",
+            src: window.location.origin + "/logo-192.png",
             type: "image/png",
             sizes: "192x192",
             purpose: "any"
           },
           {
-            src: window.location.origin + "/logo.png",
+            src: window.location.origin + "/logo-512.png",
             type: "image/png",
             sizes: "512x512",
             purpose: "any"
           },
           {
-            src: window.location.origin + "/logo.png",
+            src: window.location.origin + "/logo-maskable.png",
             type: "image/png",
             sizes: "512x512",
             purpose: "maskable"
@@ -177,6 +177,15 @@ export default function PublicPortal() {
 
       return () => {
         URL.revokeObjectURL(manifestUrl);
+        // Restore default manifest when navigating away from public portal
+        let resetLink = document.querySelector('link[rel="manifest"]');
+        if (resetLink) {
+          resetLink.setAttribute('href', '/manifest.json');
+        }
+        let resetAppleTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+        if (resetAppleTitle) {
+          resetAppleTitle.setAttribute('content', 'GallaMitra');
+        }
       };
     }
   }, [loading, portalData, profile, portalType, entityId]);

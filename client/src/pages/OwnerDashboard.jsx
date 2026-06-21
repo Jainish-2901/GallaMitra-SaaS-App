@@ -6,7 +6,8 @@ import { translations } from '../utils/translations.js';
 import AnalyticsCards from '../components/AnalyticsCards.jsx';
 import {
   PlusCircle, Receipt, FileCheck, Users, UserCheck, Scroll,
-  History, FileSpreadsheet, Layers, FileDigit, BarChart3, Settings
+  History, FileSpreadsheet, Layers, FileDigit, BarChart3, Settings,
+  Package
 } from 'lucide-react';
 
 export default function OwnerDashboard({ setActiveTab, setSearchTerm }) {
@@ -71,6 +72,7 @@ export default function OwnerDashboard({ setActiveTab, setSearchTerm }) {
     { label: 'Purchases List', tab: 'purchase_list', actionKey: 'purchasesList', color: 'bg-orange-50 text-orange-850 border-orange-200/50 hover:bg-orange-100/50', icon: Scroll },
     { label: 'CSV Reports', tab: 'reports', actionKey: 'csvReports', color: 'bg-orange-50 text-orange-850 border-orange-200/50 hover:bg-orange-100/50', icon: FileDigit },
     { label: 'Analytics', tab: 'analytics', actionKey: 'analytics', color: 'bg-pink-50 text-pink-850 border-pink-200/50 hover:bg-pink-100/50', icon: BarChart3 },
+    { label: 'Products & Services', tab: 'product_list', actionKey: 'product_list', color: 'bg-emerald-50 text-emerald-850 border-emerald-200/50 hover:bg-emerald-100/50', icon: Package },
     { label: 'Profile', tab: 'user_settings', actionKey: 'profile', color: 'bg-slate-50 text-slate-800 border-slate-200/50 hover:bg-slate-100/50', icon: Settings },
     { label: 'Business Config', tab: 'business_settings', actionKey: 'businessConfig', color: 'bg-teal-50 text-teal-800 border-teal-200/50 hover:bg-teal-100/50', icon: Settings },
   ];

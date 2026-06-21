@@ -5,7 +5,8 @@ import { AppContext } from '../../context/AppContext.jsx';
 import { translations } from '../../utils/translations.js';
 import {
   Store, Plus, Calendar, Clock, Users, UserCheck,
-  PlusCircle, FileCheck, Scroll, Receipt, ChevronDown, Menu
+  PlusCircle, FileCheck, Scroll, Receipt, ChevronDown, Menu,
+  Package
 } from 'lucide-react';
 import RegisterBusinessModal from './RegisterBusinessModal.jsx';
 
@@ -41,6 +42,7 @@ export default function TopBar({ activeTab, setActiveTab, setSearchTerm, isMobil
     { label: 'Add Customer', tab: 'cust_list', actionKey: 'addCustomer', icon: Users },
     { label: 'Add Supplier', tab: 'supp_list', actionKey: 'addSupplier', icon: UserCheck },
     { label: 'Sales List', tab: 'sales_list', actionKey: 'salesList', icon: Scroll },
+    { label: 'Products & Services', tab: 'product_list', actionKey: 'product_list', icon: Package },
   ];
 
   const allowed = activeShop?.allowedTabs || [];
