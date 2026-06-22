@@ -4,7 +4,7 @@ import { deleteFromCloudinary } from '../utils/cloudinary.js';
 
 // 1. Action: Log a Fresh Supplier Purchase Bill and Append to Ledgers
 export const createPurchaseBill = async (req, res) => {
-    const { billNo, shopId, supplierId, itemsArray, attachedImgUrl, slipDetails, totalAmount, advancePayment } = req.body;
+    const { billNo, shopId, supplierId, itemsArray, attachedImgUrl, slipDetails, totalAmount, advancePayment, paymentMode } = req.body;
 
     if (!shopId || !supplierId || !totalAmount) {
         return res.status(400).json({ error: "Missing required parameters for purchase liability mapping!" });
@@ -13,6 +13,7 @@ export const createPurchaseBill = async (req, res) => {
     try {
         const parsedAmount = parseFloat(totalAmount);
         const parsedAdvancePayment = parseFloat(advancePayment || 0);
+        const parsedPaymentMode = paymentMode || 'CASH';
         let createdBill = null;
 
         await prisma.$transaction(async (tx) => {
@@ -26,7 +27,8 @@ export const createPurchaseBill = async (req, res) => {
                     attachedImgUrl: attachedImgUrl || null,
                     slipDetails: slipDetails || null,
                     totalAmount: parsedAmount,
-                    advancePayment: parsedAdvancePayment
+                    advancePayment: parsedAdvancePayment,
+                    paymentMode: parsedPaymentMode
                 }
             });
 
@@ -40,19 +42,62 @@ export const createPurchaseBill = async (req, res) => {
                 select: { runningBalance: true }
             });
             let runningBal = parseFloat(lastLedgerRow?.runningBalance || 0);
-            runningBal -= (parsedAmount - parsedAdvancePayment); // Purchase bills increase your payable liability (CREDIT position status) less advance payment
 
-            await tx.ledgerEntry.create({
-                data: {
-                    shopId,
-                    supplierId,
-                    particulars: `Purchase Bill logged reference code #${billNo || 'N/A'}${parsedAdvancePayment > 0 ? ` (Advance Paid: ₹${parsedAdvancePayment.toFixed(2)})` : ''}`,
-                    type: 'CREDIT',
-                    amount: parsedAmount - parsedAdvancePayment,
-                    runningBalance: runningBal,
-                    referenceId: createdBill.id
-                }
-            });
+            if (parsedAdvancePayment > 0) {
+                const receiptNo = `PV-ADV-${billNo || createdBill.id.slice(0, 8)}`;
+                const createdReceipt = await tx.paymentReceipt.create({
+                    data: {
+                        receiptNo,
+                        shopId,
+                        supplierId,
+                        amount: parsedAdvancePayment,
+                        paymentMode: parsedPaymentMode,
+                        remark: `Advance payment remitted for Purchase Bill #${billNo || 'N/A'}`,
+                        purchaseBillId: createdBill.id
+                    }
+                });
+
+                // CREDIT for purchase bill
+                runningBal -= parsedAmount;
+                await tx.ledgerEntry.create({
+                    data: {
+                        shopId,
+                        supplierId,
+                        particulars: `Purchase Bill logged code #${billNo || 'N/A'}`,
+                        type: 'CREDIT',
+                        amount: parsedAmount,
+                        runningBalance: runningBal,
+                        referenceId: createdBill.id
+                    }
+                });
+
+                // DEBIT for payment receipt
+                runningBal += parsedAdvancePayment;
+                await tx.ledgerEntry.create({
+                    data: {
+                        shopId,
+                        supplierId,
+                        particulars: `Advance Payment remitted via ${parsedPaymentMode} for Purchase Bill #${billNo || 'N/A'}`,
+                        type: 'DEBIT',
+                        amount: parsedAdvancePayment,
+                        runningBalance: runningBal,
+                        referenceId: createdReceipt.id
+                    }
+                });
+            } else {
+                runningBal -= parsedAmount;
+                await tx.ledgerEntry.create({
+                    data: {
+                        shopId,
+                        supplierId,
+                        particulars: `Purchase Bill logged code #${billNo || 'N/A'}`,
+                        type: 'CREDIT',
+                        amount: parsedAmount,
+                        runningBalance: runningBal,
+                        referenceId: createdBill.id
+                    }
+                });
+            }
         });
 
         await logActivity(shopId, 'PURCHASE_BILL_CREATED', 'Owner', `Purchase Bill #${billNo || 'N/A'} (₹${parsedAmount})`);
@@ -84,6 +129,21 @@ export const deletePurchaseBill = async (req, res) => {
         }
 
         await prisma.$transaction(async (tx) => {
+            // Find connected receipt
+            const linkedReceipt = await tx.paymentReceipt.findFirst({
+                where: { purchaseBillId: id }
+            });
+            if (linkedReceipt) {
+                // Delete the receipt ledger entry
+                await tx.ledgerEntry.deleteMany({
+                    where: { referenceId: linkedReceipt.id }
+                });
+                // Delete the receipt
+                await tx.paymentReceipt.delete({
+                    where: { id: linkedReceipt.id }
+                });
+            }
+
             await tx.purchaseBill.delete({
                 where: { id }
             });
@@ -136,7 +196,7 @@ export const getShopPurchaseBillHistoryList = async (req, res) => {
 // 4. Action: 100% Override Edit on Purchase Bill and Recalculate App Dues Matrix
 export const editPurchaseBill = async (req, res) => {
     const { id } = req.params;
-    const { billNo, supplierId, date, itemsArray, slipDetails, totalAmount, attachedImgUrl, advancePayment } = req.body;
+    const { billNo, supplierId, date, itemsArray, slipDetails, totalAmount, attachedImgUrl, advancePayment, paymentMode } = req.body;
 
     try {
         const originalBill = await prisma.purchaseBill.findUnique({
@@ -148,6 +208,7 @@ export const editPurchaseBill = async (req, res) => {
 
         const parsedAmount = parseFloat(totalAmount);
         const parsedAdvancePayment = parseFloat(advancePayment !== undefined ? (advancePayment || 0) : (originalBill.advancePayment || 0));
+        const parsedPaymentMode = paymentMode || originalBill.paymentMode || 'CASH';
         const shopId = originalBill.shopId;
         const attachedImgUrlToSave = attachedImgUrl !== undefined ? (attachedImgUrl || null) : originalBill.attachedImgUrl;
 
@@ -172,23 +233,92 @@ export const editPurchaseBill = async (req, res) => {
                     slipDetails: slipDetails || null,
                     totalAmount: parsedAmount,
                     advancePayment: parsedAdvancePayment,
+                    paymentMode: parsedPaymentMode,
                     attachedImgUrl: attachedImgUrlToSave,
                     isEdited: true
                 }
             });
 
-            // B. Update corresponding LedgerEntry
+            // B. Update corresponding CREDIT LedgerEntry
             await tx.ledgerEntry.updateMany({
-                where: { referenceId: id },
+                where: { referenceId: id, type: 'CREDIT' },
                 data: {
                     supplierId: supplierId || undefined,
-                    amount: parsedAmount - parsedAdvancePayment,
-                    particulars: `Purchase Bill logged reference code #${billNo || originalBill.billNo || 'N/A'}${parsedAdvancePayment > 0 ? ` (Advance Paid: ₹${parsedAdvancePayment.toFixed(2)})` : ''}`,
+                    amount: parsedAmount,
+                    particulars: `Purchase Bill logged reference code #${billNo || originalBill.billNo || 'N/A'}`,
                     date: date ? new Date(date) : undefined,
                     isEdited: true,
                     lastEditedAt: new Date()
                 }
             });
+
+            // Handle linked advance payment receipt
+            const existingReceipt = await tx.paymentReceipt.findFirst({
+                where: { purchaseBillId: id }
+            });
+
+            if (parsedAdvancePayment > 0) {
+                if (existingReceipt) {
+                    await tx.paymentReceipt.update({
+                        where: { id: existingReceipt.id },
+                        data: {
+                            receiptNo: `PV-ADV-${billNo || originalBill.billNo || originalBill.id.slice(0, 8)}`,
+                            supplierId: supplierId || undefined,
+                            amount: parsedAdvancePayment,
+                            paymentMode: parsedPaymentMode,
+                            remark: `Advance payment remitted for Purchase Bill #${billNo || 'N/A'}`,
+                            date: date ? new Date(date) : undefined,
+                            isEdited: true
+                        }
+                    });
+
+                    await tx.ledgerEntry.updateMany({
+                        where: { referenceId: existingReceipt.id, type: 'DEBIT' },
+                        data: {
+                            supplierId: supplierId || undefined,
+                            amount: parsedAdvancePayment,
+                            particulars: `Advance Payment remitted via ${parsedPaymentMode} for Purchase Bill #${billNo || 'N/A'}`,
+                            date: date ? new Date(date) : undefined,
+                            isEdited: true,
+                            lastEditedAt: new Date()
+                        }
+                    });
+                } else {
+                    const receiptNo = `PV-ADV-${billNo || originalBill.billNo || originalBill.id.slice(0, 8)}`;
+                    const createdReceipt = await tx.paymentReceipt.create({
+                        data: {
+                            receiptNo,
+                            shopId,
+                            supplierId: supplierId || originalBill.supplierId,
+                            amount: parsedAdvancePayment,
+                            paymentMode: parsedPaymentMode,
+                            remark: `Advance payment remitted for Purchase Bill #${billNo || 'N/A'}`,
+                            purchaseBillId: id,
+                            date: date ? new Date(date) : undefined
+                        }
+                    });
+
+                    await tx.ledgerEntry.create({
+                        data: {
+                            shopId,
+                            supplierId: supplierId || originalBill.supplierId,
+                            particulars: `Advance Payment remitted via ${parsedPaymentMode} for Purchase Bill #${billNo || 'N/A'}`,
+                            type: 'DEBIT',
+                            amount: parsedAdvancePayment,
+                            runningBalance: 0,
+                            referenceId: createdReceipt.id,
+                            date: date ? new Date(date) : undefined
+                        }
+                    });
+                }
+            } else if (existingReceipt) {
+                await tx.ledgerEntry.deleteMany({
+                    where: { referenceId: existingReceipt.id }
+                });
+                await tx.paymentReceipt.delete({
+                    where: { id: existingReceipt.id }
+                });
+            }
 
             // C. Recalculate running balance cascades for this shop
             const remainingEntries = await tx.ledgerEntry.findMany({

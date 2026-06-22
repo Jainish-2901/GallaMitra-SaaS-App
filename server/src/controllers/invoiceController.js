@@ -6,7 +6,7 @@ import { deleteFromCloudinary } from '../utils/cloudinary.js';
 export const createInvoice = async (req, res) => {
     const {
         invoiceNo, shopId, customerId, itemsArray,
-        subTotal, taxAmount, miscCharges, taxRate, grandTotal, description, discount, attachedImgUrl, advancePayment
+        subTotal, taxAmount, miscCharges, taxRate, grandTotal, description, discount, attachedImgUrl, advancePayment, paymentMode
     } = req.body;
 
     if (!invoiceNo || !shopId || !customerId || !itemsArray || subTotal === undefined || grandTotal === undefined) {
@@ -21,6 +21,7 @@ export const createInvoice = async (req, res) => {
         const parsedGrandTotal = parseFloat(grandTotal);
         const parsedDiscount = parseFloat(discount || 0);
         const parsedAdvancePayment = parseFloat(advancePayment || 0);
+        const parsedPaymentMode = paymentMode || 'CASH';
 
         let createdInvoice = null;
 
@@ -40,7 +41,8 @@ export const createInvoice = async (req, res) => {
                     description: description || null,
                     discount: parsedDiscount,
                     attachedImgUrl: attachedImgUrl || null,
-                    advancePayment: parsedAdvancePayment
+                    advancePayment: parsedAdvancePayment,
+                    paymentMode: parsedPaymentMode
                 }
             });
 
@@ -55,19 +57,62 @@ export const createInvoice = async (req, res) => {
             });
 
             let runningBal = parseFloat(lastLedgerRow?.runningBalance || 0);
-            runningBal += (parsedGrandTotal - parsedAdvancePayment); // Invoice adds to total receivables balance status (less advance payment)
 
-            await tx.ledgerEntry.create({
-                data: {
-                    shopId,
-                    customerId,
-                    particulars: `Sales Invoice generated reference tracking code #${invoiceNo}${parsedAdvancePayment > 0 ? ` (Advance Paid: ₹${parsedAdvancePayment.toFixed(2)})` : ''}`,
-                    type: 'DEBIT',
-                    amount: parsedGrandTotal - parsedAdvancePayment,
-                    runningBalance: runningBal,
-                    referenceId: createdInvoice.id
-                }
-            });
+            if (parsedAdvancePayment > 0) {
+                const receiptNo = `PR-ADV-${invoiceNo}`;
+                const createdReceipt = await tx.paymentReceipt.create({
+                    data: {
+                        receiptNo,
+                        shopId,
+                        customerId,
+                        amount: parsedAdvancePayment,
+                        paymentMode: parsedPaymentMode,
+                        remark: `Advance payment received for Invoice #${invoiceNo}`,
+                        invoiceId: createdInvoice.id
+                    }
+                });
+
+                // Invoice DEBIT entry
+                runningBal += parsedGrandTotal;
+                await tx.ledgerEntry.create({
+                    data: {
+                        shopId,
+                        customerId,
+                        particulars: `Sales Invoice generated reference tracking code #${invoiceNo}`,
+                        type: 'DEBIT',
+                        amount: parsedGrandTotal,
+                        runningBalance: runningBal,
+                        referenceId: createdInvoice.id
+                    }
+                });
+
+                // Advance Payment CREDIT entry
+                runningBal -= parsedAdvancePayment;
+                await tx.ledgerEntry.create({
+                    data: {
+                        shopId,
+                        customerId,
+                        particulars: `Advance Payment received via ${parsedPaymentMode} for Invoice #${invoiceNo}`,
+                        type: 'CREDIT',
+                        amount: parsedAdvancePayment,
+                        runningBalance: runningBal,
+                        referenceId: createdReceipt.id
+                    }
+                });
+            } else {
+                runningBal += parsedGrandTotal;
+                await tx.ledgerEntry.create({
+                    data: {
+                        shopId,
+                        customerId,
+                        particulars: `Sales Invoice generated reference tracking code #${invoiceNo}`,
+                        type: 'DEBIT',
+                        amount: parsedGrandTotal,
+                        runningBalance: runningBal,
+                        referenceId: createdInvoice.id
+                    }
+                });
+            }
         });
 
         await logActivity(shopId, 'INVOICE_CREATED', 'Owner', `Sales Invoice #${invoiceNo} (₹${parsedGrandTotal})`);
@@ -81,7 +126,7 @@ export const createInvoice = async (req, res) => {
 // 2. Action: 100% Override Edit on Invoice and Recalculate App Dues Matrix
 export const editInvoice = async (req, res) => {
     const { id } = req.params;
-    const { invoiceNo, customerId, date, itemsArray, subTotal, taxAmount, miscCharges, taxRate, grandTotal, description, discount, attachedImgUrl, advancePayment } = req.body;
+    const { invoiceNo, customerId, date, itemsArray, subTotal, taxAmount, miscCharges, taxRate, grandTotal, description, discount, attachedImgUrl, advancePayment, paymentMode } = req.body;
 
     try {
         const originalInvoice = await prisma.invoice.findUnique({
@@ -98,6 +143,7 @@ export const editInvoice = async (req, res) => {
         const parsedGrandTotal = parseFloat(grandTotal);
         const parsedDiscount = parseFloat(discount || 0);
         const parsedAdvancePayment = parseFloat(advancePayment !== undefined ? (advancePayment || 0) : (originalInvoice.advancePayment || 0));
+        const parsedPaymentMode = paymentMode || originalInvoice.paymentMode || 'CASH';
         const shopId = originalInvoice.shopId;
 
         const attachedImgUrlToSave = attachedImgUrl !== undefined ? (attachedImgUrl || null) : originalInvoice.attachedImgUrl;
@@ -126,6 +172,7 @@ export const editInvoice = async (req, res) => {
                     taxRate: parsedTaxRate,
                     grandTotal: parsedGrandTotal,
                     advancePayment: parsedAdvancePayment,
+                    paymentMode: parsedPaymentMode,
                     description: description || null,
                     discount: parsedDiscount,
                     attachedImgUrl: attachedImgUrlToSave,
@@ -133,19 +180,86 @@ export const editInvoice = async (req, res) => {
                 }
             });
 
-            // Update corresponding link rows inside ledger stream instantly
-            // We use updateMany here since referenceId points to the invoice id (and customerId updates conditionally)
+            // Update corresponding DEBIT ledger entry
             await tx.ledgerEntry.updateMany({
-                where: { referenceId: id },
+                where: { referenceId: id, type: 'DEBIT' },
                 data: {
                     customerId: customerId || undefined,
-                    amount: parsedGrandTotal - parsedAdvancePayment,
-                    particulars: `Sales Invoice generated reference tracking code #${invoiceNo || originalInvoice.invoiceNo}${parsedAdvancePayment > 0 ? ` (Advance Paid: ₹${parsedAdvancePayment.toFixed(2)})` : ''}`,
+                    amount: parsedGrandTotal,
+                    particulars: `Sales Invoice generated reference tracking code #${invoiceNo || originalInvoice.invoiceNo}`,
                     date: date ? new Date(date) : undefined,
                     isEdited: true,
                     lastEditedAt: new Date()
                 }
             });
+
+            // Handle linked advance payment receipt
+            const existingReceipt = await tx.paymentReceipt.findFirst({
+                where: { invoiceId: id }
+            });
+
+            if (parsedAdvancePayment > 0) {
+                if (existingReceipt) {
+                    await tx.paymentReceipt.update({
+                        where: { id: existingReceipt.id },
+                        data: {
+                            receiptNo: `PR-ADV-${invoiceNo || originalInvoice.invoiceNo}`,
+                            customerId: customerId || undefined,
+                            amount: parsedAdvancePayment,
+                            paymentMode: parsedPaymentMode,
+                            remark: `Advance payment received for Invoice #${invoiceNo || originalInvoice.invoiceNo}`,
+                            date: date ? new Date(date) : undefined,
+                            isEdited: true
+                        }
+                    });
+
+                    await tx.ledgerEntry.updateMany({
+                        where: { referenceId: existingReceipt.id, type: 'CREDIT' },
+                        data: {
+                            customerId: customerId || undefined,
+                            amount: parsedAdvancePayment,
+                            particulars: `Advance Payment received via ${parsedPaymentMode} for Invoice #${invoiceNo || originalInvoice.invoiceNo}`,
+                            date: date ? new Date(date) : undefined,
+                            isEdited: true,
+                            lastEditedAt: new Date()
+                        }
+                    });
+                } else {
+                    const receiptNo = `PR-ADV-${invoiceNo || originalInvoice.invoiceNo}`;
+                    const createdReceipt = await tx.paymentReceipt.create({
+                        data: {
+                            receiptNo,
+                            shopId,
+                            customerId: customerId || originalInvoice.customerId,
+                            amount: parsedAdvancePayment,
+                            paymentMode: parsedPaymentMode,
+                            remark: `Advance payment received for Invoice #${invoiceNo || originalInvoice.invoiceNo}`,
+                            invoiceId: id,
+                            date: date ? new Date(date) : undefined
+                        }
+                    });
+
+                    await tx.ledgerEntry.create({
+                        data: {
+                            shopId,
+                            customerId: customerId || originalInvoice.customerId,
+                            particulars: `Advance Payment received via ${parsedPaymentMode} for Invoice #${invoiceNo || originalInvoice.invoiceNo}`,
+                            type: 'CREDIT',
+                            amount: parsedAdvancePayment,
+                            runningBalance: 0,
+                            referenceId: createdReceipt.id,
+                            date: date ? new Date(date) : undefined
+                        }
+                    });
+                }
+            } else if (existingReceipt) {
+                await tx.ledgerEntry.deleteMany({
+                    where: { referenceId: existingReceipt.id }
+                });
+                await tx.paymentReceipt.delete({
+                    where: { id: existingReceipt.id }
+                });
+            }
 
             // Trigger complete cascading pipeline recalibration across table rows to sync balances
             const allEntries = await tx.ledgerEntry.findMany({
@@ -196,6 +310,21 @@ export const deleteInvoice = async (req, res) => {
         }
 
         await prisma.$transaction(async (tx) => {
+            // Find connected receipt
+            const linkedReceipt = await tx.paymentReceipt.findFirst({
+                where: { invoiceId: id }
+            });
+            if (linkedReceipt) {
+                // Delete the receipt ledger entry
+                await tx.ledgerEntry.deleteMany({
+                    where: { referenceId: linkedReceipt.id }
+                });
+                // Delete the receipt
+                await tx.paymentReceipt.delete({
+                    where: { id: linkedReceipt.id }
+                });
+            }
+
             // Wipe out parent mapping invoice document entry node
             await tx.invoice.delete({
                 where: { id }

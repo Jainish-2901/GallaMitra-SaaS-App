@@ -19,6 +19,7 @@ export default function DocumentListsView({ mode, t = {} }) {
   const [editMiscCharges, setEditMiscCharges] = useState(0);
   const [editDiscount, setEditDiscount] = useState(0);
   const [editAdvancePayment, setEditAdvancePayment] = useState(0);
+  const [editPaymentMode, setEditPaymentMode] = useState('CASH');
   const [editDescription, setEditDescription] = useState('');
 
   // Purchase Bill Edit state variables
@@ -33,6 +34,7 @@ export default function DocumentListsView({ mode, t = {} }) {
   const [editPbDiscount, setEditPbDiscount] = useState(0);
   const [editPbMiscCharges, setEditPbMiscCharges] = useState(0);
   const [editPbAdvancePayment, setEditPbAdvancePayment] = useState(0);
+  const [editPbPaymentMode, setEditPbPaymentMode] = useState('CASH');
 
   // Attachment upload edit states & helper functions
   const [editAttachedImgUrl, setEditAttachedImgUrl] = useState('');
@@ -525,6 +527,7 @@ export default function DocumentListsView({ mode, t = {} }) {
     setEditMiscCharges(parseFloat(inv.miscCharges || 0));
     setEditDiscount(parseFloat(inv.discount || 0));
     setEditAdvancePayment(parseFloat(inv.advancePayment || 0));
+    setEditPaymentMode(inv.paymentMode || 'CASH');
     setEditDescription(inv.description || '');
     setEditAttachedImgUrl(inv.attachedImgUrl || '');
     try {
@@ -585,7 +588,8 @@ export default function DocumentListsView({ mode, t = {} }) {
       grandTotal: grandVal,
       description: editDescription,
       attachedImgUrl: editAttachedImgUrl || null,
-      advancePayment: advVal
+      advancePayment: advVal,
+      paymentMode: editPaymentMode
     });
     if (res.success) {
       toast.success(t.editInvoiceSuccess || 'Invoice edited and ledger balances recalculated!');
@@ -636,6 +640,7 @@ export default function DocumentListsView({ mode, t = {} }) {
     setEditPbTotalAmount(parseFloat(pb.totalAmount || 0));
     setEditPbAttachedImgUrl(pb.attachedImgUrl || '');
     setEditPbAdvancePayment(parseFloat(pb.advancePayment || 0));
+    setEditPbPaymentMode(pb.paymentMode || 'CASH');
     try {
       const parsedItems = typeof pb.itemsJson === 'string' ? JSON.parse(pb.itemsJson) : pb.itemsJson;
       if (Array.isArray(parsedItems)) {
@@ -724,7 +729,8 @@ export default function DocumentListsView({ mode, t = {} }) {
       slipDetails: editPbSlipDetails,
       totalAmount: grandTotalVal,
       attachedImgUrl: editPbAttachedImgUrl || null,
-      advancePayment: parseFloat(editPbAdvancePayment || 0)
+      advancePayment: parseFloat(editPbAdvancePayment || 0),
+      paymentMode: editPbPaymentMode
     });
     if (res.success) {
       toast.success('Purchase bill edited and supplier ledgers recalculated!');
@@ -1603,6 +1609,22 @@ export default function DocumentListsView({ mode, t = {} }) {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold focus:outline-none focus:border-blue-500 text-slate-900"
                   />
                 </div>
+                {editAdvancePayment > 0 && (
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Payment Method</label>
+                    <select
+                      value={editPaymentMode}
+                      onChange={e => setEditPaymentMode(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none focus:border-blue-500 text-slate-900"
+                    >
+                      <option value="CASH">CASH</option>
+                      <option value="BANK">BANK</option>
+                      <option value="ONLINE">ONLINE</option>
+                      <option value="UPI">UPI</option>
+                      <option value="CARD">CARD</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -1875,6 +1897,22 @@ export default function DocumentListsView({ mode, t = {} }) {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold focus:outline-none focus:border-blue-500 text-slate-900"
                   />
                 </div>
+                {editPbAdvancePayment > 0 && (
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Payment Method</label>
+                    <select
+                      value={editPbPaymentMode}
+                      onChange={e => setEditPbPaymentMode(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none focus:border-blue-500 text-slate-900"
+                    >
+                      <option value="CASH">CASH</option>
+                      <option value="BANK">BANK</option>
+                      <option value="ONLINE">ONLINE</option>
+                      <option value="UPI">UPI</option>
+                      <option value="CARD">CARD</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div>

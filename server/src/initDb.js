@@ -178,7 +178,11 @@ export const initDatabase = async () => {
     ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "taxRate" DECIMAL(5, 2) DEFAULT 18.00;
     ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "attachedImgUrl" TEXT;
     ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "advancePayment" DECIMAL(12, 2) DEFAULT 0.00;
+    ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "paymentMode" VARCHAR(50) DEFAULT 'CASH';
     ALTER TABLE "PurchaseBill" ADD COLUMN IF NOT EXISTS "advancePayment" DECIMAL(12, 2) DEFAULT 0.00;
+    ALTER TABLE "PurchaseBill" ADD COLUMN IF NOT EXISTS "paymentMode" VARCHAR(50) DEFAULT 'CASH';
+    ALTER TABLE "PaymentReceipt" ADD COLUMN IF NOT EXISTS "invoiceId" UUID;
+    ALTER TABLE "PaymentReceipt" ADD COLUMN IF NOT EXISTS "purchaseBillId" UUID;
 
     -- Plan & Approval System (v1.1 migration)
     ALTER TABLE "Shop" ADD COLUMN IF NOT EXISTS "plan" VARCHAR(50) DEFAULT 'starter';

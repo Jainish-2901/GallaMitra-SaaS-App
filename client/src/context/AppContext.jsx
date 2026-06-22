@@ -487,12 +487,12 @@ export const AppProvider = ({ children }) => {
         }
     };
 
-    const postPurchaseBill = async (billNo, supplierId, itemsArray, totalAmount, slipDetails, attachedImgUrl, advancePayment) => {
+    const postPurchaseBill = async (billNo, supplierId, itemsArray, totalAmount, slipDetails, attachedImgUrl, advancePayment, paymentMode) => {
         try {
             const response = await fetch(`${BACKEND_URL}/transactions/purchase/build`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
-                body: JSON.stringify({ billNo, shopId: activeShop.id, supplierId, itemsArray, totalAmount, slipDetails, attachedImgUrl, advancePayment })
+                body: JSON.stringify({ billNo, shopId: activeShop.id, supplierId, itemsArray, totalAmount, slipDetails, attachedImgUrl, advancePayment, paymentMode })
             });
             if (response.ok) {
                 await fetchAllWorkspaceData(activeShop.id);

@@ -23,6 +23,7 @@ export default function PurchaseBillCreator({ t = {} }) {
   const [discount, setDiscount] = useState('');
   const [customCharges, setCustomCharges] = useState([]);
   const [advancePayment, setAdvancePayment] = useState('');
+  const [paymentMode, setPaymentMode] = useState('CASH');
   const [useProduct, setUseProduct] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -166,7 +167,8 @@ export default function PurchaseBillCreator({ t = {} }) {
       grandTotal,
       slipDetails,
       attachedImgUrl,
-      parseFloat(advancePayment || 0)
+      parseFloat(advancePayment || 0),
+      paymentMode
     );
     setSubmitting(false);
 
@@ -178,6 +180,7 @@ export default function PurchaseBillCreator({ t = {} }) {
       setDiscount('');
       setCustomCharges([]);
       setAdvancePayment('');
+      setPaymentMode('CASH');
       setSlipDetails('');
       setAttachedImgUrl('');
       setSelectedSupplierId('');
@@ -736,6 +739,23 @@ export default function PurchaseBillCreator({ t = {} }) {
                     />
                   </div>
                 </div>
+
+                {parseFloat(advancePayment || 0) > 0 && (
+                  <div className="flex justify-between items-center border-t border-slate-200/50 pt-2">
+                    <span className="font-bold text-slate-655 flex items-center gap-1">Payment Method:</span>
+                    <select
+                      value={paymentMode}
+                      onChange={e => setPaymentMode(e.target.value)}
+                      className="w-28 bg-white border border-slate-200 rounded-lg px-2 py-1 text-right text-slate-900 font-bold text-xs focus:outline-none focus:border-slate-450 focus:ring-1 focus:ring-slate-450"
+                    >
+                      <option value="CASH">CASH</option>
+                      <option value="BANK">BANK</option>
+                      <option value="ONLINE">ONLINE</option>
+                      <option value="UPI">UPI</option>
+                      <option value="CARD">CARD</option>
+                    </select>
+                  </div>
+                )}
 
                 <div className="border-t border-slate-200 pt-2.5 mt-2 flex justify-between items-baseline">
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider font-mono">
