@@ -2240,6 +2240,8 @@ export default function DocumentListsView({ mode, t = {} }) {
         const miscChargesVal = parseFloat(isInvoice ? (selectedDoc.miscCharges || 0) : (metadata.miscCharges || 0));
         const discountVal = parseFloat(isInvoice ? (selectedDoc.discount || 0) : (metadata.discount || 0));
         const grandTotalVal = parseFloat(isInvoice ? (selectedDoc.grandTotal || 0) : (selectedDoc.totalAmount || 0));
+        const advancePaymentVal = parseFloat(selectedDoc.advancePayment || 0);
+        const balanceDueVal = grandTotalVal - advancePaymentVal;
         const cgstRate = (taxRateVal / 2).toFixed(1);
         const sgstRate = (taxRateVal / 2).toFixed(1);
         const cgstAmount = (taxAmountVal / 2).toFixed(2);
@@ -2469,6 +2471,19 @@ export default function DocumentListsView({ mode, t = {} }) {
                         <span>Grand Total:</span>
                         <span>₹{grandTotalVal.toFixed(2)}</span>
                       </div>
+
+                      {advancePaymentVal > 0 && (
+                        <>
+                          <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-2 text-emerald-600 font-bold font-black">
+                            <span>Advance Paid (−):</span>
+                            <span>-₹{advancePaymentVal.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between items-center border-t border-slate-900 pt-2.5 mt-2.5 text-xs text-indigo-600 font-black">
+                            <span>Balance Due:</span>
+                            <span>₹{balanceDueVal.toFixed(2)}</span>
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     {/* Signature */}

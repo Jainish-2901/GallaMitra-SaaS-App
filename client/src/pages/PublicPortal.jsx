@@ -1508,6 +1508,8 @@ export default function PublicPortal() {
         const taxAmountVal = parseFloat(selectedDoc.taxAmount || 0);
         const miscChargesVal = parseFloat(selectedDoc.miscCharges || 0);
         const grandTotalVal = parseFloat(isInvoice ? (selectedDoc.grandTotal || 0) : (selectedDoc.totalAmount || 0));
+        const advancePaymentVal = parseFloat(selectedDoc.advancePayment || 0);
+        const balanceDueVal = grandTotalVal - advancePaymentVal;
 
         // CGST & SGST calculations
         const cgstRate = (taxRateVal / 2).toFixed(1);
@@ -1742,8 +1744,21 @@ export default function PublicPortal() {
 
                       <div className="border-t-2 border-slate-900 pt-2.5 mt-2 flex justify-between items-baseline">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider font-mono">Grand Total</span>
-                        <span className="text-base font-black text-slate-950">₹{grandTotalVal.toFixed(2)}</span>
+                        <span className="text-base font-black text-slate-955">₹{grandTotalVal.toFixed(2)}</span>
                       </div>
+
+                      {advancePaymentVal > 0 && (
+                        <>
+                          <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-2 text-emerald-600 font-bold font-black font-mono">
+                            <span>Advance Paid (−):</span>
+                            <span>-₹{advancePaymentVal.toFixed(2)}</span>
+                          </div>
+                          <div className="border-t-2 border-slate-900 pt-2.5 mt-2 flex justify-between items-baseline text-indigo-650 font-black">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider font-mono">Balance Due</span>
+                            <span className="text-base font-black text-indigo-600">₹{balanceDueVal.toFixed(2)}</span>
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     {/* Sign signatory */}
