@@ -550,12 +550,12 @@ export default function InvoiceBuilder({ t = {} }) {
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block font-mono">
                   INVOICE REMARKS / MEMO
                 </span>
-                <input
-                  type="text"
+                <textarea
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   placeholder="Local comments, payment due instructions, or notes..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:border-slate-400 focus:bg-white text-slate-900 transition-all"
+                  rows={3}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:border-slate-400 focus:bg-white text-slate-900 transition-all resize-none"
                 />
               </div>
 

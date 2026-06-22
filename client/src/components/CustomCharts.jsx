@@ -63,7 +63,7 @@ export function SalesExpensesChart({ chartData, height = 240 }) {
 
             return (
               <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end relative z-10">
-                <div className="w-full flex items-end justify-center gap-1 sm:gap-2">
+                <div className="w-full h-[85%] flex items-end justify-center gap-1 sm:gap-2">
                   {/* Sales Bar */}
                   <motion.div
                     initial={{ height: 0 }}
@@ -263,7 +263,7 @@ export function PaymentModesDonut({ paymentModeStats }) {
   const circumference = 2 * Math.PI * radius; // ~201.06
 
   const slices = useMemo(() => {
-    const { upi, cash, cheque, total } = paymentModeStats;
+    const { upi, cash, cheque, bank, online, card, total } = paymentModeStats;
     if (total === 0) {
       return [
         { label: 'NO DATA', value: 100, pct: 100, color: 'stroke-slate-100', bg: 'bg-slate-100', textColor: 'text-slate-400' }
@@ -300,6 +300,54 @@ export function PaymentModesDonut({ paymentModeStats }) {
         color: 'stroke-emerald-500',
         bg: 'bg-emerald-500',
         textColor: 'text-emerald-600',
+        offset: -(accumulatedPct / 100) * circumference
+      });
+      accumulatedPct += pct;
+    }
+
+    // BANK
+    if (bank > 0) {
+      const pct = (bank / total) * 100;
+      arr.push({
+        id: 'bank',
+        label: '🏦 BANK',
+        value: bank,
+        pct,
+        color: 'stroke-amber-500',
+        bg: 'bg-amber-500',
+        textColor: 'text-amber-600',
+        offset: -(accumulatedPct / 100) * circumference
+      });
+      accumulatedPct += pct;
+    }
+
+    // ONLINE
+    if (online > 0) {
+      const pct = (online / total) * 100;
+      arr.push({
+        id: 'online',
+        label: '🌐 ONLINE',
+        value: online,
+        pct,
+        color: 'stroke-violet-500',
+        bg: 'bg-violet-500',
+        textColor: 'text-violet-650',
+        offset: -(accumulatedPct / 100) * circumference
+      });
+      accumulatedPct += pct;
+    }
+
+    // CARD
+    if (card > 0) {
+      const pct = (card / total) * 100;
+      arr.push({
+        id: 'card',
+        label: '💳 CARD',
+        value: card,
+        pct,
+        color: 'stroke-rose-500',
+        bg: 'bg-rose-500',
+        textColor: 'text-rose-600',
         offset: -(accumulatedPct / 100) * circumference
       });
       accumulatedPct += pct;

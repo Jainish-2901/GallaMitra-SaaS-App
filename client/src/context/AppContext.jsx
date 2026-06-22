@@ -380,12 +380,12 @@ export const AppProvider = ({ children }) => {
     };
 
     // 6. Post Independent Cash/UPI Payment Receipts
-    const postPaymentReceipt = async (receiptNo, customerId, supplierId, amount, paymentMode, remark) => {
+    const postPaymentReceipt = async (receiptNo, customerId, supplierId, amount, paymentMode, remark, date) => {
         try {
             const response = await fetch(`${BACKEND_URL}/transactions/receipt/build`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
-                body: JSON.stringify({ receiptNo, shopId: activeShop.id, customerId, supplierId, amount, paymentMode, remark })
+                body: JSON.stringify({ receiptNo, shopId: activeShop.id, customerId, supplierId, amount, paymentMode, remark, date })
             });
             if (response.ok) {
                 await fetchAllWorkspaceData(activeShop.id);

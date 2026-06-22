@@ -89,19 +89,26 @@ export default function AnalyticsPage() {
 
   // Payment Mode Distribution
   const paymentModeStats = useMemo(() => {
-    let upi = 0, cash = 0, cheque = 0;
+    let upi = 0, cash = 0, cheque = 0, bank = 0, online = 0, card = 0;
     filteredReceipts.forEach(r => {
       const amt = parseFloat(r.amount || 0);
-      if (r.paymentMode === 'UPI') upi += amt;
-      else if (r.paymentMode === 'CASH') cash += amt;
-      else if (r.paymentMode === 'CHEQUE') cheque += amt;
+      const mode = (r.paymentMode || '').toUpperCase();
+      if (mode === 'UPI') upi += amt;
+      else if (mode === 'CASH') cash += amt;
+      else if (mode === 'CHEQUE') cheque += amt;
+      else if (mode === 'BANK') bank += amt;
+      else if (mode === 'ONLINE') online += amt;
+      else if (mode === 'CARD') card += amt;
     });
-    const total = upi + cash + cheque;
+    const total = upi + cash + cheque + bank + online + card;
     return {
-      upi, cash, cheque, total,
+      upi, cash, cheque, bank, online, card, total,
       upiPercent: total > 0 ? (upi / total) * 100 : 0,
       cashPercent: total > 0 ? (cash / total) * 100 : 0,
-      chequePercent: total > 0 ? (cheque / total) * 100 : 0
+      chequePercent: total > 0 ? (cheque / total) * 100 : 0,
+      bankPercent: total > 0 ? (bank / total) * 100 : 0,
+      onlinePercent: total > 0 ? (online / total) * 100 : 0,
+      cardPercent: total > 0 ? (card / total) * 100 : 0
     };
   }, [filteredReceipts]);
 

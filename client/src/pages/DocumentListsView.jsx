@@ -1,4 +1,4 @@
-import React, { useContext, useState, useRef } from 'react';
+import React, { useContext, useState, useRef, useMemo } from 'react';
 import { AppContext } from '../context/AppContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { Layers, ArrowDownLeft, ArrowUpRight, Trash2, Edit2, X, Plus, Eye, Printer, FileDown, Hash, Calendar, CreditCard, FileText, Info, Building2, Upload, Paperclip, Loader2 } from 'lucide-react';
@@ -151,7 +151,7 @@ export default function DocumentListsView({ mode, t = {} }) {
   const [editReceiptSupplierId, setEditReceiptSupplierId] = useState('');
   const [editReceiptDate, setEditReceiptDate] = useState('');
   const [editReceiptAmount, setEditReceiptAmount] = useState(0);
-  const [editReceiptPaymentMode, setEditReceiptPaymentMode] = useState('Cash');
+  const [editReceiptPaymentMode, setEditReceiptPaymentMode] = useState('CASH');
   const [editReceiptRemark, setEditReceiptRemark] = useState('');
 
   // Preview & Printing state and refs
@@ -159,6 +159,132 @@ export default function DocumentListsView({ mode, t = {} }) {
   const receiptPrintRef = useRef(null);
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
+
+  // States for listing filters & list-wide exports
+  const [filterCustomerId, setFilterCustomerId] = useState('');
+  const [filterSupplierId, setFilterSupplierId] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [listPdfLoading, setListPdfLoading] = useState(false);
+  const [listPrintLoading, setListPrintLoading] = useState(false);
+  const receiptListPrintRef = useRef(null);
+
+  const displayReceipts = useMemo(() => {
+    let list = receipts || [];
+    if (filterCustomerId) {
+      list = list.filter(r => r.customerId === filterCustomerId);
+    }
+    if (filterSupplierId) {
+      list = list.filter(r => r.supplierId === filterSupplierId);
+    }
+    if (startDate && endDate) {
+      list = list.filter(r => {
+        const d = new Date(r.date).toISOString().split('T')[0];
+        return d >= startDate && d <= endDate;
+      });
+    }
+    return list;
+  }, [receipts, filterCustomerId, filterSupplierId, startDate, endDate]);
+
+  const ReceiptListReportPrint = () => {
+    const selectedCust = customers.find(c => c.id === filterCustomerId);
+    const selectedSupp = suppliers.find(s => s.id === filterSupplierId);
+    
+    let subtitle = 'Master Payment Voucher Index';
+    if (selectedCust) {
+      subtitle = `Customer: ${selectedCust.shopName || selectedCust.name}`;
+    } else if (selectedSupp) {
+      subtitle = `Supplier: ${selectedSupp.shopName || selectedSupp.name}`;
+    }
+
+    return (
+      <div ref={receiptListPrintRef} style={{ background: '#fff', padding: '32px', fontFamily: 'Arial, sans-serif', width: '750px', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', borderBottom: '2px solid #cbd5e1', paddingBottom: '20px' }}>
+          <div>
+            <div style={{ fontWeight: 900, fontSize: '20px', color: '#0f172a' }}>{activeShop?.businessName}</div>
+            {activeShop?.address && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', maxWidth: '300px', lineHeight: '1.4', whiteSpace: 'pre-line' }}>{activeShop.address}</div>}
+            {activeShop?.phone && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Tel: {activeShop.phone}</div>}
+            {activeShop?.gstin && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', fontFamily: 'monospace' }}>GSTIN: {activeShop.gstin}</div>}
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '11px', color: '#64748b', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>Account Statement</div>
+            <div style={{ fontWeight: 900, fontSize: '14px', color: '#0f172a' }}>{subtitle}</div>
+            {selectedCust && (
+              <>
+                {selectedCust.shopName && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Contact: {selectedCust.name}</div>}
+                {selectedCust.phone && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Tel: {selectedCust.phone}</div>}
+              </>
+            )}
+            {selectedSupp && (
+              <>
+                {selectedSupp.shopName && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Contact: {selectedSupp.name}</div>}
+                {selectedSupp.phone && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Tel: {selectedSupp.phone}</div>}
+              </>
+            )}
+            <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '6px' }}>Generated: {new Date().toLocaleDateString('en-IN')}</div>
+          </div>
+        </div>
+
+        {(startDate || endDate) && (
+          <div style={{ marginBottom: '15px', fontSize: '11px', color: '#475569', fontWeight: 'bold' }}>
+            Statement Period: {startDate ? new Date(startDate).toLocaleDateString('en-IN') : 'Beginning'} to {endDate ? new Date(endDate).toLocaleDateString('en-IN') : 'Present'}
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+          <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
+            <div style={{ fontWeight: 900, fontSize: '16px', color: '#0f172a', fontFamily: 'monospace' }}>{displayReceipts.length}</div>
+            <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px', textTransform: 'uppercase' }}>Total Vouchers</div>
+          </div>
+          <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
+            <div style={{ fontWeight: 900, fontSize: '16px', color: '#16a34a', fontFamily: 'monospace' }}>
+              ₹{displayReceipts.reduce((sum, r) => sum + parseFloat(r.amount || 0), 0).toFixed(2)}
+            </div>
+            <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px', textTransform: 'uppercase' }}>Total Amount</div>
+          </div>
+        </div>
+
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
+          <thead>
+            <tr style={{ background: '#f8fafc', color: '#0f172a', borderBottom: '2px solid #cbd5e1' }}>
+              <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>#</th>
+              <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>Date</th>
+              <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>Receipt No</th>
+              <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>Party Name</th>
+              <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>Type</th>
+              <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>Payment Mode</th>
+              <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>Remark</th>
+              <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700 }}>Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {displayReceipts.length === 0 ? (
+              <tr><td colSpan="8" style={{ textAlign: 'center', padding: '24px', color: '#94a3b8' }}>No transactions found for this period.</td></tr>
+            ) : (
+              displayReceipts.map((r, idx) => {
+                const customer = customers.find(c => c.id === r.customerId);
+                const supplier = suppliers.find(s => s.id === r.supplierId);
+                const partyName = r.customerId ? (customer?.shopName || customer?.name || 'N/A') : (supplier?.shopName || supplier?.name || 'N/A');
+                const roleLabel = r.customerId ? 'Customer' : 'Supplier';
+                return (
+                  <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                    <td style={{ padding: '8px 10px', color: '#94a3b8', fontFamily: 'monospace' }}>{idx + 1}</td>
+                    <td style={{ padding: '8px 10px', color: '#64748b', fontFamily: 'monospace' }}>{new Date(r.date).toLocaleDateString('en-IN')}</td>
+                    <td style={{ padding: '8px 10px', color: '#0f172a', fontWeight: 'bold', fontFamily: 'monospace' }}>#{r.receiptNo}</td>
+                    <td style={{ padding: '8px 10px', color: '#0f172a', fontWeight: 600 }}>{partyName}</td>
+                    <td style={{ padding: '8px 10px', color: '#64748b' }}>{roleLabel}</td>
+                    <td style={{ padding: '8px 10px', color: '#0f172a', fontWeight: 'bold' }}>{r.paymentMode}</td>
+                    <td style={{ padding: '8px 10px', color: '#64748b', fontStyle: 'italic' }}>{r.remark || '—'}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#16a34a' }}>₹{parseFloat(r.amount || 0).toFixed(2)}</td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   const captureElement = async (ref) => {
     if (!ref?.current) return null;
@@ -898,7 +1024,7 @@ export default function DocumentListsView({ mode, t = {} }) {
                               </div>
                             )}
                           </td>
-                          <td className="p-3 font-semibold text-slate-900">{customer?.name || 'Unknown customer'}</td>
+                          <td className="p-3 font-semibold text-slate-900">{customer?.shopName || customer?.name || 'Unknown customer'}</td>
                           <td className="p-3 text-slate-450">{new Date(i.date).toLocaleDateString()}</td>
                           <td className="p-3 text-right font-mono">₹{parseFloat(i.subTotal).toFixed(2)}</td>
                           <td className="p-3 text-right font-mono text-slate-500">
@@ -975,7 +1101,7 @@ export default function DocumentListsView({ mode, t = {} }) {
                         <div>
                           <span className="text-xs font-bold text-blue-600 font-mono">#{i.invoiceNo}</span>
                           {i.isEdited && <span className="ml-1 text-[8px] bg-amber-50 text-amber-600 px-1 rounded">Edited</span>}
-                          <h4 className="font-bold text-slate-900 text-xs mt-0.5">{customer?.name || 'Unknown customer'}</h4>
+                          <h4 className="font-bold text-slate-900 text-xs mt-0.5">{customer?.shopName || customer?.name || 'Unknown customer'}</h4>
                         </div>
                         <span className="text-xs font-black text-slate-950 font-mono">₹{parseFloat(i.grandTotal).toFixed(2)}</span>
                       </div>
@@ -1060,6 +1186,96 @@ export default function DocumentListsView({ mode, t = {} }) {
             <ListSkeleton />
           ) : (
             <>
+            {/* Filter and Export Panel */}
+            <div className="bg-slate-50 border border-slate-200/60 p-4 rounded-2xl mb-5 flex flex-wrap gap-4 items-end text-left">
+              <div className="min-w-[180px] flex-1">
+                <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">Filter by Customer</label>
+                <select
+                  value={filterCustomerId}
+                  onChange={e => {
+                    setFilterCustomerId(e.target.value);
+                    setFilterSupplierId(''); // exclusive selection
+                  }}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-blue-500 text-slate-800"
+                >
+                  <option value="">-- All Customers --</option>
+                  {customers.filter(c => !c.isDeleted).map(c => (
+                    <option key={c.id} value={c.id}>{c.shopName ? `${c.shopName} — ${c.name}` : c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="min-w-[180px] flex-1">
+                <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">Filter by Supplier</label>
+                <select
+                  value={filterSupplierId}
+                  onChange={e => {
+                    setFilterSupplierId(e.target.value);
+                    setFilterCustomerId(''); // exclusive selection
+                  }}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-blue-500 text-slate-800"
+                >
+                  <option value="">-- All Suppliers --</option>
+                  {suppliers.filter(s => !s.isDeleted).map(s => (
+                    <option key={s.id} value={s.id}>{s.shopName ? `${s.shopName} — ${s.name}` : s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="w-full sm:w-auto">
+                <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none"
+                />
+              </div>
+
+              <div className="w-full sm:w-auto">
+                <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={e => setEndDate(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex gap-2 w-full lg:w-auto justify-end">
+                <button
+                  onClick={() => {
+                    const title = filterCustomerId ? 'Customer Vouchers' : (filterSupplierId ? 'Supplier Vouchers' : 'Master Vouchers Index');
+                    handlePrintRef(receiptListPrintRef, title);
+                  }}
+                  disabled={listPrintLoading}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                >
+                  {listPrintLoading ? <Loader2 size={13} className="animate-spin" /> : <Printer size={13} />}
+                  Print
+                </button>
+                <button
+                  onClick={() => {
+                    const filename = filterCustomerId ? `Customer_Vouchers_${filterCustomerId.slice(-6)}.pdf` : (filterSupplierId ? `Supplier_Vouchers_${filterSupplierId.slice(-6)}.pdf` : 'PaymentVouchersMaster.pdf');
+                    handleSaveRefAsPDF(receiptListPrintRef, filename);
+                  }}
+                  disabled={listPdfLoading}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                >
+                  {listPdfLoading ? <Loader2 size={13} className="animate-spin" /> : <FileDown size={13} />}
+                  PDF
+                </button>
+                {(filterCustomerId || filterSupplierId || startDate || endDate) && (
+                  <button
+                    onClick={() => { setFilterCustomerId(''); setFilterSupplierId(''); setStartDate(''); setEndDate(''); }}
+                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
@@ -1076,17 +1292,17 @@ export default function DocumentListsView({ mode, t = {} }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-                  {receipts.length === 0 ? (
+                  {displayReceipts.length === 0 ? (
                     <tr>
                       <td colSpan="8" className="text-center py-10 font-mono text-slate-400">
                         No payment vouchers tracked yet.
                       </td>
                     </tr>
                   ) : (
-                    receipts.map(r => {
+                    displayReceipts.map(r => {
                       const customer = customers.find(c => c.id === r.customerId);
                       const supplier = suppliers.find(s => s.id === r.supplierId);
-                      const partyName = r.customerId ? (customer?.name || 'N/A') : (supplier?.name || 'N/A');
+                      const partyName = r.customerId ? (customer?.shopName || customer?.name || 'N/A') : (supplier?.shopName || supplier?.name || 'N/A');
                       const roleLabel = r.customerId ? 'Customer' : 'Supplier';
                       return (
                         <tr key={r.id} className="hover:bg-slate-50/50">
@@ -1154,17 +1370,17 @@ export default function DocumentListsView({ mode, t = {} }) {
               </table>
             </div>
 
-            {/* Mobile Card View */}
+            {/* Mobile View Card Grid */}
             <div className="block md:hidden space-y-3">
-              {receipts.length === 0 ? (
+              {displayReceipts.length === 0 ? (
                 <div className="text-center py-10 font-mono text-slate-400 text-xs">
                   No payment vouchers tracked yet.
                 </div>
               ) : (
-                receipts.map(r => {
+                displayReceipts.map(r => {
                   const customer = customers.find(c => c.id === r.customerId);
                   const supplier = suppliers.find(s => s.id === r.supplierId);
-                  const partyName = r.customerId ? (customer?.name || 'N/A') : (supplier?.name || 'N/A');
+                  const partyName = r.customerId ? (customer?.shopName || customer?.name || 'N/A') : (supplier?.shopName || supplier?.name || 'N/A');
                   const roleLabel = r.customerId ? 'Customer' : 'Supplier';
                   return (
                     <div key={r.id} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 shadow-2xs space-y-2.5">
@@ -1288,7 +1504,7 @@ export default function DocumentListsView({ mode, t = {} }) {
                               </div>
                             )}
                           </td>
-                          <td className="p-3 font-semibold text-slate-900">{supplier?.name || 'N/A'}</td>
+                          <td className="p-3 font-semibold text-slate-900">{supplier?.shopName || supplier?.name || 'N/A'}</td>
                           <td className="p-3 text-slate-450">{new Date(pb.date).toLocaleDateString()}</td>
                           <td className="p-3 text-slate-500 truncate max-w-xs">{pb.slipDetails || '—'}</td>
                           <td className="p-3 text-right font-mono font-black text-slate-900">₹{parseFloat(pb.totalAmount).toFixed(2)}</td>
@@ -1361,7 +1577,7 @@ export default function DocumentListsView({ mode, t = {} }) {
                         <div>
                           <span className="text-xs font-bold text-blue-600 font-mono">#{pb.billNo || 'N/A'}</span>
                           {pb.isEdited && <span className="ml-1 text-[8px] bg-amber-50 text-amber-600 px-1 rounded">Edited</span>}
-                          <h4 className="font-bold text-slate-900 text-xs mt-0.5">{supplier?.name || 'N/A'}</h4>
+                          <h4 className="font-bold text-slate-900 text-xs mt-0.5">{supplier?.shopName || supplier?.name || 'N/A'}</h4>
                         </div>
                         <span className="text-xs font-black text-slate-955 font-mono">₹{parseFloat(pb.totalAmount).toFixed(2)}</span>
                       </div>
@@ -2102,10 +2318,12 @@ export default function DocumentListsView({ mode, t = {} }) {
                     required
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-semibold"
                   >
-                    <option value="Cash">Cash</option>
+                    <option value="CASH">CASH</option>
+                    <option value="BANK">BANK</option>
+                    <option value="ONLINE">ONLINE</option>
                     <option value="UPI">UPI</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="Cheque">Cheque</option>
+                    <option value="CARD">CARD</option>
+                    <option value="CHEQUE">CHEQUE</option>
                   </select>
                 </div>
               </div>
@@ -2538,6 +2756,11 @@ export default function DocumentListsView({ mode, t = {} }) {
           </div>
         );
       })()}
+
+      {/* Hidden printable payment voucher list report */}
+      <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}>
+        <ReceiptListReportPrint />
+      </div>
     </div>
   );
 }

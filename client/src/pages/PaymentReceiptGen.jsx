@@ -14,6 +14,7 @@ export default function PaymentReceiptGen({ t = {} }) {
     const [amount, setAmount] = useState('');
     const [paymentMode, setPaymentMode] = useState('CASH'); // 'CASH', 'UPI', 'CHEQUE'
     const [remark, setRemark] = useState('');
+    const [voucherDate, setVoucherDate] = useState(() => new Date().toISOString().split('T')[0]);
     const [submitting, setSubmitting] = useState(false);
 
     const handleVoucherSubmission = async (e) => {
@@ -27,7 +28,7 @@ export default function PaymentReceiptGen({ t = {} }) {
         const targetCust = mode === 'customer' ? selectedEntityId : null;
         const targetSupp = mode === 'supplier' ? selectedEntityId : null;
 
-        const response = await postPaymentReceipt(receiptNo, targetCust, targetSupp, parseFloat(amount), paymentMode, remark);
+        const response = await postPaymentReceipt(receiptNo, targetCust, targetSupp, parseFloat(amount), paymentMode, remark, voucherDate);
         setSubmitting(false);
 
         if (response.success) {
@@ -36,6 +37,7 @@ export default function PaymentReceiptGen({ t = {} }) {
             setAmount('');
             setRemark('');
             setSelectedEntityId('');
+            setVoucherDate(new Date().toISOString().split('T')[0]);
         } else {
             toast.error('Failed to post payment voucher. Please retry.');
             setAmount('');
@@ -71,10 +73,14 @@ export default function PaymentReceiptGen({ t = {} }) {
             </div>
 
             <form onSubmit={handleVoucherSubmission} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Voucher Date</label>
+                        <input type="date" value={voucherDate} onChange={e => setVoucherDate(e.target.value)} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-slate-400 focus:bg-white transition-all" />
+                    </div>
                     <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">{t.voucherNoLabel || "Voucher Receipt Number"}</label>
-                        <input type="text" value={receiptNo} onChange={e => setReceiptNo(e.target.value)} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none" />
+                        <input type="text" value={receiptNo} onChange={e => setReceiptNo(e.target.value)} required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-slate-400 focus:bg-white transition-all" />
                     </div>
                     <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">{t.targetAccountProfile || "Target Account Profile"}</label>
@@ -82,7 +88,7 @@ export default function PaymentReceiptGen({ t = {} }) {
                             value={selectedEntityId}
                             onChange={e => setSelectedEntityId(e.target.value)}
                             required
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none text-slate-800 font-medium"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-slate-400 focus:bg-white transition-all text-slate-800 font-medium"
                         >
                             <option value="">{t.chooseProfileCard || "-- Choose Profile Card --"}</option>
                             {mode === 'customer'
@@ -105,9 +111,12 @@ export default function PaymentReceiptGen({ t = {} }) {
                             onChange={e => setPaymentMode(e.target.value)}
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none text-slate-800 font-bold"
                         >
-                            <option value="CASH">{t.cash || "💵 CASH"}</option>
-                            <option value="UPI">{t.upi || "📱 UPI / Net Banking"}</option>
-                            <option value="CHEQUE">{t.cheque || "🏦 CHEQUE"}</option>
+                            <option value="CASH">💵 CASH</option>
+                            <option value="BANK">🏦 BANK</option>
+                            <option value="ONLINE">🌐 ONLINE</option>
+                            <option value="UPI">📱 UPI</option>
+                            <option value="CARD">💳 CARD</option>
+                            <option value="CHEQUE">📝 CHEQUE</option>
                         </select>
                     </div>
                 </div>

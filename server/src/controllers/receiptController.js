@@ -3,7 +3,7 @@ import { logActivity } from '../activityLogger.js';
 
 // 1. Action: Generate Independent Payment Voucher Receipt (Customer / Supplier Contexts)
 export const createPaymentReceipt = async (req, res) => {
-    const { receiptNo, shopId, customerId, supplierId, amount, paymentMode, remark } = req.body;
+    const { receiptNo, shopId, customerId, supplierId, amount, paymentMode, remark, date } = req.body;
 
     if (!receiptNo || !shopId || !amount) {
         return res.status(400).json({ error: "Missing required metadata parameters for voucher mapping!" });
@@ -23,7 +23,8 @@ export const createPaymentReceipt = async (req, res) => {
                     supplierId: supplierId || null,
                     amount: parsedAmount,
                     paymentMode: paymentMode || 'CASH',
-                    remark: remark || null
+                    remark: remark || null,
+                    date: date ? new Date(date) : undefined
                 }
             });
 
@@ -58,7 +59,8 @@ export const createPaymentReceipt = async (req, res) => {
                     type: transactionType,
                     amount: parsedAmount,
                     runningBalance: runningBal,
-                    referenceId: createdReceipt.id
+                    referenceId: createdReceipt.id,
+                    date: date ? new Date(date) : undefined
                 }
             });
         });

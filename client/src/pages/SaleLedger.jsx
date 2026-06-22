@@ -1,9 +1,11 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { AppContext } from '../context/AppContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { translations } from '../utils/translations.js';
-import { History, PlusCircle, Plus, Loader2, Edit2, Trash2, X } from 'lucide-react';
+import { History, PlusCircle, Plus, Loader2, Edit2, Trash2, X, Printer, FileDown } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 export default function SaleLedger() {
   const { activeShop, customers, ledgerHistory, postManualLedgerEntry, editManualLedgerEntry, deleteManualLedgerEntry, generateShortShareLink, loading } = useContext(AppContext);
@@ -11,12 +13,210 @@ export default function SaleLedger() {
   const activeLang = activeShop?.language || 'gu';
   const t = translations[activeLang] || translations.en;
 
+  
   const [mlPartyId, setMlPartyId] = useState('');
   const [mlType, setMlType] = useState('DEBIT');
   const [mlAmount, setMlAmount] = useState('');
   const [mlParticulars, setMlParticulars] = useState('');
   const [mlDate, setMlDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [mlSubmitting, setMlSubmitting] = useState(false);
+
+  const [filterCustomerId, setFilterCustomerId] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [printLoading, setPrintLoading] = useState(false);
+  const ledgerReportRef = useRef(null);
+
+  const displayLedger = useMemo(() => {
+    let list = customerLedger;
+    if (filterCustomerId) {
+      list = customerLedger.filter(l => l.customerId === filterCustomerId);
+    }
+    const chronological = [...list].reverse();
+    let running = 0;
+    const computed = chronological.map(l => {
+      const amt = parseFloat(l.amount || 0);
+      if (l.type === 'DEBIT') running += amt;
+      else running -= amt;
+      return {
+        ...l,
+        computedRunningBalance: running
+      };
+    });
+    const newestFirst = [...computed].reverse();
+    let dateFiltered = newestFirst;
+    if (startDate && endDate) {
+      dateFiltered = newestFirst.filter(l => {
+        const d = new Date(l.date).toISOString().split('T')[0];
+        return d >= startDate && d <= endDate;
+      });
+    }
+    return dateFiltered;
+  }, [customerLedger, filterCustomerId, startDate, endDate]);
+
+  const handlePrintRef = async (ref, title) => {
+    if (!ref?.current) return;
+    setPrintLoading(true);
+    try {
+      const canvas = await html2canvas(ref.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+      const dataUrl = canvas.toDataURL('image/png');
+      const win = window.open('', '_blank');
+      win.document.write(`
+        <html>
+          <head><title>${title}</title></head>
+          <body style="margin:0;display:flex;justify-content:center;">
+            <img src="${dataUrl}" style="max-width:100%;height:auto;" onload="window.print();window.close();" />
+          </body>
+        </html>
+      `);
+      win.document.close();
+    } catch (err) {
+      console.error(err);
+      toast.error('Print generation failed');
+    }
+    setPrintLoading(false);
+  };
+
+  const handleSaveRefAsPDF = async (ref, filename) => {
+    if (!ref?.current) return;
+    setPdfLoading(true);
+    try {
+      const canvas = await html2canvas(ref.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      pdf.save(filename);
+    } catch (err) {
+      console.error(err);
+      toast.error('PDF generation failed');
+    }
+    setPdfLoading(false);
+  };
+
+  const LedgerReportPrint = () => {
+    const selectedCust = customers.find(c => c.id === filterCustomerId);
+    const title = selectedCust ? (selectedCust.shopName || selectedCust.name) : 'Master Sales Ledger';
+    
+    return (
+      <div ref={ledgerReportRef} style={{ background: '#fff', padding: '32px', fontFamily: 'Arial, sans-serif', width: '750px', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', borderBottom: '2px solid #cbd5e1', paddingBottom: '20px' }}>
+          <div>
+            <div style={{ fontWeight: 900, fontSize: '20px', color: '#0f172a' }}>{activeShop?.businessName}</div>
+            {activeShop?.address && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', maxWidth: '300px', lineHeight: '1.4', whiteSpace: 'pre-line' }}>{activeShop.address}</div>}
+            {activeShop?.phone && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Tel: {activeShop.phone}</div>}
+            {activeShop?.gstin && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', fontFamily: 'monospace' }}>GSTIN: {activeShop.gstin}</div>}
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '11px', color: '#64748b', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>Account Statement</div>
+            <div style={{ fontWeight: 900, fontSize: '14px', color: '#0f172a' }}>{title}</div>
+            {selectedCust && (
+              <>
+                {selectedCust.shopName && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Contact: {selectedCust.name}</div>}
+                {selectedCust.phone && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Tel: {selectedCust.phone}</div>}
+                {selectedCust.billingAddress && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', maxWidth: '250px' }}>{selectedCust.billingAddress}</div>}
+              </>
+            )}
+            <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '6px' }}>Generated: {new Date().toLocaleDateString('en-IN')}</div>
+          </div>
+        </div>
+
+        {(startDate || endDate) && (
+          <div style={{ marginBottom: '15px', fontSize: '11px', color: '#475569', fontWeight: 'bold' }}>
+            Statement Period: {startDate ? new Date(startDate).toLocaleDateString('en-IN') : 'Beginning'} to {endDate ? new Date(endDate).toLocaleDateString('en-IN') : 'Present'}
+          </div>
+        )}
+
+        {selectedCust && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
+              <div style={{ fontWeight: 900, fontSize: '16px', color: '#0f172a', fontFamily: 'monospace' }}>{displayLedger.length}</div>
+              <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px', textTransform: 'uppercase' }}>Total Entries</div>
+            </div>
+            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
+              <div style={{ fontWeight: 900, fontSize: '16px', color: '#0f172a', fontFamily: 'monospace' }}>₹{Math.abs(parseFloat(selectedCust.balance || 0)).toFixed(2)}</div>
+              <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px', textTransform: 'uppercase' }}>Net Balance</div>
+            </div>
+            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
+              <div style={{ fontWeight: 900, fontSize: '16px', color: '#0f172a', fontFamily: 'monospace' }}>{parseFloat(selectedCust.balance || 0) > 0 ? 'You Get' : 'You Give'}</div>
+              <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px', textTransform: 'uppercase' }}>Status</div>
+            </div>
+          </div>
+        )}
+
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
+          <thead>
+            <tr style={{ background: '#f8fafc', color: '#0f172a', borderBottom: '2px solid #cbd5e1' }}>
+              <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>#</th>
+              <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>Date</th>
+              {!selectedCust && <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>Customer</th>}
+              <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700 }}>Particulars</th>
+              <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700 }}>Type</th>
+              <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700 }}>Amount (₹)</th>
+              {selectedCust && <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700 }}>Running Balance</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {displayLedger.length === 0 ? (
+              <tr><td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: '#94a3b8' }}>No transactions found for this period.</td></tr>
+            ) : (
+              [...displayLedger].reverse().map((l, idx) => {
+                const amt = parseFloat(l.amount || 0);
+                const runBal = l.computedRunningBalance;
+                return (
+                  <tr key={l.id} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                    <td style={{ padding: '8px 10px', color: '#94a3b8', fontFamily: 'monospace' }}>{idx + 1}</td>
+                    <td style={{ padding: '8px 10px', color: '#64748b', fontFamily: 'monospace' }}>{new Date(l.date).toLocaleDateString('en-IN')}</td>
+                    {!selectedCust && (
+                      <td style={{ padding: '8px 10px', fontWeight: 'bold', color: '#0f172a' }}>
+                        {(() => { const c = customers.find(cust => cust.id === l.customerId); return c?.shopName || c?.name || 'Walk-in'; })()}
+                      </td>
+                    )}
+                    <td style={{ padding: '8px 10px', color: '#0f172a', fontWeight: 600 }}>{l.particulars || '—'}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                      <span style={{ border: '1px solid #cbd5e1', padding: '1px 5px', borderRadius: '4px', fontSize: '8px', fontWeight: 800 }}>
+                        {l.type}
+                      </span>
+                    </td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: l.type === 'DEBIT' ? '#dc2626' : '#16a34a' }}>₹{amt.toFixed(2)}</td>
+                    {selectedCust && (
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800 }}>
+                        ₹{Math.abs(runBal || 0).toFixed(2)} {runBal >= 0 ? 'Dr' : 'Cr'}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   // Edit states for manual ledger entries
   const [editingEntry, setEditingEntry] = useState(null);
@@ -117,7 +317,7 @@ export default function SaleLedger() {
             <select value={mlPartyId} onChange={e => setMlPartyId(e.target.value)} required
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 font-medium text-slate-800">
               <option value="">-- Select Customer --</option>
-              {customers.filter(c => !c.isDeleted).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {customers.filter(c => !c.isDeleted).map(c => <option key={c.id} value={c.id}>{c.shopName ? `${c.shopName} — ${c.name}` : c.name}</option>)}
             </select>
           </div>
           <div>
@@ -168,6 +368,70 @@ export default function SaleLedger() {
           <p className="text-slate-400 text-xs font-medium mt-0.5">Chronological master ledger of customer operations</p>
         </div>
 
+        {/* Filter and Export Panel */}
+        <div className="bg-slate-50 border border-slate-200/60 p-4 rounded-2xl mb-5 flex flex-wrap gap-4 items-end text-left">
+          <div className="min-w-[180px] flex-1">
+            <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">Filter by Customer</label>
+            <select
+              value={filterCustomerId}
+              onChange={e => setFilterCustomerId(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-blue-500 text-slate-800"
+            >
+              <option value="">-- All Customers (Audit Master) --</option>
+              {customers.filter(c => !c.isDeleted).map(c => (
+                <option key={c.id} value={c.id}>{c.shopName ? `${c.shopName} — ${c.name}` : c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="w-full sm:w-auto">
+            <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none"
+            />
+          </div>
+
+          <div className="w-full sm:w-auto">
+            <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none"
+            />
+          </div>
+
+          <div className="flex gap-2 w-full lg:w-auto justify-end">
+            <button
+              onClick={() => handlePrintRef(ledgerReportRef, filterCustomerId ? 'Customer Statement' : 'Master Sales Ledger')}
+              disabled={printLoading}
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+            >
+              {printLoading ? <Loader2 size={13} className="animate-spin" /> : <Printer size={13} />}
+              Print
+            </button>
+            <button
+              onClick={() => handleSaveRefAsPDF(ledgerReportRef, filterCustomerId ? `Statement_${filterCustomerId.slice(-6)}.pdf` : 'SalesLedgerMaster.pdf')}
+              disabled={pdfLoading}
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+            >
+              {pdfLoading ? <Loader2 size={13} className="animate-spin" /> : <FileDown size={13} />}
+              PDF
+            </button>
+            {(filterCustomerId || startDate || endDate) && (
+              <button
+                onClick={() => { setFilterCustomerId(''); setStartDate(''); setEndDate(''); }}
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map(i => (
@@ -204,13 +468,13 @@ export default function SaleLedger() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                  {customerLedger.length === 0 ? (
+                  {displayLedger.length === 0 ? (
                     <tr><td colSpan="6" className="text-center py-12 text-slate-400 font-mono">No customer transactions registered yet.</td></tr>
                   ) : (
-                    customerLedger.map(log => (
+                    displayLedger.map(log => (
                       <tr key={log.id} className="hover:bg-slate-50/50">
                         <td className="p-3 font-mono text-slate-400 text-[11px]">{new Date(log.date).toLocaleString()}</td>
-                        <td className="p-3 font-bold text-slate-900">{customers.find(c => c.id === log.customerId)?.name || 'Customer'}</td>
+                        <td className="p-3 font-bold text-slate-900">{(() => { const cust = customers.find(c => c.id === log.customerId); return cust?.shopName || cust?.name || 'Customer'; })()}</td>
                         <td className="p-3 text-slate-500 max-w-xs truncate">{log.particulars || '—'}</td>
                         <td className="p-3 text-center">
                           <span className={`inline-block font-mono font-black px-2 py-0.5 rounded text-[9px] ${log.type === 'DEBIT' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
@@ -262,13 +526,14 @@ export default function SaleLedger() {
 
             {/* Mobile View Card Grid */}
             <div className="block md:hidden space-y-3">
-              {customerLedger.length === 0 ? (
+              {displayLedger.length === 0 ? (
                 <div className="text-center py-10 font-mono text-slate-400 text-xs">
                   No customer transactions registered yet.
                 </div>
               ) : (
-                customerLedger.map(log => {
-                  const customerName = customers.find(c => c.id === log.customerId)?.name || 'Customer';
+                displayLedger.map(log => {
+                  const cust = customers.find(c => c.id === log.customerId);
+                  const customerName = cust?.shopName || cust?.name || 'Customer';
                   return (
                     <div key={log.id} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 shadow-2xs space-y-2.5">
                       <div className="flex justify-between items-start">
@@ -416,6 +681,11 @@ export default function SaleLedger() {
           </div>
         </div>
       )}
+
+      {/* Hidden printable ledger report */}
+      <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}>
+        <LedgerReportPrint />
+      </div>
     </motion.div>
   );
 }

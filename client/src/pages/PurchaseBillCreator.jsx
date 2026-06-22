@@ -545,12 +545,12 @@ export default function PurchaseBillCreator({ t = {} }) {
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block font-mono">
                   {t.slipRemarks || "Slip Description / Remarks"}
                 </span>
-                <input
-                  type="text"
+                <textarea
                   value={slipDetails}
                   onChange={e => setSlipDetails(e.target.value)}
                   placeholder="batch 4 additions, warehouse cargo delivery..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:border-slate-400 focus:bg-white text-slate-900 transition-all"
+                  rows={3}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:border-slate-400 focus:bg-white text-slate-900 transition-all resize-none"
                 />
               </div>
 

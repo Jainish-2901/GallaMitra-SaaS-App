@@ -413,7 +413,7 @@ function SalesList({ t }) {
     let arr = [];
     try { arr = typeof inv.itemsJson === 'string' ? JSON.parse(inv.itemsJson) : inv.itemsJson; } catch { }
     if (Array.isArray(arr)) arr.forEach(it => items.push({
-      date: inv.date, invoiceNo: inv.invoiceNo, customerName: cust?.name || 'Walk-in', itemName: it.name, qty: it.qty, rate: it.rate, total: parseFloat(it.qty) * parseFloat(it.rate)
+      date: inv.date, invoiceNo: inv.invoiceNo, customerName: cust?.shopName || cust?.name || 'Walk-in', itemName: it.name, qty: it.qty, rate: it.rate, total: parseFloat(it.qty) * parseFloat(it.rate)
     }));
   });
   const filtered = items.filter(i => {
@@ -521,7 +521,7 @@ function PurchaseList({ t }) {
     let arr = [];
     try { arr = typeof pb.itemsJson === 'string' ? JSON.parse(pb.itemsJson) : pb.itemsJson; } catch { }
     if (Array.isArray(arr)) arr.forEach(it => items.push({
-      date: pb.date, billNo: pb.billNo || 'N/A', supplierName: supp?.name || 'N/A', itemName: it.name, qty: it.qty, rate: it.rate, total: parseFloat(it.qty) * parseFloat(it.rate)
+      date: pb.date, billNo: pb.billNo || 'N/A', supplierName: supp?.shopName || supp?.name || 'N/A', itemName: it.name, qty: it.qty, rate: it.rate, total: parseFloat(it.qty) * parseFloat(it.rate)
     }));
   });
   const filtered = items.filter(i => {
