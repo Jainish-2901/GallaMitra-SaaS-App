@@ -310,7 +310,7 @@ export default function InvoiceBuilder({ t = {} }) {
                 >
                   <option value="">{t.chooseParty || '-- Choose Customer Profile --'}</option>
                   {customers.filter(c => !c.isDeleted || c.id === selectedCustomerId).map(c => (
-                    <option key={c.id} value={c.id}>{c.name} ({c.phone || 'No Phone'})</option>
+                    <option key={c.id} value={c.id}>{c.shopName ? `${c.shopName} — ${c.name}` : c.name}</option>
                   ))}
                 </select>
               </div>

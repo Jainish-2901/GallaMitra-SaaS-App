@@ -305,7 +305,7 @@ export default function PurchaseBillCreator({ t = {} }) {
                 >
                   <option value="">{t.chooseVendor || "-- Choose Vendor --"}</option>
                   {suppliers.filter(s => !s.isDeleted || s.id === selectedSupplierId).map(s => (
-                    <option key={s.id} value={s.id}>{s.name} ({s.phone || 'No Contact'})</option>
+                    <option key={s.id} value={s.id}>{s.shopName ? `${s.shopName} — ${s.name}` : s.name}</option>
                   ))}
                 </select>
               </div>

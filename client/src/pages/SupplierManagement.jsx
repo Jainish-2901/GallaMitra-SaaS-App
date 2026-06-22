@@ -27,9 +27,11 @@ export default function SupplierManagement({ openTxModal }) {
   const [viewingPartyId, setViewingPartyId] = useState(null);
   const [editingPartyId, setEditingPartyId] = useState(null);
 
-  const filteredSuppliers = suppliers.filter(s =>
-    !s.isDeleted && s.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSuppliers = suppliers.filter(s => {
+    if (s.isDeleted) return false;
+    const term = searchTerm.toLowerCase();
+    return s.name.toLowerCase().includes(term) || (s.shopName && s.shopName.toLowerCase().includes(term));
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -154,10 +156,11 @@ export default function SupplierManagement({ openTxModal }) {
               <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-50 border rounded-xl hover:border-slate-300 transition-all">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${parseFloat(s.balance || 0) >= 0 ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                    {s.name.charAt(0).toUpperCase()}
+                    {(s.shopName || s.name).charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <h4 className="font-bold text-slate-900 text-xs truncate">{s.name}</h4>
+                    {s.shopName && <h4 className="font-black text-slate-900 text-xs truncate">{s.shopName}</h4>}
+                    <p className={`font-bold text-xs truncate ${s.shopName ? 'text-slate-500 text-[10px]' : 'text-slate-900'}`}>{s.name}</p>
                     <p className="text-slate-400 text-[10px] font-mono"><Phone size={10} className="inline mr-0.5" />{s.phone || '—'}</p>
                   </div>
                 </div>
