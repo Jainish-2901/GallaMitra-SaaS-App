@@ -10,7 +10,7 @@
       ]
     },
     {
-      "source": "/(favicon.ico|logo.png|manifest.json|sw.js)",
+      "source": "/(favicon.ico|favicon-48x48.png|favicon-96x96.png|logo.png|logo-192.png|logo-512.png|manifest.json|sw.js)",
       "headers": [
         {
           "key": "Cache-Control",
