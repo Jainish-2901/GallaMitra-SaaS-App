@@ -6,6 +6,17 @@ This is a Monorepo containing the frontend client application, admin console, an
 
 ---
 
+## Latest Premium UI and Feature Updates
+
+Recently, the platform was updated with several major visual and functional enhancements:
+- Custom SVG Charting Engine: Integrated custom visualizers ([CustomCharts.jsx](file:///d:/SasS%20Projects/gallamitra/client/src/components/CustomCharts.jsx)) using pure SVGs and React state for interactive tooltips (Sales vs. Expenses, Cash Flow, Payment Modes, and Profit Margin).
+- Premium Settings Layouts: Redesigned user settings ([UserSettings.jsx](file:///d:/SasS%20Projects/gallamitra/client/src/pages/UserSettings.jsx)) and business settings ([BusinessSettings.jsx](file:///d:/SasS%20Projects/gallamitra/client/src/pages/BusinessSettings.jsx)) into a dual-column card-based grid layout.
+- Color-Adaptive Ledger Modals: Enhanced manual ledger entries in [TransactionModal.jsx](file:///d:/SasS%20Projects/gallamitra/client/src/components/TransactionModal.jsx) with scale-fade spring animations, inline currency indicators, and reactive debit/credit colors.
+- Staggered Testimonials: Redesigned [TestimonialsSection.jsx](file:///d:/SasS%20Projects/gallamitra/client/src/components/landing/TestimonialsSection.jsx) with customer metrics and a glassmorphic sliding card deck.
+- Cloudinary Upload Reliability: Resolved signature and logo upload errors by removing prohibited parameters from raw payload builders.
+
+---
+
 ## 📂 Project Architecture
 
 The monorepo is divided into three primary sub-systems:

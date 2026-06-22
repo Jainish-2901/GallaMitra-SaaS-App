@@ -4,6 +4,12 @@ The **GallaMitra Super Admin Dashboard** is a high-performance control console u
 
 ---
 
+## Latest Platform Updates and Alignment
+- Enhanced Subscription Management: Supports configuring the updated billing plans (Starter, Growth, Scale, Enterprise, Professional) and durations (Free, 15-Day Trial, Monthly, 3-Month, 6-Month, Yearly) which are dynamically reflected on the premium client subscription badges and workspace menus.
+- Audit Trail Tracking: Logs and monitors workspace activity including updates to user settings, business profiles, and subscription tier overrides.
+
+---
+
 ## ⚡ Key Features & Pages
 
 ### 1. Dashboard Overview (`DashboardPage.jsx`)
