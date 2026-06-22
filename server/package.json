@@ -23,10 +23,10 @@
     "express-rate-limit": "^8.5.2",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^8.0.10",
+    "@prisma/client": "^5.22.0",
     "pg": "^8.11.5"
   },
   "devDependencies": {
-    "@prisma/client": "^5.22.0",
     "prisma": "^5.22.0"
   }
 }
