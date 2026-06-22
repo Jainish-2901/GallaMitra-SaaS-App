@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Quote, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, Quote, ChevronLeft, ChevronRight, TrendingUp, Sparkles } from 'lucide-react';
 
 const testimonials = [
   {
@@ -9,7 +9,7 @@ const testimonials = [
     role: "Proprietor, Patel Supermarket",
     location: "Ahmedabad, Gujarat",
     rating: 5,
-    avatarColor: "bg-blue-500 text-white"
+    avatarColor: "bg-blue-600 text-white"
   },
   {
     quote: "The online PWA client is incredibly fast under physical shop operations. GST invoice builds take seconds and sync immediately. Zero buffering delay!",
@@ -17,7 +17,7 @@ const testimonials = [
     role: "Owner, Sharma Electronics",
     location: "Indore, Madhya Pradesh",
     rating: 5,
-    avatarColor: "bg-emerald-500 text-white"
+    avatarColor: "bg-emerald-600 text-white"
   },
   {
     quote: "Managing my three wholesale branches used to be a ledger nightmare. The Multi-Business workspace switcher separates our accounts clearly under one master tenant.",
@@ -25,7 +25,7 @@ const testimonials = [
     role: "Director, Mehta Textiles",
     location: "Surat, Gujarat",
     rating: 5,
-    avatarColor: "bg-purple-500 text-white"
+    avatarColor: "bg-purple-600 text-white"
   }
 ];
 
@@ -48,7 +48,7 @@ export default function TestimonialsSection() {
   // Autoplay functionality
   useEffect(() => {
     if (!isHovered) {
-      timerRef.current = setInterval(slideNext, 5000);
+      timerRef.current = setInterval(slideNext, 6000);
     }
     return () => {
       if (timerRef.current) {
@@ -59,10 +59,9 @@ export default function TestimonialsSection() {
 
   const activeTestimonial = testimonials[currentIndex];
 
-  // Framer motion animation variants
   const slideVariants = {
     enter: (dir) => ({
-      x: dir > 0 ? 100 : -100,
+      x: dir > 0 ? 80 : -80,
       opacity: 0
     }),
     center: {
@@ -70,133 +69,182 @@ export default function TestimonialsSection() {
       opacity: 1
     },
     exit: (dir) => ({
-      x: dir < 0 ? 100 : -100,
+      x: dir < 0 ? 80 : -80,
       opacity: 0
     })
   };
 
   return (
-    <section className="py-24 px-4 sm:px-6 bg-[#F8FAFC] border-t border-slate-200/60 relative overflow-hidden">
-      {/* Background Decorative Rings */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-50/40 rounded-full blur-[120px] pointer-events-none" />
+    <section className="py-24 px-4 sm:px-6 erp-grid-bg-white border-t border-slate-200/60 relative overflow-hidden">
+      {/* Background Decorative Gradient Rings */}
+      <div className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-50/40 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-1/3 right-1/4 translate-x-1/2 w-[500px] h-[500px] bg-indigo-50/30 rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="max-w-4xl mx-auto relative z-10">
+      <div className="max-w-6xl mx-auto relative z-10">
         
-        {/* Section Header */}
-        <div className="text-center mb-12 space-y-3">
-          <motion.p
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-xs font-black uppercase tracking-widest text-blue-600 font-mono"
-          >
-            Customer Reviews
-          </motion.p>
-          <motion.h3
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight"
-          >
-            Trusted by Indian Merchants & Retailers
-          </motion.h3>
-          <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="text-slate-500 text-xs sm:text-sm font-medium max-w-lg mx-auto leading-relaxed"
-          >
-            See how small business owners are optimizing cash loops, digital collections, and billing sequences with GallaMitra.
-          </motion.p>
-        </div>
+        {/* Main Split Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          
+          {/* Left Column: Trust Statistics & Merchant Metrics */}
+          <div className="lg:col-span-5 space-y-6">
+            <div className="space-y-3">
+              <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 font-mono bg-blue-50 border border-blue-100 px-3 py-1 rounded-full">
+                Merchant Success Stories
+              </span>
+              <h3 className="text-3xl md:text-4xl font-black text-slate-905 tracking-tight leading-tight">
+                Trusted by 10k+ Indian Retailers &amp; Merchants
+              </h3>
+              <p className="text-slate-500 text-xs sm:text-sm font-medium leading-relaxed">
+                See how shop owners are optimizing cash recovery cycles, generating GST invoices, and managing credit ledger registers with GallaMitra.
+              </p>
+            </div>
 
-        {/* Carousel Slider Component */}
-        <div 
-          className="relative min-h-[300px] flex items-center justify-center"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-        >
-          {/* Previous Button */}
-          <button 
-            onClick={slidePrev}
-            className="absolute left-0 md:-left-16 z-20 w-10 h-10 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-blue-600 flex items-center justify-center shadow-xs transition-all cursor-pointer active:scale-95"
-            aria-label="Previous Slide"
-          >
-            <ChevronLeft size={20} />
-          </button>
-
-          {/* Slider Content Wrapper */}
-          <div className="w-full overflow-hidden px-4">
-            <AnimatePresence initial={false} custom={direction} mode="wait">
-              <motion.div
-                key={currentIndex}
-                custom={direction}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ type: "tween", ease: "easeInOut", duration: 0.35 }}
-                className="bg-white border border-slate-200/80 p-8 sm:p-10 rounded-3xl flex flex-col justify-between relative shadow-md"
-              >
-                {/* Quote Mark Icon Overlay */}
-                <div className="absolute top-8 right-8 text-slate-100/80 pointer-events-none">
-                  <Quote size={48} className="stroke-[1.5]" />
+            {/* Overlapping Merchant Avatars & Trust Summary */}
+            <div className="flex items-center gap-4 py-2 border-y border-slate-100">
+              <div className="flex -space-x-3.5">
+                {testimonials.map((t, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`w-10 h-10 rounded-full border-2 border-white flex items-center justify-center font-black text-[10px] font-mono shadow-sm ${t.avatarColor}`}
+                  >
+                    {t.author.split(' ').map(n => n[0]).join('')}
+                  </div>
+                ))}
+                <div className="w-10 h-10 rounded-full border-2 border-white bg-slate-900 text-white flex items-center justify-center font-black text-[9px] font-mono shadow-sm">
+                  +10k
                 </div>
+              </div>
+              <div>
+                <div className="flex gap-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} size={13} className="fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+                <p className="text-[11px] font-bold text-slate-600 mt-1">
+                  4.9/5 Rating based on 8,240+ Indian Stores
+                </p>
+              </div>
+            </div>
 
+            {/* Micro KPI Badge Grid */}
+            <div className="grid grid-cols-2 gap-3.5 pt-2">
+              <div className="p-4 bg-white/70 border border-slate-200/80 rounded-2xl shadow-2xs flex items-start gap-2.5">
+                <TrendingUp size={16} className="text-emerald-500 shrink-0 mt-0.5" />
                 <div>
-                  {/* Stars Rating */}
-                  <div className="flex gap-1 mb-6">
-                    {[...Array(activeTestimonial.rating)].map((_, i) => (
-                      <Star key={i} size={15} className="fill-amber-400 text-amber-400" />
-                    ))}
-                  </div>
-
-                  <p className="text-slate-600 text-sm md:text-base font-semibold leading-relaxed mb-8 italic relative z-10">
-                    "{activeTestimonial.quote}"
-                  </p>
+                  <h4 className="text-xs font-black text-slate-900">72% Faster</h4>
+                  <p className="text-[10px] text-slate-400 font-semibold mt-0.5 leading-tight">Dues Recovery loops</p>
                 </div>
-
-                <div className="flex items-center gap-4 border-t border-slate-100 pt-6 mt-auto">
-                  <div className={`w-11 h-11 rounded-full flex items-center justify-center font-black text-xs font-mono uppercase tracking-wider shadow-inner ${activeTestimonial.avatarColor}`}>
-                    {activeTestimonial.author.split(' ').map(n => n[0]).join('')}
-                  </div>
-                  <div>
-                    <h4 className="font-black text-slate-900 text-sm tracking-tight">{activeTestimonial.author}</h4>
-                    <p className="text-slate-400 text-[10px] font-black uppercase font-mono mt-0.5 tracking-wider">{activeTestimonial.role}</p>
-                    <p className="text-blue-500 text-[10px] font-bold mt-0.5">{activeTestimonial.location}</p>
-                  </div>
+              </div>
+              <div className="p-4 bg-white/70 border border-slate-200/80 rounded-2xl shadow-2xs flex items-start gap-2.5">
+                <Sparkles size={16} className="text-blue-500 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-xs font-black text-slate-900">Real-Time</h4>
+                  <p className="text-[10px] text-slate-400 font-semibold mt-0.5 leading-tight">WhatsApp QR alerts</p>
                 </div>
-              </motion.div>
-            </AnimatePresence>
+              </div>
+            </div>
           </div>
 
-          {/* Next Button */}
-          <button 
-            onClick={slideNext}
-            className="absolute right-0 md:-right-16 z-20 w-10 h-10 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-blue-600 flex items-center justify-center shadow-xs transition-all cursor-pointer active:scale-95"
-            aria-label="Next Slide"
+          {/* Right Column: Sliding Testimonial Carousel Deck */}
+          <div 
+            className="lg:col-span-7 relative"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
           >
-            <ChevronRight size={20} />
-          </button>
-        </div>
+            {/* Glassmorphic Carousel Card Wrapper */}
+            <div className="w-full overflow-hidden bg-white/80 backdrop-blur-md border border-slate-200/90 rounded-[32px] p-8 sm:p-10 shadow-lg relative min-h-[290px] flex flex-col justify-between">
+              
+              {/* Background Quote Mark Icon Overlay */}
+              <div className="absolute top-6 right-8 text-slate-100/90 pointer-events-none select-none">
+                <Quote size={52} className="stroke-[1.2]" />
+              </div>
 
-        {/* Carousel Indicators / Dots */}
-        <div className="flex justify-center gap-2 mt-8">
-          {testimonials.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => {
-                setDirection(idx > currentIndex ? 1 : -1);
-                setCurrentIndex(idx);
-              }}
-              className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
-                idx === currentIndex ? 'w-8 bg-blue-600' : 'w-2.5 bg-slate-300 hover:bg-slate-400'
-              }`}
-              aria-label={`Go to slide ${idx + 1}`}
-            />
-          ))}
+              <AnimatePresence initial={false} custom={direction} mode="wait">
+                <motion.div
+                  key={currentIndex}
+                  custom={direction}
+                  variants={slideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
+                  className="flex-1 flex flex-col justify-between"
+                >
+                  <div>
+                    {/* Stars Rating */}
+                    <div className="flex gap-1 mb-5">
+                      {[...Array(activeTestimonial.rating)].map((_, i) => (
+                        <Star key={i} size={14} className="fill-amber-400 text-amber-400" />
+                      ))}
+                    </div>
+
+                    {/* Testimonial Quote text */}
+                    <p className="text-slate-600 text-sm sm:text-base font-semibold leading-relaxed mb-6 italic relative z-10">
+                      "{activeTestimonial.quote}"
+                    </p>
+                  </div>
+
+                  {/* Testimonial citation info */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-slate-100 pt-5 mt-auto">
+                    <div className="flex items-center gap-3.5">
+                      <div className={`w-11 h-11 rounded-full flex items-center justify-center font-black text-xs font-mono uppercase tracking-wider shadow-inner shrink-0 ${activeTestimonial.avatarColor}`}>
+                        {activeTestimonial.author.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <div>
+                        <h4 className="font-black text-slate-900 text-sm tracking-tight">{activeTestimonial.author}</h4>
+                        <p className="text-slate-400 text-[10px] font-black uppercase font-mono mt-0.5 tracking-wider">
+                          {activeTestimonial.role}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-left sm:text-right">
+                      <span className="text-blue-600 text-[10px] font-black uppercase tracking-wider font-mono bg-blue-50 border border-blue-100/50 px-2 py-0.5 rounded-lg">
+                        {activeTestimonial.location}
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Navigation buttons at bottom left relative to card boundaries */}
+              <div className="flex gap-2 mt-6 relative z-20">
+                <button 
+                  onClick={slidePrev}
+                  className="w-10 h-10 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-605 hover:text-blue-600 flex items-center justify-center shadow-2xs transition-all cursor-pointer active:scale-95"
+                  aria-label="Previous Slide"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button 
+                  onClick={slideNext}
+                  className="w-10 h-10 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-605 hover:text-blue-600 flex items-center justify-center shadow-2xs transition-all cursor-pointer active:scale-95"
+                  aria-label="Next Slide"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+
+            </div>
+
+            {/* Slider Dot Indicators */}
+            <div className="flex gap-2 mt-4 px-2">
+              {testimonials.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setDirection(idx > currentIndex ? 1 : -1);
+                    setCurrentIndex(idx);
+                  }}
+                  className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                    idx === currentIndex ? 'w-8 bg-slate-900' : 'w-2 bg-slate-300 hover:bg-slate-400'
+                  }`}
+                  aria-label={`Go to slide ${idx + 1}`}
+                />
+              ))}
+            </div>
+          </div>
+
         </div>
 
       </div>

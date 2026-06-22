@@ -431,7 +431,7 @@ export default function PublicPortal() {
             )}
             <div>
               <div style={{ fontWeight: 900, fontSize: '18px', color: '#0f172a' }}>{profile?.businessName}</div>
-              {profile?.shopAddress && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{profile.shopAddress}</div>}
+              {profile?.shopAddress && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', whiteSpace: 'pre-line' }}>{profile.shopAddress}</div>}
               {profile?.shopPhone && <div style={{ fontSize: '11px', color: '#64748b' }}>Tel: {profile.shopPhone}</div>}
               {profile?.shopGstin && <div style={{ fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>GSTIN: {profile.shopGstin}</div>}
             </div>
@@ -531,7 +531,7 @@ export default function PublicPortal() {
             {profile?.logoUrl && <img src={profile.logoUrl} alt="Logo" style={{ width: '42px', height: '42px', borderRadius: '6px', objectFit: 'cover', border: '1px solid #e2e8f0', padding: '1px', backgroundColor: '#fff' }} />}
             <div>
               <div style={{ fontWeight: 800, fontSize: '13px', color: '#000', lineHeight: '1.2' }}>{profile?.businessName}</div>
-              {profile?.shopAddress && <div style={{ fontSize: '9px', color: '#555', marginTop: '2px', maxWidth: '200px', lineHeight: '1.2' }}>{profile.shopAddress}</div>}
+              {profile?.shopAddress && <div style={{ fontSize: '9px', color: '#555', marginTop: '2px', maxWidth: '200px', lineHeight: '1.2', whiteSpace: 'pre-line' }}>{profile.shopAddress}</div>}
               {profile?.shopPhone && <div style={{ fontSize: '9px', color: '#555', marginTop: '1px' }}>Tel: {profile.shopPhone}</div>}
               {profile?.shopGstin && (
                 <div style={{ fontSize: '8px', color: '#000', backgroundColor: '#f1f5f9', display: 'inline-block', padding: '1px 4px', borderRadius: '3px', marginTop: '2px', fontFamily: 'monospace', fontWeight: 700, border: '1px solid #cbd5e1' }}>
@@ -553,7 +553,7 @@ export default function PublicPortal() {
           <div style={{ fontWeight: 800, color: '#000', fontSize: '12px' }}>{profile?.shopName || profile?.name || '—'}</div>
           {profile?.shopName && <div style={{ color: '#555', marginTop: '2px', fontWeight: 650 }}>Contact: {profile.name}</div>}
           {profile?.phone && <div style={{ color: '#555', marginTop: '2px', fontWeight: 650 }}>Phone: <span style={{ color: '#000', fontFamily: 'monospace' }}>{profile.phone}</span></div>}
-          {profile?.billingAddress && <div style={{ color: '#555', marginTop: '2px', fontWeight: 650 }}>Address: {profile.billingAddress}</div>}
+          {profile?.billingAddress && <div style={{ color: '#555', marginTop: '2px', fontWeight: 650, whiteSpace: 'pre-line' }}>Address: {profile.billingAddress}</div>}
           {profile?.gstin && (
             <div style={{ marginTop: '4px' }}>
               <span style={{ fontSize: '8px', fontWeight: 700, color: '#000', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace', textTransform: 'uppercase' }}>
@@ -647,7 +647,7 @@ export default function PublicPortal() {
             )}
             <div>
               <h2 style={{ fontWeight: 900, fontSize: '20px', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>{sellerName}</h2>
-              {sellerAddress && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', maxWidth: '300px', lineHeight: '1.4' }}>{sellerAddress}</div>}
+              {sellerAddress && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', maxWidth: '300px', lineHeight: '1.4', whiteSpace: 'pre-line' }}>{sellerAddress}</div>}
               <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
                 {sellerPhone ? `Phone: ${sellerPhone}` : ''}
                 {sellerEmail ? ` | Email: ${sellerEmail}` : ''}
@@ -684,7 +684,7 @@ export default function PublicPortal() {
               {isInvoice && profile?.shopName && <div>Contact: {profile.name}</div>}
               {buyerPhone && <div>Phone: <span style={{ color: '#0f172a', fontFamily: 'monospace' }}>{buyerPhone}</span></div>}
               {buyerEmail && <div>Email: {buyerEmail}</div>}
-              {buyerAddress && <div>Address: {buyerAddress}</div>}
+              {buyerAddress && <div style={{ whiteSpace: 'pre-line' }}>Address: {buyerAddress}</div>}
               {buyerState && <div>State: {buyerState}</div>}
               {buyerGstin && (
                 <div style={{ marginTop: '6px' }}>
@@ -1421,7 +1421,7 @@ export default function PublicPortal() {
               <div className="text-center pb-4 border-b border-dashed border-slate-200">
                 {profile?.logoUrl && <img src={profile.logoUrl} alt="Logo" className="w-12 h-12 rounded-xl object-cover mx-auto mb-2 border border-slate-200 shadow-2xs p-0.5 bg-white" />}
                 <p className="font-black text-slate-900 text-base leading-tight">{profile?.businessName}</p>
-                {profile?.shopAddress && <p className="text-slate-400 text-[10px] mt-0.5 leading-relaxed">{profile.shopAddress}</p>}
+                {profile?.shopAddress && <p className="text-slate-400 text-[10px] mt-0.5 leading-relaxed whitespace-pre-line">{profile.shopAddress}</p>}
                 {profile?.shopPhone && <p className="text-slate-400 text-[10px]">Tel: {profile.shopPhone}</p>}
                 {profile?.shopGstin && (
                   <p className="mt-1">
@@ -1438,7 +1438,7 @@ export default function PublicPortal() {
                 <p className="font-black text-slate-900 text-sm leading-snug">{profile?.shopName || profile?.name || '—'}</p>
                 {profile?.shopName && <p className="text-slate-505 text-[10px] font-semibold">Contact: {profile.name}</p>}
                 {profile?.phone && <p className="text-slate-500 text-[10px] font-semibold">Phone: <span className="font-mono text-slate-900">{profile.phone}</span></p>}
-                {profile?.billingAddress && <p className="text-slate-500 text-[10px] leading-relaxed">Address: {profile.billingAddress}</p>}
+                {profile?.billingAddress && <p className="text-slate-500 text-[10px] leading-relaxed whitespace-pre-line">Address: {profile.billingAddress}</p>}
                 {profile?.gstin && (
                   <p className="mt-1.5">
                     <span className="inline-block bg-emerald-50 text-emerald-700 border border-emerald-100 font-mono text-[9px] font-black px-1.5 py-0.5 rounded uppercase">
@@ -1562,7 +1562,7 @@ export default function PublicPortal() {
                     )}
                     <div>
                       <h2 className="text-base font-black text-slate-900 leading-tight">{sellerName}</h2>
-                      {sellerAddress && <p className="text-slate-400 font-mono text-[9px] mt-0.5 leading-relaxed">{sellerAddress}</p>}
+                      {sellerAddress && <p className="text-slate-400 font-mono text-[9px] mt-0.5 leading-relaxed whitespace-pre-line">{sellerAddress}</p>}
                       <div className="text-slate-400 text-[9px] mt-0.5">
                         {sellerPhone && <span>Tel: {sellerPhone}</span>}
                         {sellerEmail && <span> | Email: {sellerEmail}</span>}
@@ -1590,7 +1590,7 @@ export default function PublicPortal() {
                       {buyerEmail && <p className="text-slate-500 text-[10px]">Email: {buyerEmail}</p>}
                     </div>
                     <div className="md:text-right">
-                      {buyerAddress && <p className="text-slate-500 text-[10px]">{buyerAddress}</p>}
+                      {buyerAddress && <p className="text-slate-500 text-[10px] whitespace-pre-line">{buyerAddress}</p>}
                       {buyerState && <p className="text-slate-500 text-[10px]">State: {buyerState}</p>}
                       {buyerGstin && (
                         <p className="mt-1">

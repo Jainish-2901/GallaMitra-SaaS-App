@@ -44,8 +44,6 @@ export default function DocumentListsView({ mode, t = {} }) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', uploadPreset);
-    formData.append('use_filename', 'true');
-    formData.append('unique_filename', 'false');
 
     const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
       method: 'POST',
@@ -214,7 +212,7 @@ export default function DocumentListsView({ mode, t = {} }) {
             {activeShop?.logoUrl && <img src={activeShop.logoUrl} alt="Logo" style={{ width: '42px', height: '42px', borderRadius: '6px', objectFit: 'cover', border: '1px solid #e2e8f0', padding: '1px', backgroundColor: '#fff' }} />}
             <div>
               <div style={{ fontWeight: 800, fontSize: '13px', color: '#000', lineHeight: '1.2' }}>{activeShop?.businessName}</div>
-              {activeShop?.address && <div style={{ fontSize: '9px', color: '#555', marginTop: '2px', maxWidth: '200px', lineHeight: '1.2' }}>{activeShop.address}</div>}
+              {activeShop?.address && <div style={{ fontSize: '9px', color: '#555', marginTop: '2px', maxWidth: '200px', lineHeight: '1.2', whiteSpace: 'pre-line' }}>{activeShop.address}</div>}
               {activeShop?.phone && <div style={{ fontSize: '9px', color: '#555', marginTop: '1px' }}>Tel: {activeShop.phone}</div>}
               {activeShop?.gstin && (
                 <div style={{ fontSize: '8px', color: '#000', backgroundColor: '#f1f5f9', display: 'inline-block', padding: '1px 4px', borderRadius: '3px', marginTop: '2px', fontFamily: 'monospace', fontWeight: 700, border: '1px solid #cbd5e1' }}>
@@ -236,7 +234,7 @@ export default function DocumentListsView({ mode, t = {} }) {
           <div style={{ fontWeight: 800, color: '#000', fontSize: '12px' }}>{party?.shopName || party?.name || '—'}</div>
           {party?.shopName && <div style={{ color: '#555', marginTop: '2px', fontWeight: 650 }}>Contact: {party.name}</div>}
           {party?.phone && <div style={{ color: '#555', marginTop: '2px', fontWeight: 650 }}>Phone: <span style={{ color: '#000', fontFamily: 'monospace' }}>{party.phone}</span></div>}
-          {party?.billingAddress && <div style={{ color: '#555', marginTop: '2px', fontWeight: 650 }}>Address: {party.billingAddress}</div>}
+          {party?.billingAddress && <div style={{ color: '#555', marginTop: '2px', fontWeight: 650, whiteSpace: 'pre-line' }}>Address: {party.billingAddress}</div>}
           {party?.gstin && (
             <div style={{ marginTop: '4px' }}>
               <span style={{ fontSize: '8px', fontWeight: 700, color: '#000', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace', textTransform: 'uppercase' }}>
@@ -322,7 +320,7 @@ export default function DocumentListsView({ mode, t = {} }) {
             )}
             <div>
               <h2 style={{ fontWeight: 900, fontSize: '20px', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>{activeShop?.businessName}</h2>
-              {activeShop?.address && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', maxWidth: '300px', lineHeight: '1.4' }}>{activeShop.address}</div>}
+              {activeShop?.address && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', maxWidth: '300px', lineHeight: '1.4', whiteSpace: 'pre-line' }}>{activeShop.address}</div>}
               <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
                 {activeShop?.phone || activeShop?.businessPhone ? `Phone: ${activeShop.phone || activeShop.businessPhone}` : ''}
                 {activeShop?.businessEmail ? ` | Email: ${activeShop.businessEmail}` : ''}
@@ -358,7 +356,7 @@ export default function DocumentListsView({ mode, t = {} }) {
               {party?.shopName && <div>Contact: {party.name}</div>}
               {party?.phone && <div>Phone: <span style={{ color: '#0f172a', fontFamily: 'monospace' }}>{party.phone}</span></div>}
               {party?.email && <div>Email: {party.email}</div>}
-              {party?.billingAddress && <div>Address: {party.billingAddress}</div>}
+              {party?.billingAddress && <div style={{ whiteSpace: 'pre-line' }}>Address: {party.billingAddress}</div>}
               {party?.state && <div>State: {party.state}</div>}
               {party?.gstin && (
                 <div style={{ marginTop: '6px' }}>
@@ -2112,7 +2110,7 @@ export default function DocumentListsView({ mode, t = {} }) {
               <div className="text-center pb-4 border-b border-dashed border-slate-200">
                 {activeShop?.logoUrl && <img src={activeShop.logoUrl} alt="Logo" className="w-12 h-12 rounded-xl object-cover mx-auto mb-2 border border-slate-200 shadow-2xs p-0.5 bg-white" />}
                 <p className="font-black text-slate-900 text-base leading-tight">{activeShop?.businessName}</p>
-                {activeShop?.address && <p className="text-slate-400 text-[10px] mt-0.5 leading-relaxed">{activeShop.address}</p>}
+                {activeShop?.address && <p className="text-slate-400 text-[10px] mt-0.5 leading-relaxed whitespace-pre-line">{activeShop.address}</p>}
                 {activeShop?.phone && <p className="text-slate-400 text-[10px]">Tel: {activeShop.phone}</p>}
                 {activeShop?.gstin && (
                   <p className="mt-1">
@@ -2132,7 +2130,7 @@ export default function DocumentListsView({ mode, t = {} }) {
                     <p className="font-black text-slate-900 text-sm leading-snug">{party?.shopName || party?.name || '—'}</p>
                     {party?.shopName && <p className="text-slate-505 text-[10px] font-semibold">Contact: {party.name}</p>}
                     {party?.phone && <p className="text-slate-500 text-[10px] font-semibold">Phone: <span className="font-mono text-slate-900">{party.phone}</span></p>}
-                    {party?.billingAddress && <p className="text-slate-500 text-[10px] leading-relaxed">Address: {party.billingAddress}</p>}
+                    {party?.billingAddress && <p className="text-slate-500 text-[10px] leading-relaxed whitespace-pre-line">Address: {party.billingAddress}</p>}
                     {party?.gstin && (
                       <p className="mt-1.5">
                         <span className="inline-block bg-emerald-50 text-emerald-700 border border-emerald-100 font-mono text-[9px] font-black px-1.5 py-0.5 rounded uppercase">
@@ -2247,7 +2245,7 @@ export default function DocumentListsView({ mode, t = {} }) {
                     )}
                     <div>
                       <h2 className="text-base font-black text-slate-900 leading-tight">{activeShop?.businessName}</h2>
-                      {activeShop?.address && <p className="text-slate-400 font-mono text-[9px] mt-0.5 leading-relaxed">{activeShop.address}</p>}
+                      {activeShop?.address && <p className="text-slate-400 font-mono text-[9px] mt-0.5 leading-relaxed whitespace-pre-line">{activeShop.address}</p>}
                       <div className="text-slate-400 text-[9px] mt-0.5">
                         {activeShop?.phone && <span>Tel: {activeShop.phone}</span>}
                         {activeShop?.businessEmail && <span> | Email: {activeShop.businessEmail}</span>}
@@ -2274,7 +2272,7 @@ export default function DocumentListsView({ mode, t = {} }) {
                       {party?.email && <p className="text-slate-500 text-[10px]">Email: {party.email}</p>}
                     </div>
                     <div className="md:text-right">
-                      {party?.billingAddress && <p className="text-slate-500 text-[10px]">{party.billingAddress}</p>}
+                      {party?.billingAddress && <p className="text-slate-500 text-[10px] whitespace-pre-line">{party.billingAddress}</p>}
                       {party?.state && <p className="text-slate-500 text-[10px]">State: {party.state}</p>}
                       {party?.gstin && (
                         <p className="mt-1">

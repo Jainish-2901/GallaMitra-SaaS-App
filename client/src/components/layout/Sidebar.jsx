@@ -1,9 +1,104 @@
-import React from 'react';
-import { useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { AppContext } from '../../context/AppContext.jsx';
 import { translations } from '../../utils/translations.js';
 import { ownerTabs } from '../../sidebarConfig.js';
-import { LogOut, Briefcase, Store, Clock } from 'lucide-react';
+import { LogOut, Briefcase, Store, Clock, ChevronDown } from 'lucide-react';
+
+
+
+export function SidebarMenu({ activeTab, setActiveTab, setSearchTerm, activeShop, t, isMobile = false, onCloseMobile }) {
+  const allowed = activeShop?.allowedTabs || [];
+  const allowedTabsList = ownerTabs.filter(tab => {
+    if (tab.id === 'dashboard') return true;
+    return allowed.includes(tab.id);
+  });
+
+  // Group tabs dynamically by their tab.group property
+  const tabGroups = {};
+  allowedTabsList.forEach(tab => {
+    const grp = tab.group || 'General';
+    if (!tabGroups[grp]) tabGroups[grp] = [];
+    tabGroups[grp].push(tab);
+  });
+
+  // State to track collapsed/expanded status of groups
+  const [collapsedGroups, setCollapsedGroups] = useState({});
+
+  const toggleGroup = (groupName) => {
+    setCollapsedGroups(prev => ({
+      ...prev,
+      [groupName]: !prev[groupName]
+    }));
+  };
+
+  // Automatically expand the group containing the active tab when activeTab changes
+  useEffect(() => {
+    const activeTabObj = ownerTabs.find(tab => tab.id === activeTab);
+    if (activeTabObj?.group) {
+      setCollapsedGroups(prev => ({
+        ...prev,
+        [activeTabObj.group]: false // Expand it
+      }));
+    }
+  }, [activeTab]);
+
+  return (
+    <div className={`space-y-3 ${isMobile ? '' : 'flex-1'}`}>
+      {Object.entries(tabGroups).map(([groupName, tabs]) => {
+        const isCollapsed = collapsedGroups[groupName];
+        return (
+          <div key={groupName} className="space-y-1">
+            {/* Group Title / Collapse Button */}
+            <button
+              type="button"
+              onClick={() => toggleGroup(groupName)}
+              className="w-full flex items-center justify-between px-3 py-1 text-[9px] font-black uppercase tracking-wider text-slate-400 hover:text-slate-600 font-mono transition-colors focus:outline-none"
+            >
+              <span>{groupName}</span>
+              <ChevronDown
+                size={11}
+                className={`text-slate-400 transition-transform duration-200 shrink-0 ${
+                  isCollapsed ? '-rotate-90' : 'rotate-0'
+                }`}
+              />
+            </button>
+
+            {/* Group Nav Items */}
+            {!isCollapsed && (
+              <div className="space-y-0.5">
+                {tabs.map(tab => {
+                  const TabIcon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      id={`sidebar-tab-${tab.id}`}
+                      onClick={() => {
+                        setActiveTab(tab.id);
+                        setSearchTerm('');
+                        if (isMobile && onCloseMobile) onCloseMobile();
+                      }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all group sidebar-tab-btn cursor-pointer ${isActive
+                        ? 'bg-[#0F172A] text-white shadow-sm'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold'
+                        }`}
+                    >
+                      <TabIcon
+                        size={14}
+                        className={isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-slate-600'}
+                      />
+                      <span className="truncate">{t[tab.id] || tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function Sidebar({ activeTab, setActiveTab, setSearchTerm }) {
   const { activeShop, terminateSessionLogout } = useContext(AppContext);
@@ -12,41 +107,16 @@ export default function Sidebar({ activeTab, setActiveTab, setSearchTerm }) {
 
   return (
     <aside className="hidden md:flex w-64 lg:w-72 xl:w-80 bg-white border-r border-slate-200 flex-col overflow-hidden shrink-0 shadow-sm">
-
       {/* Owner Tabs Navigation */}
-      <div className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-        {(() => {
-          const allowed = activeShop?.allowedTabs || [];
-          const allowedTabsList = ownerTabs.filter(tab => {
-            if (tab.id === 'dashboard') return true;
-            return allowed.includes(tab.id);
-          });
-          return (
-            <>
-              {allowedTabsList.map(tab => {
-                const TabIcon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    id={`sidebar-tab-${tab.id}`}
-                    onClick={() => { setActiveTab(tab.id); setSearchTerm(''); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-xl transition-all group sidebar-tab-btn ${isActive
-                      ? 'bg-[#0F172A] text-white shadow-sm'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                      }`}
-                  >
-                    <TabIcon
-                      size={15}
-                      className={isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-slate-600'}
-                    />
-                    <span className="truncate">{t[tab.id] || tab.label}</span>
-                  </button>
-                );
-              })}
-            </>
-          );
-        })()}
+      <div className="flex-1 p-3.5 overflow-y-auto">
+        <SidebarMenu
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          setSearchTerm={setSearchTerm}
+          activeShop={activeShop}
+          t={t}
+          isMobile={false}
+        />
       </div>
 
       {/* Trial Expiry Countdown Widget */}
@@ -113,6 +183,5 @@ export default function Sidebar({ activeTab, setActiveTab, setSearchTerm }) {
         </button>
       </div>
     </aside>
-
   );
 }

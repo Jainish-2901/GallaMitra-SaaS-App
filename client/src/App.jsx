@@ -12,7 +12,7 @@ import PendingApprovalView from './pages/PendingApprovalView.jsx';
 import NotFound from './pages/NotFound.jsx';
 
 // Layout Structural Nodes
-import Sidebar from './components/layout/Sidebar.jsx';
+import Sidebar, { SidebarMenu } from './components/layout/Sidebar.jsx';
 import TopBar from './components/layout/TopBar.jsx';
 import RegisterBusinessModal from './components/layout/RegisterBusinessModal.jsx';
 
@@ -365,26 +365,15 @@ export default function App() {
                     {/* Plan-based sidebar tabs scrollable */}
                     <div className="space-y-2 pt-2 border-t border-slate-100">
                       <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono mb-1.5">Business Menu</span>
-                      <nav className="space-y-1">
-                        {drawerTabs.map(tab => {
-                          const TabIcon = tab.icon;
-                          const isActive = activeTab === tab.id;
-                          return (
-                            <button
-                              key={tab.id}
-                              onClick={() => { setActiveTab(tab.id); setSearchTerm(''); setIsMobileMenuOpen(false); }}
-                              className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                                isActive
-                                  ? 'bg-[#0F172A] text-white shadow-sm'
-                                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                              }`}
-                            >
-                              <TabIcon size={14} className={isActive ? 'text-blue-400' : 'text-slate-400'} />
-                              <span className="truncate">{t[tab.id] || tab.label}</span>
-                            </button>
-                          );
-                        })}
-                      </nav>
+                      <SidebarMenu
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        setSearchTerm={setSearchTerm}
+                        activeShop={activeShop}
+                        t={t}
+                        isMobile={true}
+                        onCloseMobile={() => setIsMobileMenuOpen(false)}
+                      />
                     </div>
                   </div>
 

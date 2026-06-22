@@ -1,6 +1,5 @@
-import React, { useContext } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useContext as useCtx } from 'react';
 import { AppContext } from '../context/AppContext.jsx';
 import { translations } from '../utils/translations.js';
 import AnalyticsCards from '../components/AnalyticsCards.jsx';
@@ -9,11 +8,84 @@ import {
   History, FileSpreadsheet, Layers, FileDigit, BarChart3, Settings,
   Package
 } from 'lucide-react';
+import { SalesExpensesChart, PaymentModesDonut, ProfitGauge } from '../components/CustomCharts.jsx';
 
 export default function OwnerDashboard({ setActiveTab, setSearchTerm }) {
-  const { activeShop, customers, suppliers, loading } = useContext(AppContext);
+  const { 
+    activeShop, 
+    customers, 
+    suppliers, 
+    invoices, 
+    purchaseBills, 
+    receipts, 
+    loading 
+  } = useContext(AppContext);
+
   const activeLang = activeShop?.language || 'gu';
   const t = translations[activeLang] || translations.en;
+
+  // 1. Compute Monthly Trajectory (Last 6 Months) for dashboard preview
+  const chartData = useMemo(() => {
+    const now = new Date();
+    const intervals = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const bStart = d.getTime();
+      const bEnd = new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime();
+      intervals.push({
+        start: bStart,
+        end: bEnd,
+        label: d.toLocaleDateString('en-IN', { month: 'short' })
+      });
+    }
+
+    return intervals.map(bucket => {
+      const bucketInvoices = (invoices || []).filter(i => {
+        const t = new Date(i.date).getTime();
+        return t >= bucket.start && t < bucket.end;
+      });
+      const bucketBills = (purchaseBills || []).filter(pb => {
+        const t = new Date(pb.date).getTime();
+        return t >= bucket.start && t < bucket.end;
+      });
+
+      const sales = bucketInvoices.reduce((sum, i) => sum + parseFloat(i.grandTotal || 0), 0);
+      const expenses = bucketBills.reduce((sum, pb) => sum + parseFloat(pb.totalAmount || 0), 0);
+
+      return {
+        label: bucket.label,
+        sales,
+        expenses
+      };
+    });
+  }, [invoices, purchaseBills]);
+
+  // 2. Compute Payment Distribution
+  const paymentModeStats = useMemo(() => {
+    let upi = 0, cash = 0, cheque = 0;
+    (receipts || []).forEach(r => {
+      const amt = parseFloat(r.amount || 0);
+      if (r.paymentMode === 'UPI') upi += amt;
+      else if (r.paymentMode === 'CASH') cash += amt;
+      else if (r.paymentMode === 'CHEQUE') cheque += amt;
+    });
+    const total = upi + cash + cheque;
+    return {
+      upi, cash, cheque, total,
+      upiPercent: total > 0 ? (upi / total) * 100 : 0,
+      cashPercent: total > 0 ? (cash / total) * 100 : 0,
+      chequePercent: total > 0 ? (cheque / total) * 100 : 0
+    };
+  }, [receipts]);
+
+  // 3. Compute Profit Stats
+  const profitStats = useMemo(() => {
+    const grossSales = (invoices || []).reduce((sum, i) => sum + parseFloat(i.grandTotal || 0), 0);
+    const grossExpenses = (purchaseBills || []).reduce((sum, pb) => sum + parseFloat(pb.totalAmount || 0), 0);
+    const profit = grossSales - grossExpenses;
+    const margin = grossSales > 0 ? (profit / grossSales) * 100 : 0;
+    return { gross: profit, margin };
+  }, [invoices, purchaseBills]);
 
   if (loading) {
     return (
@@ -119,6 +191,56 @@ export default function OwnerDashboard({ setActiveTab, setSearchTerm }) {
           })}
         </div>
       </div>
+
+      {/* Embedded Real-time Business Analytics Charts */}
+      {allowed.includes('analytics') && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 px-1">
+            <BarChart3 size={16} className="text-slate-500" />
+            <h3 className="text-xs font-black text-slate-700 uppercase tracking-wider">Business Analytics Overview</h3>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-8">
+              <SalesExpensesChart chartData={chartData} height={200} />
+            </div>
+            <div className="lg:col-span-4">
+              <ProfitGauge profitMargin={profitStats.margin} grossProfit={profitStats.gross} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1">
+              <PaymentModesDonut paymentModeStats={paymentModeStats} />
+            </div>
+            <div className="lg:col-span-2 bg-white border border-slate-200 rounded-3xl p-6 shadow-xs flex flex-col justify-between">
+              <div>
+                <h4 className="font-black text-sm text-slate-900 tracking-tight">Active Financial Summary</h4>
+                <p className="text-slate-400 text-[10px] font-mono mt-0.5">Workspace accounting ledger performance snapshot</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 my-2">
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono">Gross Sales Volume</p>
+                  <p className="text-base font-black text-slate-950 mt-1 font-mono">
+                    ₹{(invoices || []).reduce((sum, i) => sum + parseFloat(i.grandTotal || 0), 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                  </p>
+                </div>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono">Gross Purchase Expenses</p>
+                  <p className="text-base font-black text-slate-950 mt-1 font-mono">
+                    ₹{(purchaseBills || []).reduce((sum, pb) => sum + parseFloat(pb.totalAmount || 0), 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-[10px] text-slate-400 font-semibold leading-relaxed border-t border-slate-100 pt-3">
+                Detailed monthly analysis is available under the <button onClick={() => setActiveTab('analytics')} className="text-blue-600 hover:text-blue-700 font-bold underline">Analytics tab</button>.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }

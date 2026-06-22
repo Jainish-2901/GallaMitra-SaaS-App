@@ -11,7 +11,7 @@ const coreValues = [
 
 export default function AboutSection() {
   return (
-    <section id="about" className="py-24 bg-white px-6">
+    <section id="about" className="py-24 erp-grid-bg px-6 border-b border-slate-200/60">
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
 

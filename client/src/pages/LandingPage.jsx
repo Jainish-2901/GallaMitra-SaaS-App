@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, User, TrendingUp, FileText } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { AppContext } from '../context/AppContext.jsx';
 
@@ -55,7 +55,7 @@ export default function LandingPage() {
             <PWAInstallationSection />
 
             {/* Pricing Section Grid Canvas */}
-            <section id="pricing" className="py-24 px-4 sm:px-6 text-center bg-[#F8FAFC] border-t border-slate-200/60">
+            <section id="pricing" className="py-24 px-4 sm:px-6 text-center erp-grid-bg border-t border-slate-200/60 relative overflow-hidden">
               <div className="max-w-6xl mx-auto space-y-4">
                 <p className="text-xs font-black uppercase tracking-widest text-blue-600 font-mono">Workspace Pricing</p>
                 <h3 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-none">Simple, transparent deployment plans</h3>
@@ -63,41 +63,91 @@ export default function LandingPage() {
 
                 {/* Highly Responsive Fluid Pricing Grid Framework */}
                 <div className="grid gap-6 sm:gap-8 pt-12 justify-center grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto w-full">
-                  {(plans && plans.length > 0 ? plans : [
+                  {((plans && plans.length > 0 ? plans : [
                     { id: 'starter', name: 'Starter Tier', price: 0, billingCycle: 'free', features: ['Dashboard & Overview', 'Customers & Suppliers', 'Sale & Purchase Ledger', 'Payment Receipts'] },
                     { id: 'growth', name: 'Growth Tier', price: 149, billingCycle: 'monthly', features: ['Invoice Builder', 'Purchase Bill Creator', 'Document Lists', 'Business Settings'] },
                     { id: 'professional', name: 'Premium Tier', price: 299, billingCycle: 'monthly', features: ['Reports & CSV Export', 'Analytics & Charts', 'Priority Support'] },
-                  ]).map(tier => {
+                  ]) || []).map((tier, index) => {
                     const priceNum = parseFloat(tier.price);
-                    const isFree = priceNum === 0;
-                    const isPremium = priceNum >= 200;
-
-                    let accentCheck = 'text-blue-500', cardClass = 'bg-white border-slate-200';
-
-                    if (isFree) {
-                      accentCheck = 'text-emerald-500'; cardClass = 'bg-white border-slate-200/80 shadow-2xs';
-                    } else if (isPremium) {
-                      accentCheck = 'text-blue-600'; cardClass = 'bg-white border-blue-200 shadow-md shadow-blue-500/5 relative ring-4 ring-blue-600/5';
-                    }
+                    
+                    const tierIdx = index >= 0 ? index : 0;
+                    const config = [
+                      {
+                        icon: User,
+                        iconClass: 'text-slate-600 bg-slate-100 border-slate-200',
+                        ribbonText: 'Starter plan',
+                        ribbonBg: 'bg-amber-500',
+                        priceClass: 'text-orange-500',
+                        btnClass: 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/10',
+                        cardClass: 'border-slate-200/80 shadow-xs hover:border-slate-300',
+                        featuresHeader: 'See Offer plan'
+                      },
+                      {
+                        icon: TrendingUp,
+                        iconClass: 'text-emerald-600 bg-emerald-50 border-emerald-200',
+                        ribbonText: 'Growth plan',
+                        ribbonBg: 'bg-emerald-500',
+                        priceClass: 'text-blue-600',
+                        btnClass: 'bg-slate-900 hover:bg-slate-800 text-white',
+                        cardClass: 'border-blue-600 ring-4 ring-blue-600/5 shadow-xl relative scale-[1.01]',
+                        featuresHeader: 'See Offer plan'
+                      },
+                      {
+                        icon: FileText,
+                        iconClass: 'text-rose-600 bg-rose-50 border-rose-200',
+                        ribbonText: 'Scale plan',
+                        ribbonBg: 'bg-amber-500',
+                        priceClass: 'text-emerald-500',
+                        btnClass: 'bg-slate-900 hover:bg-slate-800 text-white',
+                        cardClass: 'border-slate-200/80 shadow-xs hover:border-slate-300',
+                        featuresHeader: 'Free Offer plans'
+                      }
+                    ][tierIdx % 3];
 
                     const featuresArray = Array.isArray(tier.features) ? tier.features : (typeof tier.features === 'string' ? JSON.parse(tier.features) : []);
                     return (
-                      <div key={tier.id || tier.name} className={`p-6 sm:p-8 rounded-3xl border text-left hover:shadow-xl transition-all hover:scale-[1.01] flex flex-col justify-between min-h-[440px] w-full active:scale-[0.99] ${cardClass}`}>
-                        <div>
-                          <div className="flex justify-between items-start mb-2">
-                            <p className="text-[10px] font-black uppercase tracking-widest font-mono text-slate-400">{tier.name}</p>
-                            {isPremium && <span className="bg-blue-50 text-blue-700 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider font-mono">Popular Choice</span>}
+                      <div 
+                        key={tier.id || tier.name} 
+                        className={`p-6 sm:p-8 rounded-3xl border text-left hover:shadow-xl transition-all flex flex-col justify-between min-h-[460px] w-full active:scale-[0.99] relative overflow-hidden bg-white ${config.cardClass}`}
+                      >
+                        {/* Diagonal Corner Ribbon Badge */}
+                        <div className="absolute top-0 right-0 overflow-hidden w-24 h-24 pointer-events-none">
+                          <div className={`absolute top-4 -right-8 w-28 py-1 text-[7px] font-black text-center text-white uppercase tracking-wider transform rotate-45 shadow-xs ${config.ribbonBg}`}>
+                            {tier.name}
                           </div>
-                          <p className="text-3xl sm:text-4xl font-black mb-6 font-mono text-slate-900">
-                            ₹{priceNum.toFixed(0)}
-                            <span className="text-xs font-semibold text-slate-400 font-sans">
-                              {tier.billingCycle === 'free' ? ' (Free)' : tier.billingCycle === 'trial' ? ' (15 Days Trial)' : `/${tier.billingCycle === 'yearly' ? 'yr' : tier.billingCycle === '3_months' ? '3mo' : tier.billingCycle === '6_months' ? '6mo' : 'mo'}`}
-                            </span>
+                        </div>
+
+                        <div>
+                          {/* Left-Aligned Header Box with Icon */}
+                          <div className="flex items-center gap-3 mb-6">
+                            <div className={`w-11 h-11 rounded-xl border flex items-center justify-center ${config.iconClass} shrink-0`}>
+                              <config.icon size={20} strokeWidth={1.5} />
+                            </div>
+                            <div className="overflow-hidden">
+                              <h4 className="font-black text-slate-900 text-sm tracking-tight truncate">{tier.name}</h4>
+                              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest font-mono mt-0.5">GallaMitra Tier</p>
+                            </div>
+                          </div>
+
+                          {/* Large Colored Price display */}
+                          <div className="mb-6">
+                            <p className={`text-3xl font-black font-mono tracking-tight ${config.priceClass}`}>
+                              ₹{priceNum.toFixed(0)}
+                            </p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase font-mono mt-0.5 tracking-wider">
+                              {tier.billingCycle === 'free' ? 'Free (₹0.00)' : `Billed / ${tier.billingCycle}`}
+                            </p>
+                          </div>
+
+                          {/* Sub heading title for features list */}
+                          <p className="font-black text-slate-800 text-[10px] mb-3.5 tracking-tight uppercase font-mono">
+                            {config.featuresHeader}
                           </p>
+
                           <ul className="space-y-3.5 mb-8">
                             {featuresArray.map(f => (
-                              <li key={f} className="text-[11px] font-bold flex items-start gap-2.5 text-slate-600 leading-tight">
-                                <span className={`${accentCheck} font-black flex-shrink-0 mt-0.5`}>✓</span>
+                              <li key={f} className="text-[11px] font-bold flex items-start gap-2 text-slate-600 leading-tight">
+                                <span className="text-emerald-500 font-black flex-shrink-0">✓</span>
                                 <span>{f}</span>
                               </li>
                             ))}
@@ -106,10 +156,9 @@ export default function LandingPage() {
 
                         <button
                           onClick={openRegister}
-                          className={`w-full py-3.5 px-4 rounded-xl text-xs font-black text-center transition-all shadow-2xs cursor-pointer ${isPremium ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/10' : 'bg-slate-900 hover:bg-slate-800 text-white'
-                            }`}
+                          className={`w-full py-3.5 px-4 rounded-xl text-xs font-black text-center transition-all shadow-2xs cursor-pointer ${config.btnClass}`}
                         >
-                          Deploy Workspace
+                          Start Now
                         </button>
                       </div>
                     );

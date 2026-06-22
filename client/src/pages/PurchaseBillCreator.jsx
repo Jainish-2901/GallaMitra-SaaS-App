@@ -32,8 +32,6 @@ export default function PurchaseBillCreator({ t = {} }) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', uploadPreset);
-    formData.append('use_filename', 'true');
-    formData.append('unique_filename', 'false');
 
     const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
       method: 'POST',
@@ -247,7 +245,7 @@ export default function PurchaseBillCreator({ t = {} }) {
                 {activeShop?.businessName || activeShop?.name || 'GallaMitra Merchant'}
               </h1>
               <div className="text-[11px] text-slate-500 font-semibold space-y-0.5 leading-relaxed font-sans">
-                <p>{activeShop?.address || 'Shop address not configured'}</p>
+                <p className="whitespace-pre-line">{activeShop?.address || 'Shop address not configured'}</p>
                 <p>Phone: <span className="text-slate-800">{activeShop?.businessPhone || activeShop?.phone || '—'}</span></p>
                 {activeShop?.businessEmail && <p>Email: <span className="text-slate-800">{activeShop.businessEmail}</span></p>}
                 {isGstActive && gstMode === 'WITH_GST' && activeShop?.gstin && (
@@ -317,7 +315,7 @@ export default function PurchaseBillCreator({ t = {} }) {
                   <h4 className="font-black text-slate-900 text-xs">{selectedSupplier.name}</h4>
                   {selectedSupplier.phone && <p>Phone: <span className="text-slate-800 font-mono">{selectedSupplier.phone}</span></p>}
                   {selectedSupplier.email && <p>Email: <span className="text-slate-800">{selectedSupplier.email}</span></p>}
-                  <p>Billing Address: <span className="text-slate-800 font-normal">{selectedSupplier.billingAddress || 'No Address Listed'}</span></p>
+                  <p>Billing Address: <span className="text-slate-800 font-normal whitespace-pre-line">{selectedSupplier.billingAddress || 'No Address Listed'}</span></p>
                   {selectedSupplier.state && <p>State: <span className="text-slate-800">{selectedSupplier.state}</span></p>}
                   {selectedSupplier.gstin && (
                     <p className="mt-1 font-mono text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 inline-block px-1.5 py-0.5 rounded uppercase">

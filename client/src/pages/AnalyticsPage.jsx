@@ -5,8 +5,14 @@ import { translations } from '../utils/translations.js';
 import {
   BarChart3, Calendar, Award, CreditCard, Users, Wallet,
   TrendingUp, TrendingDown, Percent, ArrowUpRight, ArrowDownLeft,
-  Scale, ShieldCheck, ArrowRight, TrendingUp as ProfitIcon
+  Scale, ShieldCheck, ArrowRight
 } from 'lucide-react';
+import {
+  SalesExpensesChart,
+  CashFlowAreaChart,
+  PaymentModesDonut,
+  ProfitGauge
+} from '../components/CustomCharts.jsx';
 
 export default function AnalyticsPage() {
   const {
@@ -22,63 +28,9 @@ export default function AnalyticsPage() {
   const activeLang = activeShop?.language || 'gu';
   const t = translations[activeLang] || translations.en;
 
-  if (loading) {
-    return (
-      <div className="space-y-6 max-w-5xl mx-auto px-1 pb-10">
-        {/* Header Panel Skeleton */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 animate-pulse">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-slate-200" />
-            <div className="space-y-2">
-              <div className="h-4 bg-slate-200 rounded w-48" />
-              <div className="h-3 bg-slate-200 rounded w-72" />
-            </div>
-          </div>
-          <div className="h-8 w-44 bg-slate-200 rounded-2xl" />
-        </div>
-
-        {/* Main KPI Stats Grid Skeleton */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="bg-white border border-slate-200 p-5 rounded-3xl shadow-2xs relative overflow-hidden animate-pulse space-y-3">
-              <div className="flex justify-between items-start">
-                <div className="space-y-2 w-2/3">
-                  <div className="h-2.5 bg-slate-200 rounded w-16" />
-                  <div className="h-6 bg-slate-200 rounded w-28" />
-                </div>
-                <div className="w-9 h-9 rounded-xl bg-slate-200" />
-              </div>
-              <div className="h-3 bg-slate-200 rounded w-full pt-3 mt-4" />
-            </div>
-          ))}
-        </div>
-
-        {/* Dynamic Grouped Bar Chart Skeleton */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs animate-pulse space-y-6">
-          <div className="flex items-center justify-between border-b pb-4 mb-6">
-            <div className="space-y-2">
-              <div className="h-4 bg-slate-200 rounded w-40" />
-              <div className="h-2.5 bg-slate-200 rounded w-24" />
-            </div>
-            <div className="h-3 w-32 bg-slate-200 rounded" />
-          </div>
-          <div className="h-60 bg-slate-50 rounded-2xl flex items-end justify-around p-4">
-            {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="flex gap-1.5 items-end h-full w-8">
-                <div className="bg-slate-200 rounded-t w-3" style={{ height: `${20 + i * 10}%` }} />
-                <div className="bg-slate-200 rounded-t w-3" style={{ height: `${10 + i * 8}%` }} />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const [timeRange, setTimeRange] = useState('all'); // '1d', '1w', '1m', '1y', 'all'
-  const [hoveredBar, setHoveredBar] = useState(null); // { index, type: 'sales'|'expenses' }
 
-  // 1. Time-Range Date Filters
+  // Time-Range Date Filters
   const minFilterDate = useMemo(() => {
     const now = new Date();
     if (timeRange === '1d') return now.getTime() - 24 * 60 * 60 * 1000;
@@ -104,7 +56,7 @@ export default function AnalyticsPage() {
     return receipts.filter(r => new Date(r.date).getTime() >= minFilterDate);
   }, [receipts, minFilterDate, timeRange]);
 
-  // 2. Compute Analytical Metrics
+  // Compute Analytical Metrics
   // Sales Metrics
   const salesStats = useMemo(() => {
     const gross = filteredInvoices.reduce((sum, i) => sum + parseFloat(i.grandTotal || 0), 0);
@@ -132,7 +84,7 @@ export default function AnalyticsPage() {
     const inflow = filteredReceipts.reduce((sum, r) => sum + (r.customerId ? parseFloat(r.amount || 0) : 0), 0);
     const outflow = filteredReceipts.reduce((sum, r) => sum + (r.supplierId ? parseFloat(r.amount || 0) : 0), 0);
     const net = inflow - outflow;
-    return { inflow, outflow, net };
+    return { inflow, outflow, net, total: inflow + outflow };
   }, [filteredReceipts]);
 
   // Payment Mode Distribution
@@ -153,9 +105,9 @@ export default function AnalyticsPage() {
     };
   }, [filteredReceipts]);
 
-  // 3. Top Partners & Dues Outstanding (Current snapshot or cumulative transactions)
+  // Top Partners & Dues Outstanding
   const partnerInsights = useMemo(() => {
-    // Top Billed Customer (cumulative filtered invoices)
+    // Top Customer
     const customerSalesMap = {};
     filteredInvoices.forEach(i => {
       if (i.customerId) {
@@ -171,7 +123,7 @@ export default function AnalyticsPage() {
     });
     const topCustomer = customers.find(c => c.id === topCustId);
 
-    // Top Paid Supplier (cumulative filtered purchases)
+    // Top Supplier
     const supplierPurchaseMap = {};
     filteredPurchaseBills.forEach(pb => {
       if (pb.supplierId) {
@@ -187,7 +139,7 @@ export default function AnalyticsPage() {
     });
     const topSupplier = suppliers.find(s => s.id === topSuppId);
 
-    // Highest Outstanding Customer (highest balance > 0)
+    // Highest Outstanding Customer
     let highestOutstandingCust = null, maxCustBal = 0;
     customers.forEach(c => {
       const bal = parseFloat(c.balance || 0);
@@ -197,7 +149,7 @@ export default function AnalyticsPage() {
       }
     });
 
-    // Highest Payable Supplier (highest balance > 0)
+    // Highest Payable Supplier
     let highestPayableSupp = null, maxSuppBal = 0;
     suppliers.forEach(s => {
       const bal = parseFloat(s.balance || 0);
@@ -215,13 +167,12 @@ export default function AnalyticsPage() {
     };
   }, [filteredInvoices, filteredPurchaseBills, customers, suppliers]);
 
-  // 4. Dynamic Grouped Chart data
+  // Grouped Chart data
   const chartData = useMemo(() => {
     const now = new Date();
     const intervals = [];
 
     if (timeRange === '1d') {
-      // Last 24 hours: 6 buckets of 4 hours
       const filterMs = 24 * 60 * 60 * 1000;
       const bucketSize = 4 * 60 * 60 * 1000;
       const start = now.getTime() - filterMs;
@@ -237,7 +188,6 @@ export default function AnalyticsPage() {
         });
       }
     } else if (timeRange === '1w') {
-      // Last 7 days: 7 buckets of 1 day
       const filterMs = 7 * 24 * 60 * 60 * 1000;
       const bucketSize = 24 * 60 * 60 * 1000;
       const start = now.getTime() - filterMs;
@@ -252,7 +202,6 @@ export default function AnalyticsPage() {
         });
       }
     } else if (timeRange === '1m') {
-      // Last 30 days: 5 buckets of 6 days
       const filterMs = 30 * 24 * 60 * 60 * 1000;
       const bucketSize = 6 * 24 * 60 * 60 * 1000;
       const start = now.getTime() - filterMs;
@@ -268,7 +217,6 @@ export default function AnalyticsPage() {
         });
       }
     } else if (timeRange === '1y') {
-      // Last 12 months: 12 buckets of 1 month
       for (let i = 11; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const bStart = d.getTime();
@@ -280,7 +228,6 @@ export default function AnalyticsPage() {
         });
       }
     } else {
-      // 'all' time: Find all transaction boundaries and divide into 6 intervals
       const allDates = [...invoices, ...purchaseBills].map(tx => new Date(tx.date).getTime());
       let start = allDates.length > 0 ? Math.min(...allDates) : now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000;
       let end = now.getTime();
@@ -310,7 +257,7 @@ export default function AnalyticsPage() {
         if (updatedSpanMs <= oneDay) {
           const hourStart = dateObj.getHours();
           const hourEnd = new Date(bEnd).getHours();
-          label = `${String(hourStart).padStart(2, '0')}:00-${String(hourEnd).padStart(2, '0')}:00`;
+          label = `${String(hourStart).padStart(2, '0')}:05-${String(hourEnd).padStart(2, '0')}:05`;
         } else if (updatedSpanMs <= 365 * oneDay) {
           label = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
         } else {
@@ -346,11 +293,6 @@ export default function AnalyticsPage() {
     });
   }, [invoices, purchaseBills, timeRange]);
 
-  const maxVal = useMemo(() => {
-    const peak = Math.max(...chartData.map(d => Math.max(d.sales, d.expenses)), 100);
-    return peak * 1.1; // Add 10% breathing space at top
-  }, [chartData]);
-
   const ranges = [
     { key: '1d', label: '1 Day' },
     { key: '1w', label: '1 Week' },
@@ -359,24 +301,44 @@ export default function AnalyticsPage() {
     { key: 'all', label: 'All' },
   ];
 
+  if (loading) {
+    return (
+      <div className="space-y-6 max-w-6xl mx-auto px-1 pb-10">
+        {/* Header Skeleton */}
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs animate-pulse flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="h-12 bg-slate-100 rounded-2xl w-1/3" />
+          <div className="h-8 bg-slate-100 rounded-xl w-40" />
+        </div>
+
+        {/* KPIs Skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="bg-white border border-slate-200 p-5 rounded-3xl h-24 animate-pulse" />
+          ))}
+        </div>
+
+        {/* Charts Grid Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-3xl p-6 h-64 animate-pulse" />
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 h-64 animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="space-y-6 max-w-5xl mx-auto px-1 pb-10"
+      className="space-y-6 max-w-6xl mx-auto px-1 pb-10"
     >
-      <style>{`
-        .bar-group:hover .bar-tooltip { opacity: 1; transform: translateY(-6px) scale(1); }
-        .progress-bar-glow { box-shadow: 0 0 8px var(--tw-shadow-color); }
-      `}</style>
-
       {/* Header Panel */}
       <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-[#0F172A]" />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-[#0F172A]" />
         <div className="flex items-center gap-3">
           <div className="p-3 bg-slate-50 text-slate-700 rounded-2xl border border-slate-100 flex-shrink-0">
-            <BarChart3 size={24} className="text-slate-800" />
+            <BarChart3 size={22} className="text-slate-800" />
           </div>
           <div>
             <h1 className="text-base font-black text-slate-900">{t.analyticsTitle || 'Margins & Revenue Analytics'}</h1>
@@ -393,7 +355,7 @@ export default function AnalyticsPage() {
               key={r.key}
               type="button"
               onClick={() => setTimeRange(r.key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-205 ${
                 timeRange === r.key
                   ? 'bg-slate-900 text-white shadow-xs'
                   : 'text-slate-500 hover:text-slate-950 font-bold hover:bg-white/40'
@@ -412,17 +374,17 @@ export default function AnalyticsPage() {
           whileHover={{ y: -2 }}
           className="bg-white border border-slate-200 p-5 rounded-3xl shadow-2xs relative overflow-hidden"
         >
-          <div className="absolute top-0 left-0 bottom-0 w-1 bg-indigo-500" />
+          <div className="absolute top-0 left-0 bottom-0 w-1 bg-indigo-600" />
           <div className="flex justify-between items-start">
             <div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-mono block">Gross Revenue</span>
               <h3 className="text-2xl font-black text-slate-900 font-mono mt-1">₹{salesStats.gross.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</h3>
             </div>
-            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100"><TrendingUp size={16} /></div>
+            <div className="p-2.5 bg-indigo-50 text-indigo-650 rounded-xl border border-indigo-100"><TrendingUp size={16} /></div>
           </div>
           <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between text-[10px] text-slate-500 font-bold">
             <span>Avg: ₹{salesStats.avg.toLocaleString('en-IN', { maximumFractionDigits: 0 })}/invoice</span>
-            <span className="font-mono bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded">{salesStats.count} bills</span>
+            <span className="font-mono bg-indigo-50 text-indigo-750 px-1.5 py-0.5 rounded">{salesStats.count} bills</span>
           </div>
         </motion.div>
 
@@ -460,7 +422,7 @@ export default function AnalyticsPage() {
             </div>
             <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100"><Scale size={16} /></div>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between text-[10px] text-slate-505 font-bold">
+          <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between text-[10px] text-slate-500 font-bold">
             <span>Profit Margin:</span>
             <span className={`font-black ${grossProfit >= 0 ? 'text-emerald-700 bg-emerald-50' : 'text-rose-600 bg-rose-50'} px-2 py-0.5 rounded font-mono`}>
               {profitMargin.toFixed(1)}%
@@ -473,7 +435,7 @@ export default function AnalyticsPage() {
           whileHover={{ y: -2 }}
           className="bg-white border border-slate-200 p-5 rounded-3xl shadow-2xs relative overflow-hidden"
         >
-          <div className="absolute top-0 left-0 bottom-0 w-1 bg-violet-500" />
+          <div className="absolute top-0 left-0 bottom-0 w-1 bg-blue-500" />
           <div className="flex justify-between items-start">
             <div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-mono block">Net Cash Flow</span>
@@ -481,7 +443,7 @@ export default function AnalyticsPage() {
                 ₹{cashFlowStats.net.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </h3>
             </div>
-            <div className="p-2.5 bg-violet-50 text-violet-600 rounded-xl border border-violet-100"><Wallet size={16} /></div>
+            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100"><Wallet size={16} /></div>
           </div>
           <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between text-[10px] text-slate-500 font-bold">
             <span className="text-emerald-600">In: +₹{cashFlowStats.inflow.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
@@ -490,237 +452,99 @@ export default function AnalyticsPage() {
         </motion.div>
       </div>
 
-      {/* Dynamic Grouped Bar Chart */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs relative">
-        <div className="flex items-center justify-between border-b pb-4 mb-6">
-          <div>
-            <h3 className="font-black text-sm text-slate-900">Sales vs Expenses Trajectory</h3>
-            <p className="text-slate-400 text-[10px] font-mono mt-0.5">Chronologically bucketed activity values</p>
-          </div>
-          <div className="flex gap-4 text-[10px] font-bold">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 bg-indigo-650 rounded" />
-              <span className="text-slate-605">Gross Revenue</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 bg-amber-500 rounded" />
-              <span className="text-slate-605">Total Expenses</span>
-            </div>
-          </div>
+      {/* Row 1 Charts: Bar Trajectory & Profit Gauge */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8">
+          <SalesExpensesChart chartData={chartData} />
         </div>
-
-        {/* Grouped Bar Chart Core */}
-        <div className="h-64 flex items-end justify-between gap-4 pt-8 pb-2 px-1 relative">
-          {/* Horizontal Grid lines */}
-          <div className="absolute inset-x-0 bottom-2 top-8 flex flex-col justify-between pointer-events-none border-b border-slate-100">
-            <div className="w-full border-t border-slate-100" />
-            <div className="w-full border-t border-slate-100" />
-            <div className="w-full border-t border-slate-100" />
-            <div className="w-full border-t border-slate-100" />
-          </div>
-
-          {chartData.map((d, idx) => {
-            const salePct = (d.sales / maxVal) * 100;
-            const expPct = (d.expenses / maxVal) * 100;
-
-            return (
-              <div key={idx} className="flex-1 flex flex-col items-center h-full relative z-10">
-                <div className="flex-1 w-full flex items-end justify-center gap-1.5 sm:gap-2 px-1">
-                  {/* Sales Bar */}
-                  <div
-                    onMouseEnter={() => setHoveredBar({ index: idx, type: 'sales' })}
-                    onMouseLeave={() => setHoveredBar(null)}
-                    className="flex-1 max-w-[24px] bg-indigo-650/85 hover:bg-indigo-650 rounded-t-lg transition-all duration-300 relative bar-group cursor-pointer"
-                    style={{ height: `${Math.max(salePct, 3)}%` }}
-                  >
-                    {/* Tooltip */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 pointer-events-none transition-all duration-200 transform scale-95 origin-bottom bar-tooltip z-20 bg-slate-900 text-white font-mono text-[9px] font-black py-1 px-2 rounded shadow-md whitespace-nowrap">
-                      Sales: ₹{d.sales.toFixed(2)}
-                    </div>
-                  </div>
-
-                  {/* Expenses Bar */}
-                  <div
-                    onMouseEnter={() => setHoveredBar({ index: idx, type: 'expenses' })}
-                    onMouseLeave={() => setHoveredBar(null)}
-                    className="flex-1 max-w-[24px] bg-amber-500/85 hover:bg-amber-500 rounded-t-lg transition-all duration-300 relative bar-group cursor-pointer"
-                    style={{ height: `${Math.max(expPct, 3)}%` }}
-                  >
-                    {/* Tooltip */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 pointer-events-none transition-all duration-200 transform scale-95 origin-bottom bar-tooltip z-20 bg-slate-900 text-white font-mono text-[9px] font-black py-1 px-2 rounded shadow-md whitespace-nowrap">
-                      Expenses: ₹{d.expenses.toFixed(2)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* X-Axis Label */}
-                <div className="w-full text-center text-[9px] sm:text-[10px] font-bold text-slate-400 mt-2 truncate font-mono">
-                  {d.label}
-                </div>
-              </div>
-            );
-          })}
+        <div className="lg:col-span-4">
+          <ProfitGauge profitMargin={profitMargin} grossProfit={grossProfit} />
         </div>
       </div>
 
-      {/* Downside Sections: Payment Modes vs Partners */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Left Column: Payment Modes & Cash Inflows */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-6">
-          <div>
-            <h3 className="font-black text-sm text-slate-900">Payment Modes &amp; Cash Flow Split</h3>
-            <p className="text-slate-400 text-[10px] font-mono mt-0.5">Voucher payment breakdowns in target period</p>
-          </div>
-
-          {/* Payment mode bars */}
-          <div className="space-y-4">
-            {/* Cash */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center text-xs font-bold">
-                <span className="text-slate-650 flex items-center gap-1.5">💵 CASH</span>
-                <span className="font-mono text-slate-900">₹{paymentModeStats.cash.toFixed(2)} ({paymentModeStats.cashPercent.toFixed(1)}%)</span>
-              </div>
-              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${paymentModeStats.cashPercent}%` }} />
-              </div>
-            </div>
-
-            {/* UPI */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center text-xs font-bold">
-                <span className="text-slate-650 flex items-center gap-1.5">📱 UPI / Net Banking</span>
-                <span className="font-mono text-slate-900">₹{paymentModeStats.upi.toFixed(2)} ({paymentModeStats.upiPercent.toFixed(1)}%)</span>
-              </div>
-              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${paymentModeStats.upiPercent}%` }} />
-              </div>
-            </div>
-
-            {/* Cheque */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center text-xs font-bold">
-                <span className="text-slate-650 flex items-center gap-1.5">🏦 CHEQUE</span>
-                <span className="font-mono text-slate-900">₹{paymentModeStats.cheque.toFixed(2)} ({paymentModeStats.chequePercent.toFixed(1)}%)</span>
-              </div>
-              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-indigo-500 rounded-full transition-all duration-500" style={{ width: `${paymentModeStats.chequePercent}%` }} />
-              </div>
-            </div>
-          </div>
-
-          {/* Cash Flow Balance Progress */}
-          {(() => {
-            const sumFlow = cashFlowStats.inflow + cashFlowStats.outflow;
-            const inflowPct = sumFlow > 0 ? (cashFlowStats.inflow / sumFlow) * 100 : 50;
-            const outflowPct = sumFlow > 0 ? (cashFlowStats.outflow / sumFlow) * 100 : 50;
-            return (
-              <div className="pt-4 border-t border-slate-50 space-y-3">
-                <div className="flex justify-between text-xs font-bold text-slate-400">
-                  <span className="text-emerald-600">Inflows (Receipts)</span>
-                  <span className="text-rose-600">Outflows (Remitted)</span>
-                </div>
-                <div className="w-full h-3 bg-slate-100 rounded-full flex overflow-hidden">
-                  <div className="h-full bg-emerald-500/95 transition-all duration-500" style={{ width: `${inflowPct}%` }} />
-                  <div className="h-full bg-rose-500/95 transition-all duration-500" style={{ width: `${outflowPct}%` }} />
-                </div>
-                <div className="flex justify-between text-[10px] font-mono font-black text-slate-600">
-                  <span className="text-emerald-700">₹{cashFlowStats.inflow.toFixed(2)}</span>
-                  <span className="text-rose-700">₹{cashFlowStats.outflow.toFixed(2)}</span>
-                </div>
-              </div>
-            );
-          })()}
+      {/* Row 2 Charts: Cash Flow Line & Payment Donut */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8">
+          <CashFlowAreaChart chartData={chartData} />
         </div>
-
-        {/* Right Column: Top Partners & Outstanding Dues */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs flex flex-col justify-between gap-6">
-          <div>
-            <h3 className="font-black text-sm text-slate-900 font-bold">Top Business Partners &amp; Dues</h3>
-            <p className="text-slate-400 text-[10px] font-mono mt-0.5">Top performing and liability registry snapshots</p>
-          </div>
-
-          <div className="space-y-3.5 flex-1 flex flex-col justify-center">
-            {/* Row 1: Top Customer */}
-            <div className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-100 rounded-2xl">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-650 flex-shrink-0">
-                  <Award size={15} />
-                </div>
-                <div>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono block">Top Billed Customer</span>
-                  <span className="font-black text-slate-900 text-xs">
-                    {partnerInsights.topCustomer ? (partnerInsights.topCustomer.shopName || partnerInsights.topCustomer.name) : '—'}
-                  </span>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] font-bold text-slate-400 block font-mono">Volume</span>
-                <span className="font-black text-slate-950 font-mono text-xs">₹{partnerInsights.topCustSales.toFixed(2)}</span>
-              </div>
-            </div>
-
-            {/* Row 2: Top Supplier */}
-            <div className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-100 rounded-2xl">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 flex-shrink-0">
-                  <Award size={15} />
-                </div>
-                <div>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono block">Top Supplier Billing</span>
-                  <span className="font-black text-slate-900 text-xs">
-                    {partnerInsights.topSupplier ? (partnerInsights.topSupplier.shopName || partnerInsights.topSupplier.name) : '—'}
-                  </span>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] font-bold text-slate-400 block font-mono">Volume</span>
-                <span className="font-black text-slate-950 font-mono text-xs">₹{partnerInsights.topSuppPurchases.toFixed(2)}</span>
-              </div>
-            </div>
-
-            {/* Row 3: Highest Receivables */}
-            <div className="flex items-center justify-between p-3.5 bg-emerald-50/50 border border-emerald-100/50 rounded-2xl">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100/80 text-emerald-700 flex items-center justify-center flex-shrink-0">
-                  <ArrowDownLeft size={16} />
-                </div>
-                <div>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono block">Highest Outstanding</span>
-                  <span className="font-black text-slate-900 text-xs">
-                    {partnerInsights.highestOutstandingCust ? (partnerInsights.highestOutstandingCust.shopName || partnerInsights.highestOutstandingCust.name) : '—'}
-                  </span>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] font-bold text-emerald-650 block font-mono">To Take</span>
-                <span className="font-black text-emerald-700 font-mono text-xs">₹{partnerInsights.maxCustBal.toFixed(2)}</span>
-              </div>
-            </div>
-
-            {/* Row 4: Highest Liabilities */}
-            <div className="flex items-center justify-between p-3.5 bg-rose-50/30 border border-rose-100/30 rounded-2xl">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center flex-shrink-0">
-                  <ArrowUpRight size={16} />
-                </div>
-                <div>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono block">Highest Liability Dues</span>
-                  <span className="font-black text-slate-900 text-xs">
-                    {partnerInsights.highestPayableSupp ? (partnerInsights.highestPayableSupp.shopName || partnerInsights.highestPayableSupp.name) : '—'}
-                  </span>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] font-bold text-rose-500 block font-mono">To Give</span>
-                <span className="font-black text-rose-700 font-mono text-xs">₹{partnerInsights.maxSuppBal.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
+        <div className="lg:col-span-4">
+          <PaymentModesDonut paymentModeStats={paymentModeStats} />
         </div>
-
       </div>
 
+      {/* Downside Sections: Top Partners Summary */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-6">
+        <div>
+          <h3 className="font-black text-sm text-slate-900">Workspace Partner Insights</h3>
+          <p className="text-slate-400 text-[10px] font-mono mt-0.5">Top performing business profiles and liability ledger audits</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Top Customer */}
+          <div className="flex flex-col justify-between p-4 bg-slate-50 border border-slate-200/50 rounded-2xl group hover:border-indigo-200 transition-colors">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-650 shrink-0">
+                <Award size={14} />
+              </div>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono">Top Customer</span>
+            </div>
+            <div className="mt-3">
+              <p className="font-black text-slate-900 text-xs truncate">
+                {partnerInsights.topCustomer ? (partnerInsights.topCustomer.shopName || partnerInsights.topCustomer.name) : '—'}
+              </p>
+              <p className="font-mono text-slate-500 font-bold text-[10px] mt-0.5">₹{partnerInsights.topCustSales.toLocaleString('en-IN', { maximumFractionDigits: 1 })} billed</p>
+            </div>
+          </div>
+
+          {/* Top Supplier */}
+          <div className="flex flex-col justify-between p-4 bg-slate-50 border border-slate-200/50 rounded-2xl group hover:border-amber-200 transition-colors">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+                <Award size={14} />
+              </div>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono">Top Supplier</span>
+            </div>
+            <div className="mt-3">
+              <p className="font-black text-slate-900 text-xs truncate">
+                {partnerInsights.topSupplier ? (partnerInsights.topSupplier.shopName || partnerInsights.topSupplier.name) : '—'}
+              </p>
+              <p className="font-mono text-slate-500 font-bold text-[10px] mt-0.5">₹{partnerInsights.topSuppPurchases.toLocaleString('en-IN', { maximumFractionDigits: 1 })} paid</p>
+            </div>
+          </div>
+
+          {/* Highest Outstanding Customer */}
+          <div className="flex flex-col justify-between p-4 bg-slate-50 border border-slate-200/50 rounded-2xl group hover:border-emerald-250 transition-colors">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                <ArrowDownLeft size={14} />
+              </div>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono">Top Receivable</span>
+            </div>
+            <div className="mt-3">
+              <p className="font-black text-slate-900 text-xs truncate">
+                {partnerInsights.highestOutstandingCust ? (partnerInsights.highestOutstandingCust.shopName || partnerInsights.highestOutstandingCust.name) : '—'}
+              </p>
+              <p className="font-mono text-emerald-700 font-black text-[10px] mt-0.5">₹{partnerInsights.maxCustBal.toLocaleString('en-IN', { maximumFractionDigits: 1 })} to take</p>
+            </div>
+          </div>
+
+          {/* Highest Liability Supplier */}
+          <div className="flex flex-col justify-between p-4 bg-slate-50 border border-slate-200/50 rounded-2xl group hover:border-rose-200 transition-colors">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+                <ArrowUpRight size={14} />
+              </div>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono">Top Liability</span>
+            </div>
+            <div className="mt-3">
+              <p className="font-black text-slate-900 text-xs truncate">
+                {partnerInsights.highestPayableSupp ? (partnerInsights.highestPayableSupp.shopName || partnerInsights.highestPayableSupp.name) : '—'}
+              </p>
+              <p className="font-mono text-rose-700 font-black text-[10px] mt-0.5">₹{partnerInsights.maxSuppBal.toLocaleString('en-IN', { maximumFractionDigits: 1 })} to give</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </motion.div>
   );
 }
