@@ -28,6 +28,10 @@ export default function SaleLedger() {
   const [printLoading, setPrintLoading] = useState(false);
   const ledgerReportRef = useRef(null);
 
+  const customerLedger = useMemo(() => {
+    return ledgerHistory.filter(l => l.customerId !== null);
+  }, [ledgerHistory]);
+
   const displayLedger = useMemo(() => {
     let list = customerLedger;
     if (filterCustomerId) {
@@ -259,8 +263,6 @@ export default function SaleLedger() {
       }
     }
   };
-
-  const customerLedger = ledgerHistory.filter(l => l.customerId !== null);
 
   const handleShareWhatsApp = async (log) => {
     const linkRes = await generateShortShareLink({ partyId: log.customerId, role: 'customer', tab: 'ledger' });
