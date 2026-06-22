@@ -18,6 +18,7 @@ export default function DocumentListsView({ mode, t = {} }) {
   const [editTaxRate, setEditTaxRate] = useState(18);
   const [editMiscCharges, setEditMiscCharges] = useState(0);
   const [editDiscount, setEditDiscount] = useState(0);
+  const [editAdvancePayment, setEditAdvancePayment] = useState(0);
   const [editDescription, setEditDescription] = useState('');
 
   // Purchase Bill Edit state variables
@@ -31,6 +32,7 @@ export default function DocumentListsView({ mode, t = {} }) {
   const [editPbTaxRate, setEditPbTaxRate] = useState(0);
   const [editPbDiscount, setEditPbDiscount] = useState(0);
   const [editPbMiscCharges, setEditPbMiscCharges] = useState(0);
+  const [editPbAdvancePayment, setEditPbAdvancePayment] = useState(0);
 
   // Attachment upload edit states & helper functions
   const [editAttachedImgUrl, setEditAttachedImgUrl] = useState('');
@@ -294,6 +296,8 @@ export default function DocumentListsView({ mode, t = {} }) {
     const miscChargesVal = parseFloat(isInvoice ? (doc.miscCharges || 0) : (metadata.miscCharges || 0));
     const discountVal = parseFloat(isInvoice ? (doc.discount || 0) : (metadata.discount || 0));
     const grandTotalVal = parseFloat(isInvoice ? (doc.grandTotal || 0) : (doc.totalAmount || 0));
+    const advancePaymentVal = parseFloat(doc.advancePayment || 0);
+    const balanceDueVal = grandTotalVal - advancePaymentVal;
 
     // CGST & SGST calculations
     const cgstRate = (taxRateVal / 2).toFixed(1);
@@ -478,6 +482,19 @@ export default function DocumentListsView({ mode, t = {} }) {
                 <span>Grand Total:</span>
                 <span>₹{grandTotalVal.toFixed(2)}</span>
               </div>
+
+              {advancePaymentVal > 0 && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #cbd5e1', paddingTop: '8px', marginTop: '4px', color: '#059669' }}>
+                    <span>Advance Paid (−):</span>
+                    <span>-₹{advancePaymentVal.toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #cbd5e1', paddingTop: '10px', marginTop: '8px', fontSize: '13px', fontWeight: 900, color: '#4f46e5' }}>
+                    <span>Balance Due:</span>
+                    <span>₹{balanceDueVal.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Signature Block */}
@@ -507,6 +524,7 @@ export default function DocumentListsView({ mode, t = {} }) {
     setEditTaxRate(parseFloat(inv.taxRate || 0));
     setEditMiscCharges(parseFloat(inv.miscCharges || 0));
     setEditDiscount(parseFloat(inv.discount || 0));
+    setEditAdvancePayment(parseFloat(inv.advancePayment || 0));
     setEditDescription(inv.description || '');
     setEditAttachedImgUrl(inv.attachedImgUrl || '');
     try {
@@ -552,6 +570,7 @@ export default function DocumentListsView({ mode, t = {} }) {
     const miscVal = parseFloat(editMiscCharges || 0);
     const discVal = parseFloat(editDiscount || 0);
     const grandVal = Math.max(0, subVal + taxAmtVal + miscVal - discVal);
+    const advVal = parseFloat(editAdvancePayment || 0);
 
     const res = await editInvoice(editingInvoice.id, {
       invoiceNo: editInvoiceNo,
@@ -565,7 +584,8 @@ export default function DocumentListsView({ mode, t = {} }) {
       discount: discVal,
       grandTotal: grandVal,
       description: editDescription,
-      attachedImgUrl: editAttachedImgUrl || null
+      attachedImgUrl: editAttachedImgUrl || null,
+      advancePayment: advVal
     });
     if (res.success) {
       toast.success(t.editInvoiceSuccess || 'Invoice edited and ledger balances recalculated!');
@@ -615,6 +635,7 @@ export default function DocumentListsView({ mode, t = {} }) {
     setEditPbSlipDetails(pb.slipDetails || '');
     setEditPbTotalAmount(parseFloat(pb.totalAmount || 0));
     setEditPbAttachedImgUrl(pb.attachedImgUrl || '');
+    setEditPbAdvancePayment(parseFloat(pb.advancePayment || 0));
     try {
       const parsedItems = typeof pb.itemsJson === 'string' ? JSON.parse(pb.itemsJson) : pb.itemsJson;
       if (Array.isArray(parsedItems)) {
@@ -702,7 +723,8 @@ export default function DocumentListsView({ mode, t = {} }) {
       itemsArray: itemsToSave,
       slipDetails: editPbSlipDetails,
       totalAmount: grandTotalVal,
-      attachedImgUrl: editPbAttachedImgUrl || null
+      attachedImgUrl: editPbAttachedImgUrl || null,
+      advancePayment: parseFloat(editPbAdvancePayment || 0)
     });
     if (res.success) {
       toast.success('Purchase bill edited and supplier ledgers recalculated!');
@@ -1460,7 +1482,7 @@ export default function DocumentListsView({ mode, t = {} }) {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-semibold"
                   >
                     {customers.filter(c => !c.isDeleted || c.id === editCustomerId).map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
+                      <option key={c.id} value={c.id}>{c.shopName ? `${c.shopName} — ${c.name}` : c.name}</option>
                     ))}
                   </select>
                 </div>
@@ -1536,7 +1558,7 @@ export default function DocumentListsView({ mode, t = {} }) {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3.5 pt-1">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tax Rate (GST %)</label>
                   <select
@@ -1568,6 +1590,16 @@ export default function DocumentListsView({ mode, t = {} }) {
                     step="any"
                     value={editDiscount}
                     onChange={e => setEditDiscount(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold focus:outline-none focus:border-blue-500 text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Advance Paid (₹)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={editAdvancePayment}
+                    onChange={e => setEditAdvancePayment(parseFloat(e.target.value) || 0)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold focus:outline-none focus:border-blue-500 text-slate-900"
                   />
                 </div>
@@ -1640,10 +1672,13 @@ export default function DocumentListsView({ mode, t = {} }) {
                 <div className="text-slate-500 space-y-0.5">
                   <div>New Subtotal: <span className="text-slate-900 font-bold">₹{calculateEditSubtotal().toFixed(2)}</span></div>
                   <div>Tax Amount ({editTaxRate}%): <span className="text-slate-900 font-bold">₹{(calculateEditSubtotal() * (editTaxRate / 100)).toFixed(2)}</span></div>
+                  <div>Advance Paid: <span className="text-emerald-600 font-bold">₹{parseFloat(editAdvancePayment || 0).toFixed(2)}</span></div>
                 </div>
                 <div className="text-right">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Recalculated Grand Total</span>
-                  <span className="text-sm font-black text-slate-950">₹{calculateEditGrandTotal().toFixed(2)}</span>
+                  <span className="text-xs font-bold text-slate-500 block">₹{calculateEditGrandTotal().toFixed(2)}</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mt-1">Remaining Balance</span>
+                  <span className="text-sm font-black text-slate-950">₹{Math.max(0, calculateEditGrandTotal() - parseFloat(editAdvancePayment || 0)).toFixed(2)}</span>
                 </div>
               </div>
 
@@ -1715,7 +1750,7 @@ export default function DocumentListsView({ mode, t = {} }) {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-semibold"
                   >
                     {suppliers.filter(s => !s.isDeleted || s.id === editPbSupplierId).map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
+                      <option key={s.id} value={s.id}>{s.shopName ? `${s.shopName} — ${s.name}` : s.name}</option>
                     ))}
                   </select>
                 </div>
@@ -1795,7 +1830,7 @@ export default function DocumentListsView({ mode, t = {} }) {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3.5 pt-1">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tax Rate (GST %)</label>
                   <select
@@ -1827,6 +1862,16 @@ export default function DocumentListsView({ mode, t = {} }) {
                     step="any"
                     value={editPbDiscount}
                     onChange={e => setEditPbDiscount(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold focus:outline-none focus:border-blue-500 text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Advance Paid (₹)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={editPbAdvancePayment}
+                    onChange={e => setEditPbAdvancePayment(parseFloat(e.target.value) || 0)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold focus:outline-none focus:border-blue-500 text-slate-900"
                   />
                 </div>
@@ -1899,10 +1944,13 @@ export default function DocumentListsView({ mode, t = {} }) {
                 <div className="text-slate-500 space-y-0.5">
                   <div>New Subtotal: <span className="text-slate-900 font-bold">₹{calculateEditPbSubtotal().toFixed(2)}</span></div>
                   <div>Tax Amount ({editPbTaxRate}%): <span className="text-slate-900 font-bold">₹{((calculateEditPbSubtotal() + parseFloat(editPbMiscCharges || 0)) * (editPbTaxRate / 100)).toFixed(2)}</span></div>
+                  <div>Advance Paid: <span className="text-emerald-600 font-bold">₹{parseFloat(editPbAdvancePayment || 0).toFixed(2)}</span></div>
                 </div>
                 <div className="text-right">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Recalculated Grand Total</span>
-                  <span className="text-sm font-black text-slate-950">₹{calculateEditPbTotal().toFixed(2)}</span>
+                  <span className="text-xs font-bold text-slate-500 block">₹{calculateEditPbTotal().toFixed(2)}</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mt-1">Remaining Balance</span>
+                  <span className="text-sm font-black text-slate-950">₹{Math.max(0, calculateEditPbTotal() - parseFloat(editPbAdvancePayment || 0)).toFixed(2)}</span>
                 </div>
               </div>
 
@@ -1979,7 +2027,7 @@ export default function DocumentListsView({ mode, t = {} }) {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-semibold"
                   >
                     {customers.filter(c => !c.isDeleted || c.id === editReceiptCustomerId).map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
+                      <option key={c.id} value={c.id}>{c.shopName ? `${c.shopName} — ${c.name}` : c.name}</option>
                     ))}
                   </select>
                 ) : (
@@ -1990,7 +2038,7 @@ export default function DocumentListsView({ mode, t = {} }) {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-900 font-semibold"
                   >
                     {suppliers.filter(s => !s.isDeleted || s.id === editReceiptSupplierId).map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
+                      <option key={s.id} value={s.id}>{s.shopName ? `${s.shopName} — ${s.name}` : s.name}</option>
                     ))}
                   </select>
                 )}

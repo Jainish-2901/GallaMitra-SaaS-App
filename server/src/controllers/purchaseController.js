@@ -4,7 +4,7 @@ import { deleteFromCloudinary } from '../utils/cloudinary.js';
 
 // 1. Action: Log a Fresh Supplier Purchase Bill and Append to Ledgers
 export const createPurchaseBill = async (req, res) => {
-    const { billNo, shopId, supplierId, itemsArray, attachedImgUrl, slipDetails, totalAmount } = req.body;
+    const { billNo, shopId, supplierId, itemsArray, attachedImgUrl, slipDetails, totalAmount, advancePayment } = req.body;
 
     if (!shopId || !supplierId || !totalAmount) {
         return res.status(400).json({ error: "Missing required parameters for purchase liability mapping!" });
@@ -12,6 +12,7 @@ export const createPurchaseBill = async (req, res) => {
 
     try {
         const parsedAmount = parseFloat(totalAmount);
+        const parsedAdvancePayment = parseFloat(advancePayment || 0);
         let createdBill = null;
 
         await prisma.$transaction(async (tx) => {
@@ -24,7 +25,8 @@ export const createPurchaseBill = async (req, res) => {
                     itemsJson: itemsArray || [],
                     attachedImgUrl: attachedImgUrl || null,
                     slipDetails: slipDetails || null,
-                    totalAmount: parsedAmount
+                    totalAmount: parsedAmount,
+                    advancePayment: parsedAdvancePayment
                 }
             });
 
@@ -38,15 +40,15 @@ export const createPurchaseBill = async (req, res) => {
                 select: { runningBalance: true }
             });
             let runningBal = parseFloat(lastLedgerRow?.runningBalance || 0);
-            runningBal -= parsedAmount; // Purchase bills increase your payable liability (CREDIT position status)
+            runningBal -= (parsedAmount - parsedAdvancePayment); // Purchase bills increase your payable liability (CREDIT position status) less advance payment
 
             await tx.ledgerEntry.create({
                 data: {
                     shopId,
                     supplierId,
-                    particulars: `Purchase Bill logged reference code #${billNo || 'N/A'}`,
+                    particulars: `Purchase Bill logged reference code #${billNo || 'N/A'}${parsedAdvancePayment > 0 ? ` (Advance Paid: ₹${parsedAdvancePayment.toFixed(2)})` : ''}`,
                     type: 'CREDIT',
-                    amount: parsedAmount,
+                    amount: parsedAmount - parsedAdvancePayment,
                     runningBalance: runningBal,
                     referenceId: createdBill.id
                 }
@@ -134,7 +136,7 @@ export const getShopPurchaseBillHistoryList = async (req, res) => {
 // 4. Action: 100% Override Edit on Purchase Bill and Recalculate App Dues Matrix
 export const editPurchaseBill = async (req, res) => {
     const { id } = req.params;
-    const { billNo, supplierId, date, itemsArray, slipDetails, totalAmount, attachedImgUrl } = req.body;
+    const { billNo, supplierId, date, itemsArray, slipDetails, totalAmount, attachedImgUrl, advancePayment } = req.body;
 
     try {
         const originalBill = await prisma.purchaseBill.findUnique({
@@ -145,6 +147,7 @@ export const editPurchaseBill = async (req, res) => {
         }
 
         const parsedAmount = parseFloat(totalAmount);
+        const parsedAdvancePayment = parseFloat(advancePayment !== undefined ? (advancePayment || 0) : (originalBill.advancePayment || 0));
         const shopId = originalBill.shopId;
         const attachedImgUrlToSave = attachedImgUrl !== undefined ? (attachedImgUrl || null) : originalBill.attachedImgUrl;
 
@@ -168,6 +171,7 @@ export const editPurchaseBill = async (req, res) => {
                     itemsJson: itemsArray || [],
                     slipDetails: slipDetails || null,
                     totalAmount: parsedAmount,
+                    advancePayment: parsedAdvancePayment,
                     attachedImgUrl: attachedImgUrlToSave,
                     isEdited: true
                 }
@@ -178,8 +182,8 @@ export const editPurchaseBill = async (req, res) => {
                 where: { referenceId: id },
                 data: {
                     supplierId: supplierId || undefined,
-                    amount: parsedAmount,
-                    particulars: `Purchase Bill logged reference code #${billNo || originalBill.billNo || 'N/A'}`,
+                    amount: parsedAmount - parsedAdvancePayment,
+                    particulars: `Purchase Bill logged reference code #${billNo || originalBill.billNo || 'N/A'}${parsedAdvancePayment > 0 ? ` (Advance Paid: ₹${parsedAdvancePayment.toFixed(2)})` : ''}`,
                     date: date ? new Date(date) : undefined,
                     isEdited: true,
                     lastEditedAt: new Date()

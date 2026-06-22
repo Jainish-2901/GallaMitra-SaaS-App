@@ -133,6 +133,7 @@ model Invoice {
   grandTotal     Decimal  @db.Decimal(12, 2)
   description    String?  @db.Text
   attachedImgUrl String?  @db.Text
+  advancePayment Decimal? @default(0.00) @db.Decimal(12, 2)
   isEdited       Boolean? @default(false)
   createdAt      DateTime @default(now()) @db.Timestamp(6)
 
@@ -150,6 +151,7 @@ model PurchaseBill {
   attachedImgUrl String?  @db.Text
   slipDetails    String?  @db.VarChar(255)
   totalAmount    Decimal  @db.Decimal(12, 2)
+  advancePayment Decimal? @default(0.00) @db.Decimal(12, 2)
   isEdited       Boolean? @default(false)
   createdAt      DateTime @default(now()) @db.Timestamp(6)
 

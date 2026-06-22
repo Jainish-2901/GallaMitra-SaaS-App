@@ -6,7 +6,7 @@ import { deleteFromCloudinary } from '../utils/cloudinary.js';
 export const createInvoice = async (req, res) => {
     const {
         invoiceNo, shopId, customerId, itemsArray,
-        subTotal, taxAmount, miscCharges, taxRate, grandTotal, description, discount, attachedImgUrl
+        subTotal, taxAmount, miscCharges, taxRate, grandTotal, description, discount, attachedImgUrl, advancePayment
     } = req.body;
 
     if (!invoiceNo || !shopId || !customerId || !itemsArray || subTotal === undefined || grandTotal === undefined) {
@@ -20,6 +20,7 @@ export const createInvoice = async (req, res) => {
         const parsedTaxRate = parseFloat(taxRate || 0);
         const parsedGrandTotal = parseFloat(grandTotal);
         const parsedDiscount = parseFloat(discount || 0);
+        const parsedAdvancePayment = parseFloat(advancePayment || 0);
 
         let createdInvoice = null;
 
@@ -38,7 +39,8 @@ export const createInvoice = async (req, res) => {
                     grandTotal: parsedGrandTotal,
                     description: description || null,
                     discount: parsedDiscount,
-                    attachedImgUrl: attachedImgUrl || null
+                    attachedImgUrl: attachedImgUrl || null,
+                    advancePayment: parsedAdvancePayment
                 }
             });
 
@@ -53,15 +55,15 @@ export const createInvoice = async (req, res) => {
             });
 
             let runningBal = parseFloat(lastLedgerRow?.runningBalance || 0);
-            runningBal += parsedGrandTotal; // Invoice adds to total receivables balance status
+            runningBal += (parsedGrandTotal - parsedAdvancePayment); // Invoice adds to total receivables balance status (less advance payment)
 
             await tx.ledgerEntry.create({
                 data: {
                     shopId,
                     customerId,
-                    particulars: `Sales Invoice generated reference tracking code #${invoiceNo}`,
+                    particulars: `Sales Invoice generated reference tracking code #${invoiceNo}${parsedAdvancePayment > 0 ? ` (Advance Paid: ₹${parsedAdvancePayment.toFixed(2)})` : ''}`,
                     type: 'DEBIT',
-                    amount: parsedGrandTotal,
+                    amount: parsedGrandTotal - parsedAdvancePayment,
                     runningBalance: runningBal,
                     referenceId: createdInvoice.id
                 }
@@ -79,7 +81,7 @@ export const createInvoice = async (req, res) => {
 // 2. Action: 100% Override Edit on Invoice and Recalculate App Dues Matrix
 export const editInvoice = async (req, res) => {
     const { id } = req.params;
-    const { invoiceNo, customerId, date, itemsArray, subTotal, taxAmount, miscCharges, taxRate, grandTotal, description, discount, attachedImgUrl } = req.body;
+    const { invoiceNo, customerId, date, itemsArray, subTotal, taxAmount, miscCharges, taxRate, grandTotal, description, discount, attachedImgUrl, advancePayment } = req.body;
 
     try {
         const originalInvoice = await prisma.invoice.findUnique({
@@ -95,6 +97,7 @@ export const editInvoice = async (req, res) => {
         const parsedTaxRate = parseFloat(taxRate || 0);
         const parsedGrandTotal = parseFloat(grandTotal);
         const parsedDiscount = parseFloat(discount || 0);
+        const parsedAdvancePayment = parseFloat(advancePayment !== undefined ? (advancePayment || 0) : (originalInvoice.advancePayment || 0));
         const shopId = originalInvoice.shopId;
 
         const attachedImgUrlToSave = attachedImgUrl !== undefined ? (attachedImgUrl || null) : originalInvoice.attachedImgUrl;
@@ -122,6 +125,7 @@ export const editInvoice = async (req, res) => {
                     miscCharges: parsedMiscCharges,
                     taxRate: parsedTaxRate,
                     grandTotal: parsedGrandTotal,
+                    advancePayment: parsedAdvancePayment,
                     description: description || null,
                     discount: parsedDiscount,
                     attachedImgUrl: attachedImgUrlToSave,
@@ -135,8 +139,8 @@ export const editInvoice = async (req, res) => {
                 where: { referenceId: id },
                 data: {
                     customerId: customerId || undefined,
-                    amount: parsedGrandTotal,
-                    particulars: `Sales Invoice generated reference tracking code #${invoiceNo || originalInvoice.invoiceNo}`,
+                    amount: parsedGrandTotal - parsedAdvancePayment,
+                    particulars: `Sales Invoice generated reference tracking code #${invoiceNo || originalInvoice.invoiceNo}${parsedAdvancePayment > 0 ? ` (Advance Paid: ₹${parsedAdvancePayment.toFixed(2)})` : ''}`,
                     date: date ? new Date(date) : undefined,
                     isEdited: true,
                     lastEditedAt: new Date()

@@ -22,6 +22,7 @@ export default function PurchaseBillCreator({ t = {} }) {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [discount, setDiscount] = useState('');
   const [customCharges, setCustomCharges] = useState([]);
+  const [advancePayment, setAdvancePayment] = useState('');
   const [useProduct, setUseProduct] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -164,7 +165,8 @@ export default function PurchaseBillCreator({ t = {} }) {
       itemsToSave,
       grandTotal,
       slipDetails,
-      attachedImgUrl
+      attachedImgUrl,
+      parseFloat(advancePayment || 0)
     );
     setSubmitting(false);
 
@@ -175,6 +177,7 @@ export default function PurchaseBillCreator({ t = {} }) {
       setItems([{ name: '', qty: 1, rate: '', rowType: 'item', productId: '' }]);
       setDiscount('');
       setCustomCharges([]);
+      setAdvancePayment('');
       setSlipDetails('');
       setAttachedImgUrl('');
       setSelectedSupplierId('');
@@ -717,12 +720,38 @@ export default function PurchaseBillCreator({ t = {} }) {
                   </div>
                 </div>
 
+                <div className="flex justify-between items-center border-t border-slate-200/50 pt-2">
+                  <span className="font-bold text-slate-655 flex items-center gap-1">Advance Paid (−):</span>
+                  <div className="relative w-28 shrink-0">
+                    <span className="absolute left-2 top-1 text-slate-400">₹</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max={grandTotal}
+                      step="any"
+                      placeholder="0.00"
+                      value={advancePayment}
+                      onChange={e => setAdvancePayment(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg pl-5 pr-2 py-0.5 text-right text-slate-900 font-bold font-mono focus:outline-none focus:border-slate-450 focus:ring-1 focus:ring-slate-450"
+                    />
+                  </div>
+                </div>
+
                 <div className="border-t border-slate-200 pt-2.5 mt-2 flex justify-between items-baseline">
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider font-mono">
                     {t.totalLiabilityPayable || "Total Liability (Payable)"}
                   </span>
-                  <span className={`text-xl font-black ${grandTotal < 0 ? 'text-rose-600' : 'text-slate-950'}`}>
+                  <span className={`text-sm font-bold ${grandTotal < 0 ? 'text-rose-600' : 'text-slate-950'}`}>
                     {grandTotal < 0 ? '−' : ''}₹{Math.abs(grandTotal).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="border-t border-slate-200 pt-2.5 mt-2 flex justify-between items-baseline">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider font-mono">
+                    Remaining Balance:
+                  </span>
+                  <span className="text-xl font-black text-slate-950">
+                    ₹{Math.max(0, grandTotal - parseFloat(advancePayment || 0)).toFixed(2)}
                   </span>
                 </div>
               </div>

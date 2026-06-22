@@ -608,6 +608,8 @@ export default function PublicPortal() {
     const taxAmountVal = parseFloat(doc.taxAmount || 0);
     const miscChargesVal = parseFloat(doc.miscCharges || 0);
     const grandTotalVal = parseFloat(isInvoice ? (doc.grandTotal || 0) : (doc.totalAmount || 0));
+    const advancePaymentVal = parseFloat(doc.advancePayment || 0);
+    const balanceDueVal = grandTotalVal - advancePaymentVal;
 
     // CGST & SGST calculations
     const cgstRate = (taxRateVal / 2).toFixed(1);
@@ -806,6 +808,19 @@ export default function PublicPortal() {
                 <span>Grand Total:</span>
                 <span>₹{grandTotalVal.toFixed(2)}</span>
               </div>
+
+              {advancePaymentVal > 0 && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #cbd5e1', paddingTop: '8px', marginTop: '4px', color: '#059669' }}>
+                    <span>Advance Paid (−):</span>
+                    <span>-₹{advancePaymentVal.toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #cbd5e1', paddingTop: '10px', marginTop: '8px', fontSize: '13px', fontWeight: 900, color: '#4f46e5' }}>
+                    <span>Balance Due:</span>
+                    <span>₹{balanceDueVal.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Signature Block */}

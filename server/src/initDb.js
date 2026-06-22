@@ -98,6 +98,7 @@ export const initDatabase = async () => {
       "grandTotal" DECIMAL(12, 2) NOT NULL,
       "description" TEXT,
       "attachedImgUrl" TEXT,
+      "advancePayment" DECIMAL(12, 2) DEFAULT 0.00,
       "isEdited" BOOLEAN DEFAULT FALSE,
       "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
       CONSTRAINT "fk_invoice_shop" FOREIGN KEY ("shopId") REFERENCES "Shop"("id") ON DELETE CASCADE,
@@ -114,6 +115,7 @@ export const initDatabase = async () => {
       "attachedImgUrl" TEXT,
       "slipDetails" VARCHAR(255),
       "totalAmount" DECIMAL(12, 2) NOT NULL,
+      "advancePayment" DECIMAL(12, 2) DEFAULT 0.00,
       "isEdited" BOOLEAN DEFAULT FALSE,
       "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
       CONSTRAINT "fk_pbill_shop" FOREIGN KEY ("shopId") REFERENCES "Shop"("id") ON DELETE CASCADE,
@@ -175,6 +177,8 @@ export const initDatabase = async () => {
     ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "discount" DECIMAL(12, 2) DEFAULT 0.00;
     ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "taxRate" DECIMAL(5, 2) DEFAULT 18.00;
     ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "attachedImgUrl" TEXT;
+    ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "advancePayment" DECIMAL(12, 2) DEFAULT 0.00;
+    ALTER TABLE "PurchaseBill" ADD COLUMN IF NOT EXISTS "advancePayment" DECIMAL(12, 2) DEFAULT 0.00;
 
     -- Plan & Approval System (v1.1 migration)
     ALTER TABLE "Shop" ADD COLUMN IF NOT EXISTS "plan" VARCHAR(50) DEFAULT 'starter';
