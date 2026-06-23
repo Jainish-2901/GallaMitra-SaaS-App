@@ -135,11 +135,20 @@ export default function PurchaseLedger() {
     return (
       <div ref={ledgerReportRef} style={{ background: '#fff', padding: '32px', fontFamily: 'Arial, sans-serif', width: '750px', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', borderBottom: '2px solid #cbd5e1', paddingBottom: '20px' }}>
-          <div>
-            <div style={{ fontWeight: 900, fontSize: '20px', color: '#0f172a' }}>{activeShop?.businessName}</div>
-            {activeShop?.address && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', maxWidth: '300px', lineHeight: '1.4', whiteSpace: 'pre-line' }}>{activeShop.address}</div>}
-            {activeShop?.phone && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Tel: {activeShop.phone}</div>}
-            {activeShop?.gstin && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', fontFamily: 'monospace' }}>GSTIN: {activeShop.gstin}</div>}
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            {activeShop?.logoUrl && (
+              <img
+                src={activeShop.logoUrl}
+                alt="Shop Logo"
+                style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #cbd5e1', padding: '2px', backgroundColor: '#fff' }}
+              />
+            )}
+            <div>
+              <div style={{ fontWeight: 900, fontSize: '20px', color: '#0f172a' }}>{activeShop?.businessName}</div>
+              {activeShop?.address && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', maxWidth: '300px', lineHeight: '1.4', whiteSpace: 'pre-line' }}>{activeShop.address}</div>}
+              {activeShop?.phone && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Tel: {activeShop.phone}</div>}
+              {activeShop?.gstin && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', fontFamily: 'monospace' }}>GSTIN: {activeShop.gstin}</div>}
+            </div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '11px', color: '#64748b', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>Account Statement</div>
