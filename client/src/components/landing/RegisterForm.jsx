@@ -251,7 +251,7 @@ export default function RegisterForm({ onSwitchToLogin, onClose }) {
                   <label style={{ display: 'block', fontSize: '.6rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Business Name *</label>
                   <div style={{ position: 'relative' }}>
                     <Building2 size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-                    <input id="reg-biz-name" type="text" required value={bizName} onChange={e => setBizName(e.target.value)} placeholder="My Shop"
+                    <input id="reg-biz-name" type="text" required value={bizName} onChange={e => setBizName(e.target.value)} placeholder="My Shop" autocomplete="organization"
                       style={{ width: '100%', background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: 12, paddingLeft: 34, paddingRight: 12, paddingTop: 9, paddingBottom: 9, fontSize: '.78rem', fontWeight: 600, color: '#1E293B', outline: 'none', fontFamily: 'inherit' }} />
                   </div>
                 </div>
@@ -259,7 +259,7 @@ export default function RegisterForm({ onSwitchToLogin, onClose }) {
                   <label style={{ display: 'block', fontSize: '.6rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Owner Name *</label>
                   <div style={{ position: 'relative' }}>
                     <User size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-                    <input id="reg-owner-name" type="text" required value={ownerName} onChange={e => setOwnerName(e.target.value)} placeholder="Your Name"
+                    <input id="reg-owner-name" type="text" required value={ownerName} onChange={e => setOwnerName(e.target.value)} placeholder="Your Name" autocomplete="name"
                       style={{ width: '100%', background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: 12, paddingLeft: 34, paddingRight: 12, paddingTop: 9, paddingBottom: 9, fontSize: '.78rem', fontWeight: 600, color: '#1E293B', outline: 'none', fontFamily: 'inherit' }} />
                   </div>
                 </div>
@@ -270,7 +270,7 @@ export default function RegisterForm({ onSwitchToLogin, onClose }) {
                 <label style={{ display: 'block', fontSize: '.6rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Email *</label>
                 <div style={{ position: 'relative' }}>
                   <Mail size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-                  <input id="reg-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="owner@example.com"
+                  <input id="reg-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="owner@example.com" autocomplete="email"
                     style={{ width: '100%', background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: 12, paddingLeft: 36, paddingRight: 12, paddingTop: 10, paddingBottom: 10, fontSize: '.8rem', fontWeight: 600, color: '#1E293B', outline: 'none', fontFamily: 'inherit' }} />
                 </div>
               </div>
@@ -280,7 +280,7 @@ export default function RegisterForm({ onSwitchToLogin, onClose }) {
                 <label style={{ display: 'block', fontSize: '.6rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Mobile</label>
                 <div style={{ position: 'relative' }}>
                   <Phone size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-                  <input id="reg-phone" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210"
+                  <input id="reg-phone" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" autocomplete="tel"
                     style={{ width: '100%', background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: 12, paddingLeft: 36, paddingRight: 12, paddingTop: 10, paddingBottom: 10, fontSize: '.8rem', fontWeight: 600, color: '#1E293B', outline: 'none', fontFamily: 'inherit' }} />
                 </div>
               </div>
@@ -291,7 +291,7 @@ export default function RegisterForm({ onSwitchToLogin, onClose }) {
                   <label style={{ display: 'block', fontSize: '.6rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Password *</label>
                   <div style={{ position: 'relative' }}>
                     <Lock size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-                    <input id="reg-password" type={showPass ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 6 chars"
+                    <input id="reg-password" type={showPass ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 6 chars" autocomplete="new-password"
                       style={{ width: '100%', background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: 12, paddingLeft: 34, paddingRight: 34, paddingTop: 9, paddingBottom: 9, fontSize: '.78rem', fontWeight: 600, color: '#1E293B', outline: 'none', fontFamily: 'inherit' }} />
                     <button type="button" onClick={() => setShowPass(p => !p)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}>
                       {showPass ? <EyeOff size={13} /> : <Eye size={13} />}
@@ -302,7 +302,7 @@ export default function RegisterForm({ onSwitchToLogin, onClose }) {
                   <label style={{ display: 'block', fontSize: '.6rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Confirm *</label>
                   <div style={{ position: 'relative' }}>
                     <Lock size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-                    <input id="reg-confirm" type={showPass ? 'text' : 'password'} required value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Re-enter"
+                    <input id="reg-confirm" type={showPass ? 'text' : 'password'} required value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Re-enter" autocomplete="new-password"
                       style={{ width: '100%', background: '#F8FAFC', border: `1.5px solid ${passwordMismatch ? '#F43F5E' : '#E2E8F0'}`, borderRadius: 12, paddingLeft: 34, paddingRight: 12, paddingTop: 9, paddingBottom: 9, fontSize: '.78rem', fontWeight: 600, color: passwordMismatch ? '#E11D48' : '#1E293B', outline: 'none', fontFamily: 'inherit' }} />
                   </div>
                   {passwordMismatch && <p style={{ fontSize: '.6rem', color: '#E11D48', fontWeight: 700, marginTop: 3 }}>Don't match</p>}

@@ -102,6 +102,7 @@ export default function AdminLogin() {
                   onChange={e => setUsername(e.target.value)}
                   required
                   placeholder="admin"
+                  autocomplete="username"
                   style={{
                     width: '100%',
                     background: 'var(--surface-2)',
@@ -130,6 +131,7 @@ export default function AdminLogin() {
                   onChange={e => setPassword(e.target.value)}
                   required
                   placeholder="••••••••••••"
+                  autocomplete="current-password"
                   style={{
                     width: '100%',
                     background: 'var(--surface-2)',

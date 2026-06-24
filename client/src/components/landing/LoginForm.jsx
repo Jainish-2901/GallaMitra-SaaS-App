@@ -184,6 +184,7 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="owner@example.com"
+                autocomplete="email"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-semibold text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
               />
             </div>
@@ -233,6 +234,7 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
                 value={otp}
                 onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
                 placeholder="e.g. 123456"
+                autocomplete="one-time-code"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-black text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white transition-all font-mono tracking-widest text-center"
               />
             </div>
@@ -252,6 +254,7 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
                   placeholder="Min 6 chars"
+                  autocomplete="new-password"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
                 />
                 <button type="button" onClick={() => setShowNewPass(!showNewPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
@@ -284,6 +287,7 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   placeholder="Re-enter"
+                  autocomplete="new-password"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
                 />
                 <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
@@ -329,6 +333,7 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="owner@example.com"
+                autocomplete="username"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
               />
             </div>
@@ -357,6 +362,7 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
+                autocomplete="current-password"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-12 py-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
               />
               <button type="button" onClick={() => setShowPass(p => !p)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
