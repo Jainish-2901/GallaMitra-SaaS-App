@@ -6,11 +6,13 @@ GallaMitra (ગલ્લામિત્ર) is a premium, feature-rich SaaS plat
 
 ## Latest Premium UI and Feature Updates
 The client dashboard has been updated with premium UI components and functional enhancements:
+- **Inventory Management System (New)**: Integrated real-time stock tracking with automated stock decrements on invoice creation/modification, moving average cost recalculations on purchase bills, standard and custom Unique Quantity Codes (UQC) dropdowns, HSN/SAC code classifications, manual inline stock adjustments, and an Inventory Intelligence & Valuation analytics panel (Asset Valuation, Real Profit Margins, and Low Stock alerts).
 - Interactive SVG Charts: Built a custom, zero-dependency charting library ([CustomCharts.jsx](file:///d:/SasS%20Projects/gallamitra/client/src/components/CustomCharts.jsx)) utilizing pure SVG vectors and React state. It renders Sales & Expenses double bars, Cash Flow Area trends, Payment Mode Donuts (using offset mathematical stroke arrays), and a semi-circle Profit Margin Gauge.
 - Refactored Settings Dashboards: Re-engineered user profiles ([UserSettings.jsx](file:///d:/SasS%20Projects/gallamitra/client/src/pages/UserSettings.jsx)) and business settings ([BusinessSettings.jsx](file:///d:/SasS%20Projects/gallamitra/client/src/pages/BusinessSettings.jsx)) into a modern 2-column layout separating basic details from platform metadata, subscription cards, and custom signature pads.
 - Framer Motion Ledger Modals: Upgraded [TransactionModal.jsx](file:///d:/SasS%20Projects/gallamitra/client/src/components/TransactionModal.jsx) with scale-fade spring animations, absolute visual currency inputs (`₹`), and adaptive color schemes matching Credit (emerald) or Debit (rose) flows.
 - Split Testimonials Component: Re-engineered landing page testimonials ([TestimonialsSection.jsx](file:///d:/SasS%20Projects/gallamitra/client/src/components/landing/TestimonialsSection.jsx)) into a split-pane interface showing key customer metrics beside glassmorphic review cards.
 - Robust Cloudinary Upload Flow: Patched signature and logo uploads by stripping out prohibited payload params (`use_filename`, `unique_filename`) which caused upload rejections.
+
 
 ---
 

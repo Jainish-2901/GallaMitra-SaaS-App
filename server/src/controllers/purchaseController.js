@@ -32,6 +32,37 @@ export const createPurchaseBill = async (req, res) => {
                 }
             });
 
+            // Update Stock levels and calculate moving average cost for products
+            if (Array.isArray(itemsArray)) {
+                for (const item of itemsArray) {
+                    if (item.productId && item.qty) {
+                        const qty = parseFloat(item.qty);
+                        const rate = parseFloat(item.rate || item.price || 0);
+                        const prod = await tx.product.findUnique({
+                            where: { id: item.productId }
+                        });
+                        if (prod) {
+                            const currentStock = parseFloat(prod.currentStock || 0);
+                            const averageCost = parseFloat(prod.averageCostPrice || 0);
+                            const finalStock = currentStock + qty;
+                            let newCost = averageCost;
+                            if (finalStock > 0) {
+                                newCost = ((currentStock * averageCost) + (qty * rate)) / finalStock;
+                            } else {
+                                newCost = rate;
+                            }
+                            await tx.product.update({
+                                where: { id: item.productId },
+                                data: {
+                                    currentStock: { increment: qty },
+                                    averageCostPrice: newCost
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+
             // B. Inject corresponding row entry into mixed ledger stream
             const lastLedgerRow = await tx.ledgerEntry.findFirst({
                 where: { shopId },
@@ -129,6 +160,27 @@ export const deletePurchaseBill = async (req, res) => {
         }
 
         await prisma.$transaction(async (tx) => {
+            // Revert stock from deleted purchase bill items: Decrement stock
+            const oldItems = billCheck.itemsJson || [];
+            if (Array.isArray(oldItems)) {
+                for (const item of oldItems) {
+                    if (item.productId && item.qty) {
+                        const qty = parseFloat(item.qty);
+                        const prod = await tx.product.findUnique({
+                            where: { id: item.productId }
+                        });
+                        if (prod) {
+                            await tx.product.update({
+                                where: { id: item.productId },
+                                data: {
+                                    currentStock: { decrement: qty }
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+
             // Find connected receipt
             const linkedReceipt = await tx.paymentReceipt.findFirst({
                 where: { purchaseBillId: id }
@@ -222,6 +274,58 @@ export const editPurchaseBill = async (req, res) => {
         let updatedBill = null;
 
         await prisma.$transaction(async (tx) => {
+            // Revert old purchase stock (subtract old quantities)
+            const oldItems = originalBill.itemsJson || [];
+            if (Array.isArray(oldItems)) {
+                for (const item of oldItems) {
+                    if (item.productId && item.qty) {
+                        const qty = parseFloat(item.qty);
+                        const prod = await tx.product.findUnique({
+                            where: { id: item.productId }
+                        });
+                        if (prod) {
+                            await tx.product.update({
+                                where: { id: item.productId },
+                                data: {
+                                    currentStock: { decrement: qty }
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Apply new purchase stock and recalculate average cost price
+            if (Array.isArray(itemsArray)) {
+                for (const item of itemsArray) {
+                    if (item.productId && item.qty) {
+                        const qty = parseFloat(item.qty);
+                        const rate = parseFloat(item.rate || item.price || 0);
+                        const prod = await tx.product.findUnique({
+                            where: { id: item.productId }
+                        });
+                        if (prod) {
+                            const currentStock = parseFloat(prod.currentStock || 0);
+                            const averageCost = parseFloat(prod.averageCostPrice || 0);
+                            const finalStock = currentStock + qty;
+                            let newCost = averageCost;
+                            if (finalStock > 0) {
+                                newCost = ((currentStock * averageCost) + (qty * rate)) / finalStock;
+                            } else {
+                                newCost = rate;
+                            }
+                            await tx.product.update({
+                                where: { id: item.productId },
+                                data: {
+                                    currentStock: { increment: qty },
+                                    averageCostPrice: newCost
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+
             // A. Update PurchaseBill record
             updatedBill = await tx.purchaseBill.update({
                 where: { id },

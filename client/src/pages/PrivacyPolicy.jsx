@@ -12,7 +12,7 @@ export default function PrivacyPolicy() {
               <ShieldCheck size={24} />
             </div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">Privacy Policy</h2>
-            <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">Last Updated: June 21, 2026</p>
+            <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">Last Updated: June 24, 2026</p>
           </div>
   
           {/* Content Matrix */}
@@ -27,7 +27,7 @@ export default function PrivacyPolicy() {
                 <Eye size={18} className="text-blue-600" /> 1. Information We Securely Collect
               </h3>
               <p className="text-slate-500 text-xs md:text-sm">
-                To provide your workspace, we collect user-provided details via Google OAuth sync, including business name, owner name, verified email addresses, phone numbers, state, business address, digital sign strings, and optional GSTIN/VPA parameters. We log transaction histories, sales invoices, purchase bills, manual ledger entries, and saved product/service profiles (such as product name, rate, and descriptions) on your behalf. Additionally, we track subscription metadata, plan statuses (Starter, Growth, Trial, Professional), billing cycles (Monthly, Yearly, 3-Month, 6-Month, Trial), and email dispatch flags to manage trial notices, countdown triggers, and automatic warnings.
+                To provide your workspace, we collect user-provided details via Google OAuth sync, including business name, owner name, verified email addresses, phone numbers, state, business address, digital sign strings, and optional GSTIN/VPA parameters. We log transaction histories, sales invoices, purchase bills, manual ledger entries, and saved product/service profiles (including product name, price/rate, descriptions, HSN/SAC codes, Unique Quantity Codes (UQC), current stock counts, and average cost metrics) on your behalf. Additionally, we track subscription metadata, plan statuses (Starter, Growth, Trial, Professional), billing cycles (Monthly, Yearly, 3-Month, 6-Month, Trial), and email dispatch flags to manage trial notices, countdown triggers, and automatic warnings.
               </p>
             </div>
   
@@ -47,9 +47,10 @@ export default function PrivacyPolicy() {
                 <RefreshCw size={18} className="text-blue-600" /> 3. Deletion, Downgrade & Workspace Inheritance Policy
               </h3>
               <p className="text-slate-505 text-xs md:text-sm font-semibold">
-                To protect financial audit transparency, GallaMitra enforces a strict non-cascade deletion safeguard. If a customer or supplier profile is manually purged from your lists, related historical transactional lines and ledger logs are securely preserved in the architecture logs to keep aggregate firm balances balanced and uncorrupted. Similarly, deleting a saved product or service profile removes it from subsequent autocomplete selection dropdowns, but all historical invoice or purchase bill records containing that product's details remain fully intact. Under our parent-child subscription model, any sub-businesses created under an existing owner email inherit the plan, active status, and expiration duration of the parent workspace. Furthermore, upon expiration of the 15-day Free Trial or any paid plan, the platform automatically transitions the shop account to the Starter Plan. No business metadata, invoices, ledger entries, or customer details are deleted or lost during this downgrade sequence.
+                To protect financial audit transparency, GallaMitra enforces a strict non-cascade deletion safeguard. If a customer or supplier profile is manually purged from your lists, related historical transactional lines and ledger logs are securely preserved in the database to keep aggregate balances consistent and uncorrupted. Similarly, deleting a saved product or service profile removes it from subsequent autocomplete selection dropdowns, but all historical invoice or purchase bill records containing that product's details, stock adjustments, and historic cost logs remain fully intact. Under our parent-child subscription model, any sub-businesses created under an existing owner email inherit the plan, active status, and expiration duration of the parent workspace. Furthermore, upon expiration of the 15-day Free Trial or any paid plan, the platform automatically transitions the shop account to the Starter Plan. No business metadata, invoices, ledger entries, or customer details are deleted or lost during this downgrade sequence.
               </p>
             </div>
+
 
           {/* 4. Public Pass Channels */}
           <div className="space-y-3">

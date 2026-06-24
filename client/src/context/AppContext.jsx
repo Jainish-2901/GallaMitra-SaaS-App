@@ -1,15 +1,16 @@
 import React, { createContext, useState, useEffect } from 'react';
+import { getCookie, setCookie, eraseCookie } from '../utils/cookies.js';
 
 export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
     const [activeShop, setActiveShop] = useState(() => {
-        const savedSession = localStorage.getItem('gm_session_tenant');
+        const savedSession = getCookie('gm_session_tenant');
         try {
             return (savedSession && savedSession !== 'undefined') ? JSON.parse(savedSession) : null;
         } catch (error) {
             console.error('🚨 Corrupted local session detected. Purging...', error);
-            localStorage.removeItem('gm_session_tenant');
+            eraseCookie('gm_session_tenant');
             return null;
         }
     });
@@ -36,7 +37,7 @@ export const AppProvider = ({ children }) => {
     const BACKEND_URL = backendApiUrl;
 
     const getAuthHeaders = () => {
-        const token = localStorage.getItem('gm_shop_token');
+        const token = getCookie('gm_shop_token');
         return {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -45,8 +46,8 @@ export const AppProvider = ({ children }) => {
 
     const handleSessionExpiry = (response) => {
         if (response.status === 401) {
-            localStorage.removeItem('gm_shop_token');
-            localStorage.removeItem('gm_session_tenant');
+            eraseCookie('gm_shop_token');
+            eraseCookie('gm_session_tenant');
             setActiveShop(null);
         }
         return response;
@@ -96,9 +97,9 @@ export const AppProvider = ({ children }) => {
                     setPendingShop(data.shop);
                     return { success: true, shop: data.shop, pending: true };
                 }
-                if (data.token) localStorage.setItem('gm_shop_token', data.token);
+                if (data.token) setCookie('gm_shop_token', data.token);
                 setActiveShop(data.shop);
-                localStorage.setItem('gm_session_tenant', JSON.stringify(data.shop));
+                setCookie('gm_session_tenant', JSON.stringify(data.shop));
                 return { success: true, shop: data.shop };
             }
             return { success: false, error: data.error };
@@ -123,9 +124,9 @@ export const AppProvider = ({ children }) => {
                 if (data.shops) {
                     return { success: true, shops: data.shops };
                 }
-                if (data.token) localStorage.setItem('gm_shop_token', data.token);
+                if (data.token) setCookie('gm_shop_token', data.token);
                 setActiveShop(data.shop);
-                localStorage.setItem('gm_session_tenant', JSON.stringify(data.shop));
+                setCookie('gm_session_tenant', JSON.stringify(data.shop));
                 return { success: true, shop: data.shop };
             }
             // Handle special statuses
@@ -145,8 +146,19 @@ export const AppProvider = ({ children }) => {
 
     // Logout clear utility handler
     const terminateSessionLogout = () => {
-        localStorage.removeItem('gm_shop_token');
-        localStorage.removeItem('gm_session_tenant');
+        const token = getCookie('gm_shop_token');
+        if (token && activeShop?.id) {
+            fetch(`${BACKEND_URL}/shops/logout`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            }).catch(err => console.error('🚨 Error registering server logout:', err));
+        }
+
+        eraseCookie('gm_shop_token');
+        eraseCookie('gm_session_tenant');
         localStorage.removeItem('gm_pending_shop');
         setActiveShop(null);
         setPendingShop(null);
@@ -166,9 +178,9 @@ export const AppProvider = ({ children }) => {
                 if (data.status === 'active') {
                     localStorage.removeItem('gm_pending_shop');
                     setPendingShop(null);
-                    if (data.token) localStorage.setItem('gm_shop_token', data.token);
+                    if (data.token) setCookie('gm_shop_token', data.token);
                     setActiveShop(data.shop);
-                    localStorage.setItem('gm_session_tenant', JSON.stringify(data.shop));
+                    setCookie('gm_session_tenant', JSON.stringify(data.shop));
                     return { approved: true, shop: data.shop };
                 }
                 return { approved: false, status: data.status, supportPhone: data.supportPhone, supportEmail: data.supportEmail };
@@ -185,35 +197,19 @@ export const AppProvider = ({ children }) => {
         setLoading(true);
         try {
             const headers = getAuthHeaders();
-            const [custRes, suppRes, ledgRes, invRes, pBillRes, recRes, prodRes] = await Promise.all([
-                fetch(`${BACKEND_URL}/parties/list/${shopId}?role=customer&includeDeleted=true`, { headers }),
-                fetch(`${BACKEND_URL}/parties/list/${shopId}?role=supplier&includeDeleted=true`, { headers }),
-                fetch(`${BACKEND_URL}/ledgers/stream/${shopId}`, { headers }),
-                fetch(`${BACKEND_URL}/invoices/history/${shopId}`, { headers }),
-                fetch(`${BACKEND_URL}/transactions/purchase/history/${shopId}`, { headers }),
-                fetch(`${BACKEND_URL}/transactions/receipt/history/${shopId}`, { headers }),
-                fetch(`${BACKEND_URL}/products/list/${shopId}`, { headers })
-            ]);
-            [custRes, suppRes, ledgRes, invRes, pBillRes, recRes, prodRes].forEach(handleSessionExpiry);
-
-            const parseList = async (res) => {
-                if (!res.ok) return [];
-                const data = await res.json();
-                return Array.isArray(data) ? data : [];
-            };
-
-            const [custList, suppList, ledgList, invList, pBillList, recList, prodList] = await Promise.all([
-                parseList(custRes), parseList(suppRes), parseList(ledgRes),
-                parseList(invRes), parseList(pBillRes), parseList(recRes), parseList(prodRes)
-            ]);
-
-            setCustomers(custList);
-            setSuppliers(suppList);
-            setLedgerHistory(ledgList);
-            setInvoices(invList);
-            setPurchaseBills(pBillList);
-            setReceipts(recList);
-            setProducts(prodList);
+            const response = await fetch(`${BACKEND_URL}/shops/workspace-data/${shopId}`, { headers });
+            handleSessionExpiry(response);
+            
+            if (response.ok) {
+                const data = await response.json();
+                setCustomers(data.customers || []);
+                setSuppliers(data.suppliers || []);
+                setLedgerHistory(data.ledgers || []);
+                setInvoices(data.invoices || []);
+                setPurchaseBills(data.purchaseBills || []);
+                setReceipts(data.receipts || []);
+                setProducts(data.products || []);
+            }
         } catch (error) {
             console.error('🚨 Workspace sync crash:', error);
         } finally {
@@ -304,13 +300,13 @@ export const AppProvider = ({ children }) => {
     };
 
     // 4.5. Products & Services CRUD
-    const addProductRecord = async (name, price, description) => {
+    const addProductRecord = async (name, price, description, extraDetails = {}) => {
         if (!activeShop) return { success: false, error: 'Session context lost' };
         try {
             const response = await fetch(`${BACKEND_URL}/products/create`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
-                body: JSON.stringify({ shopId: activeShop.id, name, price: parseFloat(price || 0), description })
+                body: JSON.stringify({ shopId: activeShop.id, name, price: parseFloat(price || 0), description, ...extraDetails })
             });
             const data = await response.json();
             if (response.ok) {
@@ -323,13 +319,13 @@ export const AppProvider = ({ children }) => {
         }
     };
 
-    const updateProductRecord = async (id, name, price, description) => {
+    const updateProductRecord = async (id, name, price, description, extraDetails = {}) => {
         if (!activeShop) return { success: false, error: 'Session context lost' };
         try {
             const response = await fetch(`${BACKEND_URL}/products/update/${id}`, {
                 method: 'PUT',
                 headers: getAuthHeaders(),
-                body: JSON.stringify({ name, price: parseFloat(price || 0), description })
+                body: JSON.stringify({ name, price: parseFloat(price || 0), description, ...extraDetails })
             });
             const data = await response.json();
             if (response.ok) {
@@ -531,7 +527,7 @@ export const AppProvider = ({ children }) => {
                 ...settings
             };
             setActiveShop(tempShop);
-            localStorage.setItem('gm_session_tenant', JSON.stringify(tempShop));
+            setCookie('gm_session_tenant', JSON.stringify(tempShop));
         }
 
         try {
@@ -543,7 +539,7 @@ export const AppProvider = ({ children }) => {
             const data = await response.json();
             if (response.ok) {
                 setActiveShop(data.shop);
-                localStorage.setItem('gm_session_tenant', JSON.stringify(data.shop));
+                setCookie('gm_session_tenant', JSON.stringify(data.shop));
                 return { success: true, shop: data.shop };
             }
             return { success: false, error: data.error };
@@ -641,7 +637,6 @@ export const AppProvider = ({ children }) => {
             const data = await res.json();
             if (data.success) {
                 setPlans(data.plans || []);
-                localStorage.setItem('gm_plans', JSON.stringify(data.plans || []));
                 return data.plans;
             }
         } catch (error) {
@@ -692,7 +687,7 @@ export const AppProvider = ({ children }) => {
                     planRequestStatus: 'pending'
                 };
                 setActiveShop(tempShop);
-                localStorage.setItem('gm_session_tenant', JSON.stringify(tempShop));
+                setCookie('gm_session_tenant', JSON.stringify(tempShop));
                 return { success: true };
             }
             return { success: false, error: data.error || 'Failed to submit plan request' };
@@ -798,10 +793,10 @@ export const AppProvider = ({ children }) => {
     }, []);
 
     useEffect(() => {
-        const savedShop = localStorage.getItem('gm_session_tenant');
-        const savedToken = localStorage.getItem('gm_shop_token');
+        const savedShop = getCookie('gm_session_tenant');
+        const savedToken = getCookie('gm_shop_token');
         if (savedShop && savedShop !== 'undefined' && !savedToken) {
-            localStorage.removeItem('gm_session_tenant');
+            eraseCookie('gm_session_tenant');
             setActiveShop(null);
         }
     }, []);
@@ -814,11 +809,11 @@ export const AppProvider = ({ children }) => {
             if (res.ok) {
                 const data = await res.json();
                 if (data.success && data.shop) {
-                    const cachedStr = localStorage.getItem('gm_session_tenant');
+                    const cachedStr = getCookie('gm_session_tenant');
                     const newStr = JSON.stringify(data.shop);
                     if (cachedStr !== newStr) {
                         setActiveShop(data.shop);
-                        localStorage.setItem('gm_session_tenant', newStr);
+                        setCookie('gm_session_tenant', newStr);
                     }
                 }
             }
@@ -843,7 +838,7 @@ export const AppProvider = ({ children }) => {
                 if (remaining.length > 0) {
                     const nextActive = remaining[0];
                     setActiveShop(nextActive);
-                    localStorage.setItem('gm_session_tenant', JSON.stringify(nextActive));
+                    setCookie('gm_session_tenant', JSON.stringify(nextActive));
                     await fetchAllWorkspaceData(nextActive.id);
                     return { success: true, remaining: true, message: `Workspace deleted successfully. Switched to "${nextActive.businessName}".` };
                 } else {

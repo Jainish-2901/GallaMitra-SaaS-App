@@ -1,5 +1,9 @@
 import nodemailer from 'nodemailer';
+import dns from 'dns';
 import { prisma } from './utils/prisma.js';
+
+// Force Node to prefer IPv4 DNS resolution over IPv6 in email worker contexts
+dns.setDefaultResultOrder('ipv4first');
 
 // SMTP Transporter setup (reads from environment variables)
 const transporter = nodemailer.createTransport({
@@ -10,6 +14,12 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
   },
+  pool: true,
+  maxConnections: 3,
+  maxMessages: 100,
+  connectionTimeout: 10000, // 10s
+  greetingTimeout: 10000,    // 10s
+  socketTimeout: 15000,      // 15s
 });
 
 export const processEmailQueue = async () => {

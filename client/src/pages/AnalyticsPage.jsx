@@ -5,7 +5,7 @@ import { translations } from '../utils/translations.js';
 import {
   BarChart3, Calendar, Award, CreditCard, Users, Wallet,
   TrendingUp, TrendingDown, Percent, ArrowUpRight, ArrowDownLeft,
-  Scale, ShieldCheck, ArrowRight
+  Scale, ShieldCheck, ArrowRight, Package, AlertTriangle
 } from 'lucide-react';
 import {
   SalesExpensesChart,
@@ -22,6 +22,7 @@ export default function AnalyticsPage() {
     receipts,
     customers,
     suppliers,
+    products,
     loading
   } = useContext(AppContext);
 
@@ -173,6 +174,54 @@ export default function AnalyticsPage() {
       highestPayableSupp, maxSuppBal
     };
   }, [filteredInvoices, filteredPurchaseBills, customers, suppliers]);
+
+  // Inventory Intelligence & Valuation Calculations
+  const inventoryAnalytics = useMemo(() => {
+    // 1. Asset Value
+    const assetValue = products.reduce((sum, p) => {
+      if (p.sacCode) return sum;
+      return sum + (parseFloat(p.currentStock || 0) * parseFloat(p.averageCostPrice || 0));
+    }, 0);
+
+    // 2. Real Profit Margin (calculated line-by-line)
+    let totalSalesRevenue = 0;
+    let totalCostOfGoodsSold = 0;
+    
+    const productsMap = {};
+    products.forEach(p => {
+      productsMap[p.id] = parseFloat(p.averageCostPrice || 0);
+    });
+
+    filteredInvoices.forEach(inv => {
+      let itemsArray = [];
+      try {
+        itemsArray = typeof inv.itemsJson === 'string' ? JSON.parse(inv.itemsJson) : inv.itemsJson;
+      } catch (e) {
+        itemsArray = [];
+      }
+      if (Array.isArray(itemsArray)) {
+        itemsArray.forEach(item => {
+          if (item.rowType === 'item' || !item.rowType) {
+            const qty = parseFloat(item.qty || 0);
+            const rate = parseFloat(item.rate || 0);
+            totalSalesRevenue += (qty * rate);
+            
+            // Fallback to current product avg cost if not stored on item itself
+            const avgCost = parseFloat(item.averageCostPrice || productsMap[item.productId] || 0);
+            totalCostOfGoodsSold += (qty * avgCost);
+          }
+        });
+      }
+    });
+
+    const realProfit = totalSalesRevenue - totalCostOfGoodsSold;
+    const realProfitMargin = totalSalesRevenue > 0 ? (realProfit / totalSalesRevenue) * 100 : 0;
+
+    // 3. Low Stock Alerts
+    const lowStockAlerts = products.filter(p => !p.sacCode && (parseFloat(p.currentStock || 0) <= parseFloat(p.minStockLevel || 0)));
+
+    return { assetValue, totalSalesRevenue, totalCostOfGoodsSold, realProfit, realProfitMargin, lowStockAlerts };
+  }, [products, filteredInvoices]);
 
   // Grouped Chart data
   const chartData = useMemo(() => {
@@ -479,6 +528,77 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
+      {/* Inventory Intelligence & Valuation Panel */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-6">
+        <div>
+          <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+            <Package className="text-emerald-600" size={18} />
+            Inventory Intelligence &amp; Valuation
+          </h3>
+          <p className="text-slate-400 text-[10px] font-mono mt-0.5">Real-time stock valuation metrics, true margin calculation, and alert trackers</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Card 1: Asset Value */}
+          <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-5 flex flex-col justify-between">
+            <div>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono block">Inventory Asset Value</span>
+              <h4 className="text-2xl font-black text-slate-900 font-mono mt-1">
+                ₹{inventoryAnalytics.assetValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </h4>
+              <p className="text-[10px] text-slate-500 font-medium mt-1">Total valuation of all physical goods currently in stock, priced at moving average purchase cost.</p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-200/40 text-[10px] text-slate-450 font-bold">
+              Active SKUs: <span className="font-mono text-slate-700">{products.filter(p => !p.sacCode).length} items</span>
+            </div>
+          </div>
+
+          {/* Card 2: Real Profit Margin */}
+          <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-5 flex flex-col justify-between">
+            <div>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono block">Real Profit (True Margin)</span>
+              <h4 className="text-2xl font-black text-emerald-700 font-mono mt-1">
+                ₹{inventoryAnalytics.realProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </h4>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[10px] font-bold text-slate-500">True Margin:</span>
+                <span className="font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-mono text-[10px]">
+                  {inventoryAnalytics.realProfitMargin.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-200/40 text-[10px] text-slate-450 font-bold flex justify-between">
+              <span>COGS: ₹{inventoryAnalytics.totalCostOfGoodsSold.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+              <span>Revenue: ₹{inventoryAnalytics.totalSalesRevenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+            </div>
+          </div>
+
+          {/* Card 3: Low Stock Alerts Tracker */}
+          <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-5 flex flex-col">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono block mb-2">Low Stock Alerts</span>
+            <div className="flex-1 overflow-y-auto max-h-[120px] space-y-2 pr-1 custom-scrollbar">
+              {inventoryAnalytics.lowStockAlerts.length === 0 ? (
+                <div className="text-center py-6 text-slate-400 font-semibold text-[10px]">
+                  ✓ All stock levels optimal
+                </div>
+              ) : (
+                inventoryAnalytics.lowStockAlerts.map(p => (
+                  <div key={p.id} className="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 text-[10px]">
+                    <span className="font-bold text-slate-800 truncate max-w-[140px]">{p.name}</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[9px] bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded-full font-black">
+                        {parseFloat(p.currentStock || 0)} {p.uqc || 'NOS'}
+                      </span>
+                      <span className="text-slate-400 text-[9px]">Reorder: {parseFloat(p.minStockLevel || 0)}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+      
       {/* Downside Sections: Top Partners Summary */}
       <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-6">
         <div>
@@ -490,7 +610,7 @@ export default function AnalyticsPage() {
           {/* Top Customer */}
           <div className="flex flex-col justify-between p-4 bg-slate-50 border border-slate-200/50 rounded-2xl group hover:border-indigo-200 transition-colors">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-650 shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-655 shrink-0">
                 <Award size={14} />
               </div>
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono">Top Customer</span>

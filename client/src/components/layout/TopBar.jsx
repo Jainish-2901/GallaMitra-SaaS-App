@@ -9,6 +9,7 @@ import {
   Package
 } from 'lucide-react';
 import RegisterBusinessModal from './RegisterBusinessModal.jsx';
+import { setCookie } from '../../utils/cookies.js';
 
 export default function TopBar({ activeTab, setActiveTab, setSearchTerm, isMobileMenuOpen, setIsMobileMenuOpen }) {
   const { activeShop, setActiveShop, workspaces, updateShopSettings, isInstallable, installApp } = useContext(AppContext);
@@ -31,7 +32,7 @@ export default function TopBar({ activeTab, setActiveTab, setSearchTerm, isMobil
 
   const handleSwitchWorkspace = (workspace) => {
     setActiveShop(workspace);
-    localStorage.setItem('gm_session_tenant', JSON.stringify(workspace));
+    setCookie('gm_session_tenant', JSON.stringify(workspace));
     setSwitcherOpen(false);
   };
 

@@ -526,11 +526,22 @@ export default function DocumentListsView({ mode, t = {} }) {
               <tr><td colSpan="5" style={{ textAlign: 'center', padding: '32px', color: '#94a3b8', fontStyle: 'italic' }}>No items mapped.</td></tr>
             ) : productItems.map((item, idx) => {
               const qty = parseFloat(item.qty || 0), rate = parseFloat(item.rate || 0);
+              const prod = products.find(p => p.id === item.productId);
+              const hsn = item.hsnCode || prod?.hsnCode;
+              const sac = item.sacCode || prod?.sacCode;
+              const uqc = item.uqc || prod?.uqc || 'NOS';
               return (
                 <tr key={idx} style={{ background: idx % 2 === 0 ? '#fff' : '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                   <td style={{ padding: '12px', color: '#94a3b8', fontFamily: 'monospace' }}>{idx + 1}</td>
-                  <td style={{ padding: '12px', fontWeight: 700, color: '#0f172a' }}>{item.name}</td>
-                  <td style={{ padding: '12px', textAlign: 'center', fontFamily: 'monospace' }}>{qty}</td>
+                  <td style={{ padding: '12px', fontWeight: 700, color: '#0f172a' }}>
+                    <div>{item.name}</div>
+                    {(hsn || sac) && (
+                      <span style={{ fontSize: '9px', color: '#64748b', display: 'block', marginTop: '2px', fontWeight: 500 }}>
+                        {hsn ? `HSN: ${hsn}` : `SAC: ${sac}`}
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ padding: '12px', textAlign: 'center', fontFamily: 'monospace' }}>{qty} {uqc}</td>
                   <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'monospace' }}>₹{rate.toFixed(2)}</td>
                   <td style={{ padding: '12px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: '#0f172a' }}>₹{(qty * rate).toFixed(2)}</td>
                 </tr>
@@ -840,10 +851,14 @@ export default function DocumentListsView({ mode, t = {} }) {
 
     const itemsToSave = [
       ...editPbItems.map(it => ({
+        productId: it.productId || null,
         name: it.name,
         qty: parseFloat(it.qty || 1),
         rate: parseFloat(it.rate || 0),
         rowType: 'item',
+        hsnCode: it.hsnCode || null,
+        sacCode: it.sacCode || null,
+        uqc: it.uqc || 'NOS',
         lineTotal: parseFloat(it.qty || 1) * parseFloat(it.rate || 0)
       })),
       {
@@ -1732,17 +1747,34 @@ export default function DocumentListsView({ mode, t = {} }) {
                             if (val) {
                               const prod = products.find(p => p.id === val);
                               if (prod) {
+                                handleEditRowChange(index, 'productId', prod.id);
                                 handleEditRowChange(index, 'name', prod.name);
                                 handleEditRowChange(index, 'rate', prod.price || 0);
+                                handleEditRowChange(index, 'hsnCode', prod.hsnCode || null);
+                                handleEditRowChange(index, 'sacCode', prod.sacCode || null);
+                                handleEditRowChange(index, 'uqc', prod.uqc || 'NOS');
                               }
+                            } else {
+                              handleEditRowChange(index, 'productId', null);
+                              handleEditRowChange(index, 'name', '');
+                              handleEditRowChange(index, 'rate', 0);
+                              handleEditRowChange(index, 'hsnCode', null);
+                              handleEditRowChange(index, 'sacCode', null);
+                              handleEditRowChange(index, 'uqc', 'NOS');
                             }
                           }}
                           className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-[9px] font-sans focus:outline-none text-slate-655 max-w-[150px] font-bold cursor-pointer"
                         >
                           <option value="">-- Saved Product --</option>
-                          {products.map(p => (
-                            <option key={p.id} value={p.id}>{p.name} (₹{parseFloat(p.price || 0).toFixed(2)})</option>
-                          ))}
+                          {products.map(p => {
+                            const code = p.hsnCode ? `HSN: ${p.hsnCode}` : p.sacCode ? `SAC: ${p.sacCode}` : 'No Code';
+                            const stockText = p.sacCode ? 'Service' : `Stock: ${parseFloat(p.currentStock || 0)} ${p.uqc || 'NOS'}`;
+                            return (
+                              <option key={p.id} value={p.id}>
+                                {p.name} ({code}) - ₹{parseFloat(p.price || 0).toFixed(2)} ({stockText})
+                              </option>
+                            );
+                          })}
                         </select>
                         <input
                           type="text"
@@ -2020,17 +2052,34 @@ export default function DocumentListsView({ mode, t = {} }) {
                             if (val) {
                               const prod = products.find(p => p.id === val);
                               if (prod) {
+                                handleEditPbRowChange(index, 'productId', prod.id);
                                 handleEditPbRowChange(index, 'name', prod.name);
                                 handleEditPbRowChange(index, 'rate', prod.price || 0);
+                                handleEditPbRowChange(index, 'hsnCode', prod.hsnCode || null);
+                                handleEditPbRowChange(index, 'sacCode', prod.sacCode || null);
+                                handleEditPbRowChange(index, 'uqc', prod.uqc || 'NOS');
                               }
+                            } else {
+                              handleEditPbRowChange(index, 'productId', null);
+                              handleEditPbRowChange(index, 'name', '');
+                              handleEditPbRowChange(index, 'rate', 0);
+                              handleEditPbRowChange(index, 'hsnCode', null);
+                              handleEditPbRowChange(index, 'sacCode', null);
+                              handleEditPbRowChange(index, 'uqc', 'NOS');
                             }
                           }}
                           className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-[9px] font-sans focus:outline-none text-slate-655 max-w-[150px] font-bold cursor-pointer"
                         >
                           <option value="">-- Saved Product --</option>
-                          {products.map(p => (
-                            <option key={p.id} value={p.id}>{p.name} (₹{parseFloat(p.price || 0).toFixed(2)})</option>
-                          ))}
+                          {products.map(p => {
+                            const code = p.hsnCode ? `HSN: ${p.hsnCode}` : p.sacCode ? `SAC: ${p.sacCode}` : 'No Code';
+                            const stockText = p.sacCode ? 'Service' : `Stock: ${parseFloat(p.currentStock || 0)} ${p.uqc || 'NOS'}`;
+                            return (
+                              <option key={p.id} value={p.id}>
+                                {p.name} ({code}) - ₹{parseFloat(p.price || 0).toFixed(2)} ({stockText})
+                              </option>
+                            );
+                          })}
                         </select>
                         <input
                           type="text"
@@ -2617,11 +2666,22 @@ export default function DocumentListsView({ mode, t = {} }) {
                         <tr><td colSpan="5" className="text-center py-8 text-slate-400 italic font-mono font-bold">No items mapped.</td></tr>
                       ) : productItems.map((item, idx) => {
                         const qty = parseFloat(item.qty || 0), rate = parseFloat(item.rate || 0);
+                        const prod = products.find(p => p.id === item.productId);
+                        const hsn = item.hsnCode || prod?.hsnCode;
+                        const sac = item.sacCode || prod?.sacCode;
+                        const uqc = item.uqc || prod?.uqc || 'NOS';
                         return (
                           <tr key={idx} className="hover:bg-slate-50">
                             <td className="p-3 text-slate-450 font-mono">{idx + 1}</td>
-                            <td className="p-3 font-semibold text-slate-900">{item.name}</td>
-                            <td className="p-3 text-center font-mono">{qty}</td>
+                            <td className="p-3 font-semibold text-slate-900">
+                              <div>{item.name}</div>
+                              {(hsn || sac) && (
+                                <span className="text-[9px] text-slate-400 font-semibold block mt-0.5">
+                                  {hsn ? `HSN: ${hsn}` : `SAC: ${sac}`}
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 text-center font-mono">{qty} {uqc}</td>
                             <td className="p-3 text-right font-mono">₹{rate.toFixed(2)}</td>
                             <td className="p-3 text-right font-mono font-bold text-slate-900">₹{(qty * rate).toFixed(2)}</td>
                           </tr>

@@ -1699,6 +1699,8 @@ export const deleteShopWorkspace = async (req, res) => {
             return res.status(404).json({ error: 'Shop workspace not found.' });
         }
 
+        await logActivity(null, 'SHOP_DELETED', 'Owner', `Workspace "${deletedShop.businessName}" (${deletedShop.email}) deleted successfully`);
+
         res.json({ success: true, message: `Workspace "${deletedShop.businessName}" deleted successfully.` });
     } catch (error) {
         console.error('🚨 Error deleting shop workspace:', error);
@@ -1995,5 +1997,85 @@ export const processSubscriptionChecks = async () => {
 
     } catch (error) {
         console.error('Error in processSubscriptionChecks worker:', error);
+    }
+};
+
+// GET /api/shops/workspace-data/:shopId
+export const getWorkspaceData = async (req, res) => {
+    const { shopId } = req.params;
+
+    try {
+        const [customers, suppliers, ledgers, invoices, purchaseBills, receipts, products] = await Promise.all([
+            // Customers
+            prisma.$queryRaw`
+                SELECT c.*, 
+                  COALESCE((SELECT SUM(CASE WHEN l.type = 'DEBIT' THEN l.amount ELSE -l.amount END) FROM "LedgerEntry" l WHERE l."customerId" = c.id), 0.00) AS balance
+                FROM "Customer" c
+                WHERE c."shopId" = ${shopId}::uuid
+                ORDER BY c."createdAt" DESC
+            `,
+            // Suppliers
+            prisma.$queryRaw`
+                SELECT s.*, 
+                  COALESCE((SELECT SUM(CASE WHEN l.type = 'CREDIT' THEN l.amount ELSE -l.amount END) FROM "LedgerEntry" l WHERE l."supplierId" = s.id), 0.00) AS balance
+                FROM "Supplier" s
+                WHERE s."shopId" = ${shopId}::uuid
+                ORDER BY s."createdAt" DESC
+            `,
+            // Ledger entries
+            prisma.ledgerEntry.findMany({
+                where: { shopId },
+                orderBy: [
+                    { date: 'desc' },
+                    { id: 'desc' }
+                ]
+            }),
+            // Invoices
+            prisma.invoice.findMany({
+                where: { shopId },
+                orderBy: { createdAt: 'desc' }
+            }),
+            // Purchase bills
+            prisma.purchaseBill.findMany({
+                where: { shopId },
+                orderBy: { createdAt: 'desc' }
+            }),
+            // Receipts
+            prisma.paymentReceipt.findMany({
+                where: { shopId },
+                orderBy: { createdAt: 'desc' }
+            }),
+            // Products
+            prisma.product.findMany({
+                where: { shopId },
+                orderBy: { createdAt: 'desc' }
+            })
+        ]);
+
+        res.json({
+            customers,
+            suppliers,
+            ledgers,
+            invoices,
+            purchaseBills,
+            receipts,
+            products
+        });
+    } catch (error) {
+        console.error('🚨 Error fetching consolidated workspace data:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+// POST /api/shops/logout
+export const logoutShop = async (req, res) => {
+    try {
+        if (req.shop) {
+            await logActivity(req.shop.id, 'SHOP_LOGOUT', 'Owner', `Logged out of workspace: ${req.shop.businessName}`);
+        }
+        res.json({ success: true, message: 'Logged out successfully' });
+    } catch (error) {
+        console.error('🚨 Error in logoutShop:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 };

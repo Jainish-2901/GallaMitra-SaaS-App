@@ -46,6 +46,26 @@ export const createInvoice = async (req, res) => {
                 }
             });
 
+            // Update Stock levels for physical products: Decrement stock
+            if (Array.isArray(itemsArray)) {
+                for (const item of itemsArray) {
+                    if (item.productId && item.qty) {
+                        const qty = parseFloat(item.qty);
+                        const prod = await tx.product.findUnique({
+                            where: { id: item.productId }
+                        });
+                        if (prod) {
+                            await tx.product.update({
+                                where: { id: item.productId },
+                                data: {
+                                    currentStock: { decrement: qty }
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+
             // B. Inject corresponding row entry into mixed ledger stream instantly
             const lastLedgerRow = await tx.ledgerEntry.findFirst({
                 where: { shopId },
@@ -158,6 +178,47 @@ export const editInvoice = async (req, res) => {
         let updatedInvoice = null;
 
         await prisma.$transaction(async (tx) => {
+            // Revert stock from original invoice items
+            const oldItems = originalInvoice.itemsJson || [];
+            if (Array.isArray(oldItems)) {
+                for (const item of oldItems) {
+                    if (item.productId && item.qty) {
+                        const qty = parseFloat(item.qty);
+                        const prod = await tx.product.findUnique({
+                            where: { id: item.productId }
+                        });
+                        if (prod) {
+                            await tx.product.update({
+                                where: { id: item.productId },
+                                data: {
+                                    currentStock: { increment: qty }
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Apply stock from updated invoice items
+            if (Array.isArray(itemsArray)) {
+                for (const item of itemsArray) {
+                    if (item.productId && item.qty) {
+                        const qty = parseFloat(item.qty);
+                        const prod = await tx.product.findUnique({
+                            where: { id: item.productId }
+                        });
+                        if (prod) {
+                            await tx.product.update({
+                                where: { id: item.productId },
+                                data: {
+                                    currentStock: { decrement: qty }
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+
             // Update target core database line properties maps
             updatedInvoice = await tx.invoice.update({
                 where: { id },
@@ -310,6 +371,27 @@ export const deleteInvoice = async (req, res) => {
         }
 
         await prisma.$transaction(async (tx) => {
+            // Revert stock from deleted invoice items
+            const oldItems = invoiceCheck.itemsJson || [];
+            if (Array.isArray(oldItems)) {
+                for (const item of oldItems) {
+                    if (item.productId && item.qty) {
+                        const qty = parseFloat(item.qty);
+                        const prod = await tx.product.findUnique({
+                            where: { id: item.productId }
+                        });
+                        if (prod) {
+                            await tx.product.update({
+                                where: { id: item.productId },
+                                data: {
+                                    currentStock: { increment: qty }
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+
             // Find connected receipt
             const linkedReceipt = await tx.paymentReceipt.findFirst({
                 where: { invoiceId: id }

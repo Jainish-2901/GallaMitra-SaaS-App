@@ -4,64 +4,8 @@ import {
     BarChart3, Settings, Lock, Package
 } from 'lucide-react';
 
-// Helper to read cached plans from localStorage for fallback
-const getCachedPlans = () => {
-    try {
-        const cached = localStorage.getItem('gm_plans');
-        if (cached) {
-            return JSON.parse(cached);
-        }
-    } catch (e) {
-        // Safe check for environment without localStorage
-    }
-    return null;
-};
-
-const buildPlanMeta = (plansList) => {
-    if (!plansList || plansList.length === 0) return null;
-    return plansList.reduce((acc, plan) => {
-        const priceNum = parseFloat(plan.price || 0);
-        const isFree = priceNum === 0;
-        const isPremium = priceNum >= 200;
-        let featuresArr = [];
-        try {
-            featuresArr = Array.isArray(plan.features) ? plan.features : (typeof plan.features === 'string' ? JSON.parse(plan.features || '[]') : []);
-        } catch {
-            featuresArr = [];
-        }
-
-        acc[plan.id] = {
-            label: plan.name,
-            price: isFree ? '₹0' : `₹${priceNum}/${plan.billingCycle === 'yearly' ? 'yr' : plan.billingCycle === 'trial' ? 'trial' : plan.billingCycle === '3_months' ? '3mo' : plan.billingCycle === '6_months' ? '6mo' : 'mo'}`,
-            color: isFree ? '#059669' : isPremium ? '#7C3AED' : '#2563EB',
-            bg: isFree ? '#ECFDF5' : isPremium ? '#F5F3FF' : '#EFF6FF',
-            border: isFree ? '#A7F3D0' : isPremium ? '#DDD6FE' : '#BFDBFE',
-            desc: featuresArr.join(', '),
-        };
-        return acc;
-    }, {});
-};
-
-const buildPlanTabs = (plansList) => {
-    if (!plansList || plansList.length === 0) return null;
-    return plansList.reduce((acc, plan) => {
-        let tabsArr = [];
-        try {
-            tabsArr = Array.isArray(plan.allowedTabs) ? plan.allowedTabs : (typeof plan.allowedTabs === 'string' ? JSON.parse(plan.allowedTabs || '[]') : []);
-        } catch {
-            tabsArr = [];
-        }
-        acc[plan.id] = tabsArr;
-        return acc;
-    }, {});
-};
-
-const cachedPlans = getCachedPlans();
-const fallbackMeta = buildPlanMeta(cachedPlans);
-const fallbackTabs = buildPlanTabs(cachedPlans);
-
 // ─── PLAN DEFINITIONS (DEFAULT FALLBACKS) ──────────────────────────────────────
-const DEFAULT_PLAN_META = fallbackMeta || {
+const DEFAULT_PLAN_META = {
     starter: {
         label: 'Starter',
         price: '₹0',
@@ -88,7 +32,7 @@ const DEFAULT_PLAN_META = fallbackMeta || {
     },
 };
 
-const DEFAULT_PLAN_TABS = fallbackTabs || {
+const DEFAULT_PLAN_TABS = {
     starter: [
         'dashboard', 'cust_list', 'supp_list', 'product_list',
         'sale_ledger', 'purchase_ledger',

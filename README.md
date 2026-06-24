@@ -9,11 +9,13 @@ This is a Monorepo containing the frontend client application, admin console, an
 ## Latest Premium UI and Feature Updates
 
 Recently, the platform was updated with several major visual and functional enhancements:
+- **Inventory Management System (New)**: Integrated real-time stock tracking with automated stock decrements on invoice creation/modification, moving average cost recalculations on purchase bills, standard and custom Unique Quantity Codes (UQC) dropdowns, HSN/SAC code classifications, manual inline stock adjustments, and an Inventory Intelligence & Valuation analytics panel (Asset Valuation, Real Profit Margins, and Low Stock alerts).
 - Custom SVG Charting Engine: Integrated custom visualizers ([CustomCharts.jsx](file:///d:/SasS%20Projects/gallamitra/client/src/components/CustomCharts.jsx)) using pure SVGs and React state for interactive tooltips (Sales vs. Expenses, Cash Flow, Payment Modes, and Profit Margin).
 - Premium Settings Layouts: Redesigned user settings ([UserSettings.jsx](file:///d:/SasS%20Projects/gallamitra/client/src/pages/UserSettings.jsx)) and business settings ([BusinessSettings.jsx](file:///d:/SasS%20Projects/gallamitra/client/src/pages/BusinessSettings.jsx)) into a dual-column card-based grid layout.
-- Color-Adaptive Ledger Modals: Enhanced manual ledger entries in [TransactionModal.jsx](file:///d:/SasS%20Projects/gallamitra/client/src/components/TransactionModal.jsx) with scale-fade spring animations, inline currency indicators, and reactive debit/credit colors.
+- Color-Adaptive Ledger Modals: Enhanced manual ledger entries in [TransactionModal.jsx](file:///d:/SasS%20Projects/gallamitra/components/TransactionModal.jsx) with scale-fade spring animations, inline currency indicators, and reactive debit/credit colors.
 - Staggered Testimonials: Redesigned [TestimonialsSection.jsx](file:///d:/SasS%20Projects/gallamitra/client/src/components/landing/TestimonialsSection.jsx) with customer metrics and a glassmorphic sliding card deck.
 - Cloudinary Upload Reliability: Resolved signature and logo upload errors by removing prohibited parameters from raw payload builders.
+
 
 ---
 

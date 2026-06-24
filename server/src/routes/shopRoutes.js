@@ -35,9 +35,11 @@ import {
     updateAdminSettings,
     getPublicConfig,
     getPublicStats,
-    deleteShopWorkspace
+    deleteShopWorkspace,
+    getWorkspaceData,
+    logoutShop
 } from '../controllers/shopController.js';
-import { shopAuth, requireBodyShopId, requireParamShopIdAsId, requireMatchingEmail } from '../middleware/shopAuth.js';
+import { shopAuth, requireBodyShopId, requireParamShopIdAsId, requireMatchingEmail, requireParamShopId } from '../middleware/shopAuth.js';
 
 const router = express.Router();
 
@@ -56,6 +58,8 @@ router.post('/request-plan', shopAuth, requireBodyShopId, requestPlanChange);
 router.get('/profile/:id', shopAuth, requireParamShopIdAsId, getShopProfile);
 router.get('/my-workspaces/:email', shopAuth, requireMatchingEmail, getMyWorkspaces);
 router.put('/settings', shopAuth, requireBodyShopId, updateShopSettings);
+router.get('/workspace-data/:shopId', shopAuth, requireParamShopId, getWorkspaceData);
+router.post('/logout', shopAuth, logoutShop);
 router.delete('/:id', shopAuth, requireParamShopIdAsId, deleteShopWorkspace);
 
 router.post('/admin/login', loginAdmin);

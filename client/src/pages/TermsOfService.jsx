@@ -12,7 +12,7 @@ export default function TermsOfService() {
             <FileText size={24} />
           </div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Terms of Service</h2>
-          <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">Last Updated: June 21, 2026</p>
+          <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">Last Updated: June 24, 2026</p>
         </div>
 
         {/* Content Matrix */}
@@ -34,10 +34,10 @@ export default function TermsOfService() {
           {/* 2. Operations & Fair Use */}
           <div className="space-y-3">
             <h3 className="text-base font-black text-slate-900 flex items-center gap-2 tracking-tight">
-              <AlertCircle size={18} className="text-blue-600" /> 2. Live Smart-Fetch Calculation Policy
+              <AlertCircle size={18} className="text-blue-600" /> 2. Live Smart-Fetch Calculation & Stock Tracking Policy
             </h3>
             <p className="text-slate-500 text-xs md:text-sm">
-              GallaMitra processes values, taxes, and dynamic accounting totals based on raw inputs provided by the operator. Saved products/services and their rates/prices serve as template data for auto-filling billing records and do not constitute legal value assessments. It is the operator's responsibility to verify that the final invoice/bill values are correct. The invoicing engine uses automated context lookups to separate GST and Non-GST records on the fly. These modules serve as tools for internal business optimization and do not substitute for official certified accounting records.
+              GallaMitra processes values, taxes, stock levels, and dynamic accounting totals based on raw inputs provided by the operator. Stock quantities are decremented on sales invoices and incremented on purchase bills, with average unit costs recalculated dynamically using moving average formulas. HSN/SAC codes, Unique Quantity Codes (UQC), and prices serve as templates for autofilling bills/invoices. It is the sole responsibility of the operator to verify that the final invoice/bill values, classifications, and stock levels are correct and comply with standard GST regulations. These modules serve as tools for internal business optimization and do not substitute for official certified accounting records.
             </p>
           </div>
 
@@ -50,6 +50,7 @@ export default function TermsOfService() {
               Our PWA provides quick-action shortcuts and stores structural asset frames locally to speed up rendering. We also offer dynamic PWA installation prompts for customers and suppliers inside their public portal. By assigning a unique, parameterized start URL and web manifest, the browser installs each portal as a separate standalone application, allowing fast future reference to that specific statement directly on launching the app. All active balance adjustments, voucher generations, and invoice builds are strictly online operations and require active internet handshakes to commit edits safely to central database clusters.
             </p>
           </div>
+
 
           {/* 4. Administration Adjustments */}
           <div className="space-y-3">

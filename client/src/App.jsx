@@ -4,6 +4,7 @@ import { Routes, Route } from 'react-router-dom';
 import { AppContext } from './context/AppContext.jsx';
 import { translations } from './utils/translations.js';
 import { ownerTabs } from './sidebarConfig.js';
+import { getCookie } from './utils/cookies.js';
 
 // Route intercepts
 import PublicPortal from './pages/PublicPortal.jsx';
@@ -97,7 +98,7 @@ export default function App() {
 
   // ─── PWA Standalone Redirect Check ───────────────────────────────────────
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-  const hasMerchantToken = !!localStorage.getItem('gm_shop_token');
+  const hasMerchantToken = !!getCookie('gm_shop_token');
   const lastPortalUrl = localStorage.getItem('gm_last_public_portal_url');
   const isAtPortal = window.location.pathname.includes('/public-portal') || window.location.search.includes('type=');
 

@@ -3,6 +3,10 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import http from 'http'; // Node internal HTTP module for self-ping loops
 import https from 'https'; // Node internal HTTPS module for deployed environments
+import dns from 'dns';
+
+// Force Node to prefer IPv4 DNS resolution over IPv6 globally
+dns.setDefaultResultOrder('ipv4first');
 import { initDatabase } from './initDb.js';
 import { prisma } from './utils/prisma.js';
 import shopRoutes from './routes/shopRoutes.js';
@@ -15,6 +19,7 @@ import { processSubscriptionChecks } from './controllers/shopController.js';
 
 const app = express();
 app.disable('x-powered-by');
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 5000;
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS ||
@@ -35,6 +40,17 @@ app.use(cors({
 }));
 
 app.use(express.json({ limit: '2mb' }));
+
+// Global Rate Limiter to prevent brute force and DOS request spam
+const globalLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 300, // Limit each IP to 300 requests per minute
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests from this IP. Please try again in a minute.' }
+});
+
+app.use('/api', globalLimiter);
 
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,

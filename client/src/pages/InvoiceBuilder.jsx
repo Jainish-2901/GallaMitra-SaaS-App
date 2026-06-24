@@ -150,6 +150,7 @@ export default function InvoiceBuilder({ t = {} }) {
       customerId: selectedCustomerId,
       itemsArray: [
         ...items.map(it => ({
+          productId: it.productId || null,
           name: it.name,
           qty: parseFloat(it.qty || 1),
           rate: parseFloat(it.rate || 0),
@@ -433,9 +434,15 @@ export default function InvoiceBuilder({ t = {} }) {
                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-sans focus:outline-none text-slate-655 mb-1.5 block font-bold cursor-pointer"
                                >
                                  <option value="">-- Select Product --</option>
-                                 {products.map(p => (
-                                   <option key={p.id} value={String(p.id)}>{p.name} (₹{parseFloat(p.price || 0).toFixed(2)})</option>
-                                 ))}
+                                 {products.map(p => {
+                                   const code = p.hsnCode ? `HSN: ${p.hsnCode}` : p.sacCode ? `SAC: ${p.sacCode}` : 'No Code';
+                                   const stockText = p.sacCode ? 'Service' : `Stock: ${parseFloat(p.currentStock || 0)} ${p.uqc || 'NOS'}`;
+                                   return (
+                                     <option key={p.id} value={String(p.id)}>
+                                       {p.name} ({code}) - ₹{parseFloat(p.price || 0).toFixed(2)} ({stockText})
+                                     </option>
+                                   );
+                                 })}
                                </select>
                                {item.name && (
                                  <span className="block mt-0.5 text-xs font-semibold text-slate-700">{item.name}</span>

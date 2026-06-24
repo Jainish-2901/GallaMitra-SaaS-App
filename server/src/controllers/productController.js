@@ -3,7 +3,7 @@ import { logActivity } from '../activityLogger.js';
 
 // 1. Create a Product
 export const createProduct = async (req, res) => {
-    const { shopId, name, price, description } = req.body;
+    const { shopId, name, price, description, hsnCode, sacCode, uqc, currentStock, minStockLevel, averageCostPrice } = req.body;
 
     if (!shopId || !name) {
         return res.status(400).json({ error: "Shop ID and Product Name are required fields!" });
@@ -15,7 +15,13 @@ export const createProduct = async (req, res) => {
                 shopId,
                 name,
                 price: price !== undefined ? parseFloat(price || 0.00) : 0.00,
-                description: description || null
+                description: description || null,
+                hsnCode: hsnCode || null,
+                sacCode: sacCode || null,
+                uqc: uqc || "NOS",
+                currentStock: currentStock !== undefined ? parseFloat(currentStock || 0.00) : 0.00,
+                minStockLevel: minStockLevel !== undefined ? parseFloat(minStockLevel || 0.00) : 0.00,
+                averageCostPrice: averageCostPrice !== undefined ? parseFloat(averageCostPrice || 0.00) : 0.00
             }
         });
 
@@ -47,7 +53,7 @@ export const getProducts = async (req, res) => {
 // 3. Update a Product
 export const updateProduct = async (req, res) => {
     const { id } = req.params;
-    const { name, price, description } = req.body;
+    const { name, price, description, hsnCode, sacCode, uqc, currentStock, minStockLevel, averageCostPrice, stockAdjustment } = req.body;
 
     try {
         const existing = await prisma.product.findUnique({
@@ -57,14 +63,28 @@ export const updateProduct = async (req, res) => {
             return res.status(404).json({ error: "Product not found" });
         }
 
+        const dataToUpdate = {
+            name: name !== undefined ? name : undefined,
+            price: price !== undefined ? parseFloat(price || 0.00) : undefined,
+            description: description !== undefined ? description : undefined,
+            hsnCode: hsnCode !== undefined ? (hsnCode || null) : undefined,
+            sacCode: sacCode !== undefined ? (sacCode || null) : undefined,
+            uqc: uqc !== undefined ? uqc : undefined,
+            minStockLevel: minStockLevel !== undefined ? parseFloat(minStockLevel || 0.00) : undefined,
+            averageCostPrice: averageCostPrice !== undefined ? parseFloat(averageCostPrice || 0.00) : undefined,
+            updatedAt: new Date()
+        };
+
+        if (stockAdjustment !== undefined) {
+            const adj = parseFloat(stockAdjustment || 0);
+            dataToUpdate.currentStock = { increment: adj };
+        } else if (currentStock !== undefined) {
+            dataToUpdate.currentStock = parseFloat(currentStock || 0.00);
+        }
+
         const product = await prisma.product.update({
             where: { id },
-            data: {
-                name: name !== undefined ? name : undefined,
-                price: price !== undefined ? parseFloat(price || 0.00) : undefined,
-                description: description !== undefined ? description : undefined,
-                updatedAt: new Date()
-            }
+            data: dataToUpdate
         });
 
         await logActivity(product.shopId, 'PRODUCT_UPDATED', 'Owner', `Product "${product.name}" updated`);
