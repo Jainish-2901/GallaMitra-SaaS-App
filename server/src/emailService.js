@@ -219,7 +219,9 @@ export const generateHtmlEmail = ({ title, greeting, leadText, details, actionUr
   const fUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const sEmail = supportEmail || 'support.gallamitra@gmail.com';
   const sPhone = supportPhone || '+91 97732 72749';
-  const logoUrl = `${fUrl}/logo.png`;
+  const logoUrl = fUrl.includes('localhost')
+    ? 'https://raw.githubusercontent.com/Jainish-2901/GallaMitra-SaaS-App/main/client/public/logo.png'
+    : `${fUrl}/logo.png`;
 
   return `<!DOCTYPE html>
 <html>

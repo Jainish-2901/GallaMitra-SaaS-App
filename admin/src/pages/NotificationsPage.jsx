@@ -451,7 +451,7 @@ export default function NotificationsPage() {
                       {activeEmail.error || 'SMTP credentials mismatch or mail server handshake timeout.'}
                     </p>
                     <div style={{ marginTop: 8, background: 'rgba(225, 29, 72, 0.04)', padding: '6px 10px', borderRadius: '6px', fontSize: '.68rem', color: '#E11D48', border: '1px solid rgba(225, 29, 72, 0.1)' }}>
-                      <strong>Tip:</strong> Navigate to Admin Settings, verify your primary SMTP configuration blocks, and confirm if dynamic OAuth tokens or Google App Passwords require re-auth loops.
+                      <strong>Tip:</strong> Verify your SMTP configurations in your server's environment (.env) file, and confirm if Google App Passwords require regeneration.
                     </div>
                   </div>
                 </div>
