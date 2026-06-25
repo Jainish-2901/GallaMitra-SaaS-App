@@ -24,8 +24,8 @@ const getSmtpTransporter = async () => {
 
     const host = adminRes?.smtpHost || process.env.SMTP_HOST || '';
     const port = adminRes?.smtpPort ? parseInt(adminRes.smtpPort) : parseInt(process.env.SMTP_PORT || '587');
-    const secure = adminRes?.smtpHost 
-      ? !!adminRes.smtpSecure 
+    const secure = adminRes?.smtpHost
+      ? !!adminRes.smtpSecure
       : process.env.SMTP_SECURE === 'true';
     const user = adminRes?.smtpUser || process.env.SMTP_USER || '';
     const pass = adminRes?.smtpPass || process.env.SMTP_PASS || '';
@@ -74,6 +74,7 @@ const getSmtpTransporter = async () => {
       connectionTimeout: 10000, // 10s
       greetingTimeout: 10000,    // 10s
       socketTimeout: 15000,      // 15s
+      family: 4,
     });
 
     cachedTransporter = transporter;
@@ -404,8 +405,9 @@ export const verifySmtpConnection = async ({ host, port, secure, user, pass }) =
     connectionTimeout: 10000, // 10s
     greetingTimeout: 10000,    // 10s
     socketTimeout: 10000,      // 10s
+    family: 4,
   });
-  
+
   try {
     await transporter.verify();
     console.log('✅ SMTP connection test succeeded');
