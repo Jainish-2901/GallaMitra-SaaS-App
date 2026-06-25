@@ -52,10 +52,25 @@ const getSmtpTransporter = async () => {
       }
     }
 
-    console.log(`📦 Initializing new dynamic SMTP transporter pool for ${user}@${host}:${port} (secure: ${secure})`);
+    // Perform manual DNS resolution forcing IPv4 to bypass Nodemailer internal IPv6 resolve attempts
+    let resolvedHost = host;
+    try {
+      const ip = await new Promise((resolve, reject) => {
+        dns.lookup(host, { family: 4 }, (err, address) => {
+          if (err) reject(err);
+          else resolve(address);
+        });
+      });
+      console.log(`🔍 DNS Lookup: Resolved SMTP host ${host} to IPv4 address: ${ip}`);
+      resolvedHost = ip;
+    } catch (dnsErr) {
+      console.warn(`⚠️ DNS Lookup failed for SMTP host ${host}, falling back to hostname:`, dnsErr.message);
+    }
+
+    console.log(`📦 Initializing new dynamic SMTP transporter pool for ${user}@${resolvedHost}:${port} (secure: ${secure})`);
 
     const transporter = nodemailer.createTransport({
-      host,
+      host: resolvedHost,
       port,
       secure,
       auth: { user, pass },
@@ -67,6 +82,10 @@ const getSmtpTransporter = async () => {
       socketTimeout: 15000,      // 15s
       family: 4,
       lookup: ipv4Lookup,
+      tls: {
+        servername: host, // Ensure TLS SNI is matching the original domain
+        rejectUnauthorized: true
+      }
     });
 
     cachedTransporter = transporter;
@@ -389,8 +408,23 @@ setInterval(() => {
 
 export const verifySmtpConnection = async ({ host, port, secure, user, pass }) => {
   console.log(`📡 SMTP Connection Test requested for user: ${user} on host: ${host}:${port} (secure: ${secure})`);
+  
+  let resolvedHost = host;
+  try {
+    const ip = await new Promise((resolve, reject) => {
+      dns.lookup(host, { family: 4 }, (err, address) => {
+        if (err) reject(err);
+        else resolve(address);
+      });
+    });
+    console.log(`🔍 DNS Lookup (Test Conn): Resolved SMTP host ${host} to IPv4 address: ${ip}`);
+    resolvedHost = ip;
+  } catch (dnsErr) {
+    console.warn(`⚠️ DNS Lookup (Test Conn) failed for SMTP host ${host}, falling back to hostname:`, dnsErr.message);
+  }
+
   const transporter = nodemailer.createTransport({
-    host,
+    host: resolvedHost,
     port,
     secure,
     auth: { user, pass },
@@ -399,6 +433,10 @@ export const verifySmtpConnection = async ({ host, port, secure, user, pass }) =
     socketTimeout: 10000,      // 10s
     family: 4,
     lookup: ipv4Lookup,
+    tls: {
+      servername: host, // Ensure TLS SNI matches original domain
+      rejectUnauthorized: true
+    }
   });
 
   try {
