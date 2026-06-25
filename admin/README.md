@@ -8,6 +8,7 @@ The **GallaMitra Super Admin Dashboard** is a high-performance control console u
 - **Optimized Activity Logging**: Streamlined system logs to capture only critical events (shop registration, deletion, login, and logout) to minimize database storage overhead and focus super-admin audit trails.
 - **Enhanced Subscription Management**: Supports configuring the updated billing plans (Starter, Growth, Scale, Enterprise, Professional) and durations (Free, 15-Day Trial, Monthly, 3-Month, 6-Month, Yearly) which are dynamically reflected on the premium client subscription badges and workspace menus.
 - **Audit Trail Tracking**: Logs and monitors workspace activity including updates to user settings, business profiles, and subscription tier overrides.
+- **Dynamic SMTP Configuration & Test Tool**: Implemented secure database SMTP credentials and a real-time "Test SMTP Connection" validation engine, allowing administrators to verify Google App Passwords/credentials instantly and avoid re-auth loops.
 
 
 ---
@@ -28,6 +29,8 @@ The **GallaMitra Super Admin Dashboard** is a high-performance control console u
 * **Flexible Durations**: Configure cycle frequencies, supporting **Free/Forever, 15-Day Trial, Monthly, 3 Months, 6 Months, and Yearly** billing cycles.
 * **Granular Tab Toggles**: Allocate page-level menu permissions (allowed tabs) dynamically per subscription tier (e.g., locking CSV reports to the Professional plan).
 * **Workspaces Rules**: Toggle auto-approval behaviors and multi-business capabilities on a plan level.
+* **SMTP Config Blocks**: Set up dynamic SMTP host, port, SSL status, credentials, and custom sender identities.
+* **Interactive Connection Handshake**: Built-in "Test SMTP Connection" button to verify credentials and App Passwords in real-time, preventing auth-loop lockouts.
 
 ### 4. Database Engine Monitor (`DbHealthPage.jsx`)
 * Direct metrics pipeline displaying row counters for `Shop`, `Customer`, `Supplier`, `LedgerEntry`, and `Invoice` schemas.

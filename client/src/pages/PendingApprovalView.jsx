@@ -10,7 +10,7 @@ export default function PendingApprovalView() {
   
   const [checking, setChecking] = useState(false);
   const [dynPhone, setDynPhone] = useState(pendingShop?.supportPhone || '+91 97732 72749');
-  const [dynEmail, setDynEmail] = useState(pendingShop?.supportEmail || 'jainishdabgar2901@gmail.com');
+  const [dynEmail, setDynEmail] = useState(pendingShop?.supportEmail || 'support.gallamitra@gmail.com');
 
   const runCheck = async () => {
     setChecking(true);

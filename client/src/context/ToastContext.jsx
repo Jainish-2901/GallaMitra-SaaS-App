@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 // ─── Toast Context ─────────────────────────────────────────────────────────────
@@ -11,35 +10,23 @@ export const useToast = () => {
   return ctx;
 };
 
-// Toast type config
+// Toast type config for icons and colors
 const TOAST_CONFIG = {
   success: {
-    bg: 'bg-emerald-50 border-emerald-200',
     icon: CheckCircle2,
     iconColor: 'text-emerald-600',
-    title: 'text-emerald-900',
-    bar: 'bg-emerald-500',
   },
   error: {
-    bg: 'bg-rose-50 border-rose-200',
     icon: XCircle,
     iconColor: 'text-rose-600',
-    title: 'text-rose-900',
-    bar: 'bg-rose-500',
   },
   warning: {
-    bg: 'bg-amber-50 border-amber-200',
     icon: AlertTriangle,
     iconColor: 'text-amber-600',
-    title: 'text-amber-900',
-    bar: 'bg-amber-400',
   },
   info: {
-    bg: 'bg-blue-50 border-blue-200',
     icon: Info,
     iconColor: 'text-blue-600',
-    title: 'text-blue-900',
-    bar: 'bg-blue-500',
   },
 };
 
@@ -49,33 +36,26 @@ function ToastItem({ toast, onDismiss }) {
   const Icon = cfg.icon;
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: -20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -16, scale: 0.95 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-      className={`relative flex items-start gap-3 w-full max-w-sm px-4 py-3.5 rounded-2xl border shadow-lg ${cfg.bg} overflow-hidden`}
-    >
+    <div className={`toast-item toast-${toast.type}`}>
       {/* Progress bar */}
-      <motion.div
-        className={`absolute bottom-0 left-0 h-0.5 ${cfg.bar}`}
-        initial={{ width: '100%' }}
-        animate={{ width: '0%' }}
-        transition={{ duration: (toast.duration || 3500) / 1000, ease: 'linear' }}
+      <div
+        className="toast-progress"
+        style={{
+          animation: `toastProgress ${(toast.duration || 3500)}ms linear forwards`
+        }}
       />
 
       <Icon size={18} className={`shrink-0 mt-0.5 ${cfg.iconColor}`} />
       <div className="flex-1 min-w-0">
-        <p className={`text-xs font-bold leading-snug ${cfg.title}`}>{toast.message}</p>
+        <p className="toast-message-text">{toast.message}</p>
       </div>
       <button
         onClick={() => onDismiss(toast.id)}
-        className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors"
+        className="toast-close-btn"
       >
         <X size={14} />
       </button>
-    </motion.div>
+    </div>
   );
 }
 
@@ -104,14 +84,10 @@ export function ToastProvider({ children }) {
     <ToastContext.Provider value={toast}>
       {children}
       {/* Toast Container — top-right */}
-      <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 items-end pointer-events-none">
-        <AnimatePresence mode="popLayout">
-          {toasts.map(t => (
-            <div key={t.id} className="pointer-events-auto">
-              <ToastItem toast={t} onDismiss={dismiss} />
-            </div>
-          ))}
-        </AnimatePresence>
+      <div className="toast-container">
+        {toasts.map(t => (
+          <ToastItem key={t.id} toast={t} onDismiss={dismiss} />
+        ))}
       </div>
     </ToastContext.Provider>
   );

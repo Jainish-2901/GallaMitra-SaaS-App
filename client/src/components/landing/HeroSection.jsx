@@ -46,7 +46,7 @@ export default function HeroSection({ onOpenRegister, onOpenLogin }) {
             transition={{ duration: 0.4 }}
             className="inline-flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider font-mono"
           >
-            <Star size={12} fill="currentColor" /> Multi-Tenant SaaS Workspace
+            <Star size={12} fill="currentColor" /> Multi-Tenant ERP Workspace
           </motion.div>
 
           <motion.h2

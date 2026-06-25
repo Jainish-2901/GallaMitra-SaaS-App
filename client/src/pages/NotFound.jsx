@@ -84,7 +84,7 @@ export default function NotFound() {
           </button>
 
           <a
-            href="mailto:jainishdabgar2901@gmail.com?subject=GallaMitra Support Inquiry"
+            href="mailto:support.gallamitra@gmail.com?subject=GallaMitra Support Inquiry"
             className="w-full bg-slate-50 hover:bg-slate-100 text-slate-500 border border-slate-150 font-bold py-2.5 rounded-xl text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <HelpCircle size={12} /> Contact Platform Support

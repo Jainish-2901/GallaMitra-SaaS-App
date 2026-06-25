@@ -9,7 +9,6 @@ const TABS_REGISTRY = [
   { id: 'cust_list', label: 'Customer Management', group: 'Parties' },
   { id: 'supp_list', label: 'Supplier Registry', group: 'Parties' },
   { id: 'product_list', label: 'Products & Services', group: 'Parties' },
-  { id: 'product_management', label: 'Product Management', group: 'Parties' },
   { id: 'sale_ledger', label: 'Sale Ledger', group: 'Ledgers' },
   { id: 'sales_list', label: 'Sales Item Registry', group: 'Ledgers' },
   { id: 'purchase_ledger', label: 'Purchase Ledger', group: 'Ledgers' },
@@ -27,12 +26,11 @@ const TABS_REGISTRY = [
 ];
 
 export default function AdminSettingsPage() {
-  const { fetchPlans, createPlan, updatePlan, deletePlan, fetchAdminSettings, updateAdminSettings } = useAdmin();
+  const { fetchPlans, createPlan, updatePlan, deletePlan, fetchAdminSettings, updateAdminSettings, testSmtpConnection } = useAdmin();
   const toast = useToast();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingPlan, setEditingPlan] = useState(null);
-
   // Platform Support contacts & URLs
   const [supportPhone, setSupportPhone] = useState('');
   const [supportEmail, setSupportEmail] = useState('');
@@ -83,10 +81,13 @@ export default function AdminSettingsPage() {
       return;
     }
     setSavingSupport(true);
-    const res = await updateAdminSettings({ supportPhone, supportEmail });
+    const res = await updateAdminSettings({ 
+      supportPhone, 
+      supportEmail
+    });
     setSavingSupport(false);
     if (res.success) {
-      toast.success('Support contacts updated successfully!');
+      toast.success('Platform support contacts updated successfully!');
     } else {
       toast.error(res.error || 'Failed to update support settings.');
     }
@@ -501,12 +502,13 @@ export default function AdminSettingsPage() {
                 className="search-input"
                 value={supportEmail}
                 onChange={e => setSupportEmail(e.target.value)}
-                placeholder="e.g. jainishdabgar2901@gmail.com"
+                placeholder="e.g. support.gallamitra@gmail.com"
                 required
                 style={{ width: '100%', height: '40px', borderRadius: '12px' }}
               />
             </div>
-            <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+
+            <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
               <button type="submit" disabled={savingSupport} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6, height: '40px', padding: '0 20px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer' }}>
                 <Save size={14} /> {savingSupport ? 'Saving...' : 'Save Settings'}
               </button>

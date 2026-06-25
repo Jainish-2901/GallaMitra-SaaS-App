@@ -16,7 +16,7 @@ function getRowType(value) {
 }
 
 export default function InvoiceBuilder({ t = {} }) {
-  const { activeShop, customers, postInvoice, products } = useContext(AppContext);
+  const { activeShop, customers, postInvoice, products, addProductRecord } = useContext(AppContext);
   const toast = useToast();
 
   // Form states
@@ -37,6 +37,7 @@ export default function InvoiceBuilder({ t = {} }) {
   const [paymentMode, setPaymentMode] = useState('CASH');
   const [submitting, setSubmitting] = useState(false);
   const [useProduct, setUseProduct] = useState(true);
+  const [focusedRowIndex, setFocusedRowIndex] = useState(null);
 
   const uploadToCloudinary = async (file) => {
     const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dopmlnvyg';
@@ -144,12 +145,45 @@ export default function InvoiceBuilder({ t = {} }) {
       return;
     }
     setSubmitting(true);
+
+    const processedItems = [...items];
+    const createdTempProducts = [];
+
+    try {
+      for (let i = 0; i < processedItems.length; i++) {
+        const item = processedItems[i];
+        const name = item.name.trim();
+
+        // Check if product exists in products list or has been created in this loop
+        const existingProduct = products.find(p => p.name.trim().toLowerCase() === name.toLowerCase()) ||
+                                createdTempProducts.find(p => p.name.trim().toLowerCase() === name.toLowerCase());
+
+        if (existingProduct) {
+          processedItems[i].productId = existingProduct.id;
+        } else {
+          toast.info(`Auto-creating product: "${name}"...`);
+          const createRes = await addProductRecord(name, 0, 'Auto-created from invoice');
+          if (createRes.success && createRes.product) {
+            processedItems[i].productId = createRes.product.id;
+            createdTempProducts.push(createRes.product);
+          } else {
+            console.warn(`Failed to auto-create product "${name}":`, createRes.error);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error auto-creating products:', err);
+      toast.error('An error occurred while validating products.');
+      setSubmitting(false);
+      return;
+    }
+
     const response = await postInvoice({
       invoiceNo,
       invoiceDate,
       customerId: selectedCustomerId,
       itemsArray: [
-        ...items.map(it => ({
+        ...processedItems.map(it => ({
           productId: it.productId || null,
           name: it.name,
           qty: parseFloat(it.qty || 1),
@@ -381,16 +415,6 @@ export default function InvoiceBuilder({ t = {} }) {
 
           {/* 3. Items Table (Document layout) */}
           <div className="space-y-3 pt-2">
-            <div className="flex items-center mb-2">
-              <label className="text-xs font-semibold mr-2" htmlFor="useProductToggle">Use Product List</label>
-              <input
-                id="useProductToggle"
-                type="checkbox"
-                checked={useProduct}
-                onChange={e => setUseProduct(e.target.checked)}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded"
-              />
-            </div>
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block font-mono border-b pb-1.5">
               LINE ITEMS DESCRIPTION
             </span>
@@ -411,43 +435,79 @@ export default function InvoiceBuilder({ t = {} }) {
                     return (
                       <tr key={index} className="bg-transparent hover:bg-slate-50/55 transition-colors">
                         {/* Description */}
-                        <td className="py-2 pl-1.5 pr-2.5">
+                        <td className="py-2 pl-1.5 pr-2.5 relative">
                           {useProduct ? (
-                             <>
-                               <select
-                                 value={item.productId || ''}
-                                 onChange={(e) => {
-                                   const val = e.target.value;
-                                   if (val) {
-                                     const prod = products.find(p => String(p.id) === String(val));
-                                     if (prod) {
-                                       const updated = [...items];
-                                       updated[index] = { ...updated[index], productId: val, name: prod.name, rate: prod.price || 0 };
-                                       setItems(updated);
-                                     }
-                                   } else {
-                                     const updated = [...items];
-                                     updated[index] = { ...updated[index], productId: '', name: '', rate: 0 };
-                                     setItems(updated);
-                                   }
-                                 }}
-                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-sans focus:outline-none text-slate-655 mb-1.5 block font-bold cursor-pointer"
-                               >
-                                 <option value="">-- Select Product --</option>
-                                 {products.map(p => {
-                                   const code = p.hsnCode ? `HSN: ${p.hsnCode}` : p.sacCode ? `SAC: ${p.sacCode}` : 'No Code';
-                                   const stockText = p.sacCode ? 'Service' : `Stock: ${parseFloat(p.currentStock || 0)} ${p.uqc || 'NOS'}`;
-                                   return (
-                                     <option key={p.id} value={String(p.id)}>
-                                       {p.name} ({code}) - ₹{parseFloat(p.price || 0).toFixed(2)} ({stockText})
-                                     </option>
-                                   );
-                                 })}
-                               </select>
-                               {item.name && (
-                                 <span className="block mt-0.5 text-xs font-semibold text-slate-700">{item.name}</span>
-                               )}
-                             </>
+                            <div className="relative">
+                              <input
+                                type="text"
+                                value={item.name}
+                                onFocus={() => setFocusedRowIndex(index)}
+                                onBlur={() => setTimeout(() => setFocusedRowIndex(null), 250)}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const updated = [...items];
+                                  const exactMatch = products.find(p => p.name.trim().toLowerCase() === val.trim().toLowerCase());
+                                  if (exactMatch) {
+                                    updated[index] = { ...updated[index], name: val, productId: String(exactMatch.id), rate: exactMatch.price || 0 };
+                                  } else {
+                                    updated[index] = { ...updated[index], name: val, productId: '' };
+                                  }
+                                  setItems(updated);
+                                }}
+                                placeholder="Type product name or select..."
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 transition-all focus:outline-none focus:border-blue-500 focus:bg-white"
+                              />
+                              {focusedRowIndex === index && (
+                                <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto divide-y divide-slate-100 text-left">
+                                  {(() => {
+                                    const searchStr = item.name.toLowerCase();
+                                    const filtered = products.filter(p => 
+                                      p.name.toLowerCase().includes(searchStr) ||
+                                      (p.hsnCode && p.hsnCode.toLowerCase().includes(searchStr)) ||
+                                      (p.sacCode && p.sacCode.toLowerCase().includes(searchStr))
+                                    );
+                                    if (filtered.length > 0) {
+                                      return filtered.map(p => {
+                                        const code = p.hsnCode ? `HSN: ${p.hsnCode}` : p.sacCode ? `SAC: ${p.sacCode}` : 'No Code';
+                                        const stockText = p.sacCode ? 'Service' : `Stock: ${parseFloat(p.currentStock || 0)} ${p.uqc || 'NOS'}`;
+                                        return (
+                                          <button
+                                            key={p.id}
+                                            type="button"
+                                            onMouseDown={() => {
+                                              const updated = [...items];
+                                              updated[index] = {
+                                                ...updated[index],
+                                                productId: String(p.id),
+                                                name: p.name,
+                                                rate: p.price || 0
+                                              };
+                                              setItems(updated);
+                                              setFocusedRowIndex(null);
+                                            }}
+                                            className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors flex justify-between items-center"
+                                          >
+                                            <div>
+                                              <span className="font-bold text-slate-800 block">{p.name}</span>
+                                              <span className="text-[10px] text-slate-400">
+                                                {code} • {stockText}
+                                              </span>
+                                            </div>
+                                            <span className="font-bold text-slate-900">₹{parseFloat(p.price || 0).toFixed(2)}</span>
+                                          </button>
+                                        );
+                                      });
+                                    } else {
+                                      return (
+                                        <div className="px-3 py-2 text-xs text-slate-400 text-center font-mono">
+                                          No products found (will auto-create)
+                                        </div>
+                                      );
+                                    }
+                                  })()}
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             <input
                               type="text"

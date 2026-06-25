@@ -5,25 +5,97 @@ import { prisma } from './utils/prisma.js';
 // Force Node to prefer IPv4 DNS resolution over IPv6 in email worker contexts
 dns.setDefaultResultOrder('ipv4first');
 
-// SMTP Transporter setup (reads from environment variables)
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || '',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER || '',
-    pass: process.env.SMTP_PASS || '',
-  },
-  pool: true,
-  maxConnections: 3,
-  maxMessages: 100,
-  connectionTimeout: 10000, // 10s
-  greetingTimeout: 10000,    // 10s
-  socketTimeout: 15000,      // 15s
-});
+let cachedTransporter = null;
+let cachedConfigKey = null;
+
+// Helper to construct SMTP transporter dynamically from Database or environment fallback
+const getSmtpTransporter = async () => {
+  try {
+    const adminRes = await prisma.adminUser.findFirst({
+      select: {
+        smtpHost: true,
+        smtpPort: true,
+        smtpSecure: true,
+        smtpUser: true,
+        smtpPass: true,
+        smtpFrom: true,
+      }
+    });
+
+    const host = adminRes?.smtpHost || process.env.SMTP_HOST || '';
+    const port = adminRes?.smtpPort ? parseInt(adminRes.smtpPort) : parseInt(process.env.SMTP_PORT || '587');
+    const secure = adminRes?.smtpHost 
+      ? !!adminRes.smtpSecure 
+      : process.env.SMTP_SECURE === 'true';
+    const user = adminRes?.smtpUser || process.env.SMTP_USER || '';
+    const pass = adminRes?.smtpPass || process.env.SMTP_PASS || '';
+    const from = adminRes?.smtpFrom || process.env.SMTP_FROM || '"GallaMitra Support" <support.gallamitra@gmail.com>';
+
+    if (!host || !user || !pass) {
+      if (cachedTransporter) {
+        try {
+          console.log('🧹 Clearing cached SMTP transporter pool (config empty/removed)');
+          cachedTransporter.close();
+        } catch (e) {
+          console.error('Error closing cached SMTP transporter:', e);
+        }
+        cachedTransporter = null;
+        cachedConfigKey = null;
+      }
+      return null;
+    }
+
+    // Generate unique signature for caching
+    const configKey = JSON.stringify({ host, port, secure, user, pass, from });
+
+    if (cachedTransporter && cachedConfigKey === configKey) {
+      return { transporter: cachedTransporter, from };
+    }
+
+    if (cachedTransporter) {
+      try {
+        console.log('🔄 SMTP Configuration changed. Closing old dynamic SMTP connection pool.');
+        cachedTransporter.close();
+      } catch (e) {
+        console.error('Error closing old SMTP transporter pool:', e);
+      }
+    }
+
+    console.log(`📦 Initializing new dynamic SMTP transporter pool for ${user}@${host}:${port} (secure: ${secure})`);
+
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+      pool: true,
+      maxConnections: 3,
+      maxMessages: 100,
+      connectionTimeout: 10000, // 10s
+      greetingTimeout: 10000,    // 10s
+      socketTimeout: 15000,      // 15s
+    });
+
+    cachedTransporter = transporter;
+    cachedConfigKey = configKey;
+
+    return { transporter, from };
+  } catch (err) {
+    console.error('Error fetching SMTP config for transporter:', err);
+    return null;
+  }
+};
 
 export const processEmailQueue = async () => {
   try {
+    const smtpConfig = await getSmtpTransporter();
+    if (!smtpConfig) {
+      console.log('⚠️ SMTP host, user or password not configured. Email queue processing suspended.');
+      return;
+    }
+
+    const { transporter, from } = smtpConfig;
+
     while (true) {
       // Reserve one email atomically using SKIP LOCKED
       const reservedEmails = await prisma.$queryRaw`
@@ -50,24 +122,19 @@ export const processEmailQueue = async () => {
       let errorMsg = null;
 
       // SMTP Send Check
-      if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-        try {
-          const isHtml = email.body.trim().startsWith('<');
-          await transporter.sendMail({
-            from: process.env.SMTP_FROM || '"GallaMitra" <noreply@gallamitra.com>',
-            to: email.toEmail,
-            subject: email.subject,
-            text: isHtml ? 'Please view this email in an HTML-compatible client.' : email.body,
-            html: isHtml ? email.body : email.body.replace(/\n/g, '<br>')
-          });
-          success = true;
-        } catch (err) {
-          errorMsg = err.message || 'SMTP dispatch failed';
-          console.error(`❌ SMTP Email dispatch failed for queue item ${email.id}:`, err);
-        }
-      } else {
-        errorMsg = 'SMTP environment credentials not configured';
-        console.log(`⚠️ SMTP credentials not set in env. Queue item ${email.id} set to failed.`);
+      try {
+        const isHtml = email.body.trim().startsWith('<');
+        await transporter.sendMail({
+          from,
+          to: email.toEmail,
+          subject: email.subject,
+          text: isHtml ? 'Please view this email in an HTML-compatible client.' : email.body,
+          html: isHtml ? email.body : email.body.replace(/\n/g, '<br>')
+        });
+        success = true;
+      } catch (err) {
+        errorMsg = err.message || 'SMTP dispatch failed';
+        console.error(`❌ SMTP Email dispatch failed for queue item ${email.id}:`, err);
       }
 
       // Update queue status
@@ -107,7 +174,7 @@ export const getSupportContacts = async () => {
     });
     return {
       supportPhone: adminSettings?.supportPhone ? adminSettings.supportPhone : '+91 97732 72749',
-      supportEmail: adminSettings?.supportEmail ? adminSettings.supportEmail : 'jainishdabgar2901@gmail.com',
+      supportEmail: adminSettings?.supportEmail ? adminSettings.supportEmail : 'support.gallamitra@gmail.com',
       backendUrl: process.env.BACKEND_URL || 'http://localhost:5000',
       frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
       adminUrl: process.env.ADMIN_URL || 'http://localhost:5001'
@@ -116,7 +183,7 @@ export const getSupportContacts = async () => {
     console.error('Error fetching support settings:', e);
     return {
       supportPhone: '+91 97732 72749',
-      supportEmail: 'jainishdabgar2901@gmail.com',
+      supportEmail: 'support.gallamitra@gmail.com',
       backendUrl: process.env.BACKEND_URL || 'http://localhost:5000',
       frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
       adminUrl: process.env.ADMIN_URL || 'http://localhost:5001'
@@ -149,9 +216,9 @@ export const sendNotificationEmail = async (to, subject, text, html) => {
 };
 
 export const generateHtmlEmail = ({ title, greeting, leadText, details, actionUrl, actionText, supportEmail, supportPhone }) => {
-  const sEmail = supportEmail || 'jainishdabgar2901@gmail.com';
-  const sPhone = supportPhone || '+91 97732 72749';
   const fUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const sEmail = supportEmail || 'support.gallamitra@gmail.com';
+  const sPhone = supportPhone || '+91 97732 72749';
   const logoUrl = `${fUrl}/logo.png`;
 
   return `<!DOCTYPE html>
@@ -312,7 +379,7 @@ export const generateHtmlEmail = ({ title, greeting, leadText, details, actionUr
       </div>
       <div class="footer">
         <p>If you have any questions, feel free to contact our support team at <a href="mailto:${sEmail}">${sEmail}</a> or call us at <a href="tel:${sPhone.replace(/\s+/g, '')}">${sPhone}</a>.</p>
-        <p>&copy; 2026 GallaMitra SaaS. All rights reserved.</p>
+        <p>&copy; 2026 GallaMitra ERP. All rights reserved.</p>
       </div>
     </div>
   </div>
@@ -324,3 +391,31 @@ export const generateHtmlEmail = ({ title, greeting, leadText, details, actionUr
 setInterval(() => {
   processEmailQueue().catch(err => console.error('🚨 Error in periodic email queue scanner:', err));
 }, 30000);
+
+export const verifySmtpConnection = async ({ host, port, secure, user, pass }) => {
+  console.log(`📡 SMTP Connection Test requested for user: ${user} on host: ${host}:${port} (secure: ${secure})`);
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: { user, pass },
+    connectionTimeout: 10000, // 10s
+    greetingTimeout: 10000,    // 10s
+    socketTimeout: 10000,      // 10s
+  });
+  
+  try {
+    await transporter.verify();
+    console.log('✅ SMTP connection test succeeded');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ SMTP connection test failed:', error);
+    return { success: false, error: error.message || 'SMTP Connection verification failed' };
+  } finally {
+    try {
+      transporter.close();
+    } catch (e) {
+      // ignore
+    }
+  }
+};

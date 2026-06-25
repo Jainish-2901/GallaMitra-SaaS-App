@@ -55,7 +55,7 @@ export default function LandingHeader({ onOpenLogin, onOpenRegister }) {
           </div>
           <div>
             <h1 className="text-sm sm:text-base font-black tracking-tight text-slate-900 leading-none">GallaMitra</h1>
-            <p className="text-[8px] sm:text-[9px] font-black text-blue-600 uppercase tracking-widest mt-1 font-mono">SaaS Ledger Platform</p>
+            <p className="text-[8px] sm:text-[9px] font-black text-blue-600 uppercase tracking-widest mt-1 font-mono">ERP Ledger Platform</p>
           </div>
         </div>
 

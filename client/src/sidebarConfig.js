@@ -110,7 +110,6 @@ export const ownerTabs = [
     { id: 'cust_list', label: 'Customer Management', icon: Users, group: 'Parties', plan: 'starter' },
     { id: 'supp_list', label: 'Supplier Registry', icon: UserCheck, group: 'Parties', plan: 'starter' },
     { id: 'product_list', label: 'Products & Services', icon: Package, group: 'Parties', plan: 'starter' },
-    { id: 'product_management', label: 'Product Management', icon: Package, group: 'Parties', plan: 'starter' },
 
     // ── Ledgers ─────────────────────────────────────────────────────────────
     { id: 'sale_ledger', label: 'Sale Ledger', icon: History, group: 'Ledgers', plan: 'starter' },

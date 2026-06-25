@@ -18,7 +18,7 @@ export default function PrivacyPolicy() {
           {/* Content Matrix */}
           <div className="space-y-6 text-sm text-slate-600 leading-relaxed font-semibold">
             <p>
-              Welcome to GallaMitra ("we," "our," or "us"). GallaMitra operates as a multi-tenant SaaS Billing & Ledger Management Platform designed to assist local businesses and shop owners across India in managing their financial accounts under high-performance infrastructure configurations.
+              Welcome to GallaMitra ("we," "our," or "us"). GallaMitra operates as a multi-tenant ERP Billing & Ledger Management Platform designed to assist local businesses and shop owners across India in managing their financial accounts under high-performance infrastructure configurations.
             </p>
   
             {/* 1. Data Collection */}
@@ -27,7 +27,7 @@ export default function PrivacyPolicy() {
                 <Eye size={18} className="text-blue-600" /> 1. Information We Securely Collect
               </h3>
               <p className="text-slate-500 text-xs md:text-sm">
-                To provide your workspace, we collect user-provided details via Google OAuth sync, including business name, owner name, verified email addresses, phone numbers, state, business address, digital sign strings, and optional GSTIN/VPA parameters. We log transaction histories, sales invoices, purchase bills, manual ledger entries, and saved product/service profiles (including product name, price/rate, descriptions, HSN/SAC codes, Unique Quantity Codes (UQC), current stock counts, and average cost metrics) on your behalf. Additionally, we track subscription metadata, plan statuses (Starter, Growth, Trial, Professional), billing cycles (Monthly, Yearly, 3-Month, 6-Month, Trial), and email dispatch flags to manage trial notices, countdown triggers, and automatic warnings.
+                To provide your workspace, we collect user-provided details via Google OAuth sync, including business name, owner name, verified email addresses, phone numbers, state, business address, digital sign strings, and optional GSTIN/VPA parameters. We log transaction histories, sales invoices, purchase bills, manual ledger entries, and saved product/service profiles (including product name, price/rate, descriptions, HSN/SAC codes, Unique Quantity Codes (UQC), current stock counts, and average cost metrics) on your behalf. Additionally, we track subscription metadata, plan statuses (Starter, Growth, Trial, Professional), billing cycles (Monthly, Yearly, 3-Month, 6-Month, Trial), and email dispatch flags. For platform administrators, we collect and store SMTP configuration blocks (SMTP Host, SMTP Port, SSL Secure toggles, Username, Password/App Password, and From headers) securely to dispatch transaction notifications and alert cycles dynamically.
               </p>
             </div>
   
@@ -66,7 +66,7 @@ export default function PrivacyPolicy() {
           <div className="space-y-3 pt-4 border-t border-slate-100">
             <h3 className="text-base font-black text-slate-900 tracking-tight">5. Workspace Support Desk</h3>
             <p className="text-slate-500 text-xs md:text-sm">
-              If you require administrative terminal maintenance, permanent signature purges, or workspace clearing parameters, reach out directly to the core engineering desk: <a href="mailto:jainishdabgar2901@gmail.com" className="text-blue-600 hover:underline">jainishdabgar2901@gmail.com</a>.
+              If you require administrative terminal maintenance, permanent signature purges, or workspace clearing parameters, reach out directly to the core engineering desk: <a href="mailto:support.gallamitra@gmail.com" className="text-blue-600 hover:underline">support.gallamitra@gmail.com</a>.
             </p>
           </div>
         </div>

@@ -98,12 +98,18 @@ app.post('/api/share/create', async (req, res) => {
         return res.status(400).json({ error: 'ID and fullUrl are required' });
     }
     try {
+        const existing = await prisma.sharedLinks.findFirst({
+            where: { fullUrl }
+        });
+        if (existing) {
+            return res.json({ success: true, id: existing.id });
+        }
         await prisma.sharedLinks.upsert({
             where: { id },
             update: { fullUrl },
             create: { id, fullUrl }
         });
-        res.json({ success: true });
+        res.json({ success: true, id });
     } catch (err) {
         console.error('Error saving short link:', err);
         res.status(500).json({ error: 'Internal Server Error' });

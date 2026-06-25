@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { sendNotificationEmail, generateHtmlEmail, getSupportContacts } from '../emailService.js';
+import { sendNotificationEmail, generateHtmlEmail, getSupportContacts, verifySmtpConnection } from '../emailService.js';
 import { logActivity } from '../activityLogger.js';
 import { signShopToken } from '../utils/tokens.js';
 import fs from 'fs';
@@ -354,7 +354,7 @@ export const loginShop = async (req, res) => {
     try {
         const where = { email: { equals: email.toLowerCase().trim(), mode: 'insensitive' } };
         if (businessName) {
-            where.businessName = businessName.trim();
+            where.businessName = { equals: businessName.trim(), mode: 'insensitive' };
         }
 
         const shops = await prisma.shop.findMany({ where });
@@ -412,7 +412,7 @@ export const loginShop = async (req, res) => {
                         { label: 'Data Status', value: 'All Data Safe' }
                     ],
                     supportPhone: '+91 97732 72749',
-                    supportEmail: 'jainishdabgar2901@gmail.com'
+                    supportEmail: 'support.gallamitra@gmail.com'
                 });
 
                 await sendNotificationEmail(shop.email, subject, body, html);
@@ -512,6 +512,68 @@ export const loginShop = async (req, res) => {
     }
 };
 
+// ─── SWITCH WORKSPACE (TOKEN-BASED) ────────────────────────────────────────────
+// POST /api/shops/switch-workspace
+// Authenticated: uses current valid token to issue a new token for a different shop owned by the same email
+export const switchWorkspace = async (req, res) => {
+    const { targetShopId } = req.body;
+    if (!targetShopId) {
+        return res.status(400).json({ error: 'Target workspace ID is required.' });
+    }
+
+    try {
+        // req.shop is set by shopAuth middleware — the currently authenticated shop
+        const currentEmail = req.shop.email?.toLowerCase?.();
+
+        const targetShop = await prisma.shop.findUnique({ where: { id: targetShopId } });
+
+        if (!targetShop) {
+            return res.status(404).json({ error: 'Target workspace not found.' });
+        }
+
+        // Verify same owner (email match)
+        if (targetShop.email?.toLowerCase?.() !== currentEmail) {
+            return res.status(403).json({ error: 'Forbidden: you do not own this workspace.' });
+        }
+
+        // Status checks
+        if (!targetShop.isActive || targetShop.status !== 'active') {
+            return res.status(403).json({ error: 'Target workspace is not active.' });
+        }
+
+        const safeShop = toSafeShop(targetShop);
+
+        // Fetch plan details for allowedTabs
+        const planDetails = await prisma.plan.findUnique({
+            where: { id: safeShop.plan || '' },
+            select: { allowedTabs: true, allowMultiBusiness: true }
+        });
+
+        if (planDetails) {
+            safeShop.allowedTabs = planDetails.allowedTabs;
+            safeShop.allowMultiBusiness = !!planDetails.allowMultiBusiness;
+        } else {
+            safeShop.allowedTabs = [
+                'dashboard', 'cust_list', 'supp_list', 'product_list', 'sale_ledger',
+                'purchase_ledger', 'payment_receipt', 'receipt_list', 'user_settings'
+            ];
+            safeShop.allowMultiBusiness = false;
+        }
+
+        await logActivity(targetShop.id, 'SHOP_WORKSPACE_SWITCH', 'Owner', `Switched from workspace ${req.shop.id}`);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Workspace switched successfully',
+            shop: safeShop,
+            token: signShopToken(safeShop)
+        });
+    } catch (error) {
+        console.error('🚨 Error in switchWorkspace:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
 // ─── FORGOT / RESET PASSWORD FLOW ──────────────────────────────────────────────
 // POST /api/shops/forgot-password
 export const requestPasswordResetOtp = async (req, res) => {
@@ -530,7 +592,7 @@ export const requestPasswordResetOtp = async (req, res) => {
 
         // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+        const expires = new Date(Date.now() + 1 * 60 * 1000); // 1 min
 
         await prisma.shop.updateMany({
             where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
@@ -544,7 +606,7 @@ export const requestPasswordResetOtp = async (req, res) => {
 
         // Send OTP email
         const subject = 'GallaMitra Password Reset Verification Code';
-        const body = `Hello ${shop.ownerName},\nYou requested a password reset. Your 6-digit verification OTP code is: ${otp}\nThis code is valid for 10 minutes.`;
+        const body = `Hello ${shop.ownerName},\nYou requested a password reset. Your 6-digit verification OTP code is: ${otp}\nThis code is valid for 1 minute.`;
 
         const otpHtml = generateHtmlEmail({
             title: 'Password Reset Verification Code 🔑',
@@ -552,7 +614,7 @@ export const requestPasswordResetOtp = async (req, res) => {
             leadText: `You requested a password reset for your GallaMitra workspace. Use the verification code below to set a new password.`,
             details: [
                 { label: 'Verification Code', value: otp },
-                { label: 'Expires In', value: '10 Minutes' }
+                { label: 'Expires In', value: '1 Minute' }
             ],
             supportPhone,
             supportEmail
@@ -1577,7 +1639,7 @@ export const getShopStatus = async (req, res) => {
             select: { supportPhone: true, supportEmail: true }
         });
         const supportPhone = adminRes?.supportPhone || '+91 97732 72749';
-        const supportEmail = adminRes?.supportEmail || 'jainishdabgar2901@gmail.com';
+        const supportEmail = adminRes?.supportEmail || 'support.gallamitra@gmail.com';
 
         const response = {
             success: true,
@@ -1601,26 +1663,69 @@ export const getAdminSettings = async (req, res) => {
     try {
         const adminRes = await prisma.adminUser.findUnique({
             where: { id: req.admin.id },
-            select: { supportPhone: true, supportEmail: true }
+            select: { 
+                supportPhone: true, 
+                supportEmail: true,
+                smtpHost: true,
+                smtpPort: true,
+                smtpSecure: true,
+                smtpUser: true,
+                smtpPass: true,
+                smtpFrom: true
+            }
         });
         let supportPhone = '+91 97732 72749';
-        let supportEmail = 'jainishdabgar2901@gmail.com';
+        let supportEmail = 'support.gallamitra@gmail.com';
+        let smtpHost = '';
+        let smtpPort = 587;
+        let smtpSecure = false;
+        let smtpUser = '';
+        let smtpPass = '';
+        let smtpFrom = '';
+        
         if (adminRes) {
             supportPhone = adminRes.supportPhone || supportPhone;
             supportEmail = adminRes.supportEmail || supportEmail;
+            smtpHost = adminRes.smtpHost || '';
+            smtpPort = adminRes.smtpPort || 587;
+            smtpSecure = !!adminRes.smtpSecure;
+            smtpUser = adminRes.smtpUser || '';
+            smtpPass = adminRes.smtpPass || '';
+            smtpFrom = adminRes.smtpFrom || '';
         } else {
             const fallbackRes = await prisma.adminUser.findFirst({
-                select: { supportPhone: true, supportEmail: true }
+                select: { 
+                    supportPhone: true, 
+                    supportEmail: true,
+                    smtpHost: true,
+                    smtpPort: true,
+                    smtpSecure: true,
+                    smtpUser: true,
+                    smtpPass: true,
+                    smtpFrom: true
+                }
             });
             if (fallbackRes) {
                 supportPhone = fallbackRes.supportPhone || supportPhone;
                 supportEmail = fallbackRes.supportEmail || supportEmail;
+                smtpHost = fallbackRes.smtpHost || '';
+                smtpPort = fallbackRes.smtpPort || 587;
+                smtpSecure = !!fallbackRes.smtpSecure;
+                smtpUser = fallbackRes.smtpUser || '';
+                smtpPass = fallbackRes.smtpPass || '';
+                smtpFrom = fallbackRes.smtpFrom || '';
             }
         }
         res.json({
             success: true,
             supportPhone,
             supportEmail,
+            smtpHost,
+            smtpPort,
+            smtpSecure,
+            smtpUser,
+            smtpPass,
+            smtpFrom,
             backendUrl: process.env.BACKEND_URL || 'http://localhost:5000',
             frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
             adminUrl: process.env.ADMIN_URL || 'http://localhost:5001'
@@ -1633,7 +1738,7 @@ export const getAdminSettings = async (req, res) => {
 
 // ─── ADMIN: UPDATE SETTINGS ────────────────────────────────────────────────────
 export const updateAdminSettings = async (req, res) => {
-    const { supportPhone, supportEmail } = req.body;
+    const { supportPhone, supportEmail, smtpHost, smtpPort, smtpSecure, smtpUser, smtpPass, smtpFrom } = req.body;
     if (!supportPhone || !supportEmail) {
         return res.status(400).json({ error: 'Support phone and support email are both required.' });
     }
@@ -1642,13 +1747,46 @@ export const updateAdminSettings = async (req, res) => {
             where: { id: req.admin.id },
             data: {
                 supportPhone: supportPhone.trim(),
-                supportEmail: supportEmail.trim().toLowerCase()
+                supportEmail: supportEmail.trim().toLowerCase(),
+                smtpHost: smtpHost ? smtpHost.trim() : null,
+                smtpPort: smtpPort ? parseInt(smtpPort) : null,
+                smtpSecure: smtpSecure !== undefined ? !!smtpSecure : null,
+                smtpUser: smtpUser ? smtpUser.trim() : null,
+                smtpPass: smtpPass ? smtpPass.trim() : null,
+                smtpFrom: smtpFrom ? smtpFrom.trim() : null,
             }
         });
-        res.json({ success: true, message: 'Platform support settings updated successfully.' });
+        res.json({ success: true, message: 'Platform settings updated successfully.' });
     } catch (error) {
         console.error('🚨 Error updating admin settings:', error);
         res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+export const testAdminSmtpConnection = async (req, res) => {
+    const { smtpHost, smtpPort, smtpSecure, smtpUser, smtpPass } = req.body;
+    if (!smtpHost || !smtpUser || !smtpPass) {
+        return res.status(400).json({ error: 'SMTP Host, Username and Password are required to test connection.' });
+    }
+    
+    try {
+        const port = smtpPort ? parseInt(smtpPort) : 587;
+        const result = await verifySmtpConnection({
+            host: smtpHost.trim(),
+            port,
+            secure: !!smtpSecure,
+            user: smtpUser.trim(),
+            pass: smtpPass.trim()
+        });
+        
+        if (result.success) {
+            res.json({ success: true, message: 'SMTP handshake and authentication succeeded! Your SMTP settings are correct.' });
+        } else {
+            res.status(400).json({ error: result.error });
+        }
+    } catch (err) {
+        console.error('🚨 Error testing admin SMTP connection:', err);
+        res.status(500).json({ error: err.message || 'SMTP Connection failed' });
     }
 };
 
@@ -1659,7 +1797,7 @@ export const getPublicConfig = async (req, res) => {
             select: { supportPhone: true, supportEmail: true }
         });
         let supportPhone = '+91 97732 72749';
-        let supportEmail = 'jainishdabgar2901@gmail.com';
+        let supportEmail = 'support.gallamitra@gmail.com';
         if (result) {
             supportPhone = result.supportPhone || supportPhone;
             supportEmail = result.supportEmail || supportEmail;
@@ -1711,12 +1849,21 @@ export const deleteShopWorkspace = async (req, res) => {
 // ─── PUBLIC: GET SYSTEM STATUS STATISTICS ──────────────────────────────────────
 export const getPublicStats = async (req, res) => {
     try {
+        // Fetch counts concurrently, with safe handling for paymentReceipt count
+        const activeShopsPromise = prisma.shop.count({ where: { status: 'active' } });
+        const ledgerCountPromise = prisma.ledgerEntry.count();
+        const invoiceCountPromise = prisma.invoice.count();
+        const purchaseCountPromise = prisma.purchaseBill.count();
+        const receiptCountPromise = prisma.paymentReceipt.count().catch(err => {
+          console.error('🚨 Error counting payment receipts:', err);
+          return 0; // fallback to zero on error
+        });
         const [activeShopsCount, ledgerCount, invoiceCount, purchaseCount, receiptCount] = await Promise.all([
-            prisma.shop.count({ where: { status: 'active' } }),
-            prisma.ledgerEntry.count(),
-            prisma.invoice.count(),
-            prisma.purchaseBill.count(),
-            prisma.paymentReceipt.count()
+          activeShopsPromise,
+          ledgerCountPromise,
+          invoiceCountPromise,
+          purchaseCountPromise,
+          receiptCountPromise
         ]);
 
         const totalTxCount = ledgerCount + invoiceCount + purchaseCount + receiptCount;

@@ -296,6 +296,19 @@ export function AdminProvider({ children }) {
     }
   }, [token]);
 
+  const testSmtpConnection = useCallback(async (smtpData) => {
+    try {
+      const res = await fetch(`${BASE_URL}/admin/settings/test-smtp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': token },
+        body: JSON.stringify(smtpData)
+      });
+      return await res.json();
+    } catch {
+      return { success: false, error: 'Network error testing SMTP connection' };
+    }
+  }, [token]);
+
   const fetchActivities = useCallback(async () => {
     try {
       const res = await fetch(`${BASE_URL}/admin/activities`, {
@@ -359,7 +372,7 @@ export function AdminProvider({ children }) {
   const [installPrompt, setInstallPrompt] = useState(null);
   useEffect(() => {
     const handlePrompt = (e) => {
-      e.preventDefault();
+      // Do NOT call e.preventDefault() to avoid blocking browser's automatic install banner
       setInstallPrompt(e);
     };
     window.addEventListener('beforeinstallprompt', handlePrompt);
@@ -390,7 +403,7 @@ export function AdminProvider({ children }) {
       approveShop, rejectShop, changeShopPlan,
       updateShopPassword, approvePlanChange, rejectPlanChange,
       fetchPlans, createPlan, updatePlan, deletePlan,
-      fetchAdminSettings, updateAdminSettings,
+      fetchAdminSettings, updateAdminSettings, testSmtpConnection,
       fetchActivities, fetchAuditLogs, fetchDbHealth, fetchSentEmails, sendBroadcast,
       installApp, isInstallable: !!installPrompt
     }}>

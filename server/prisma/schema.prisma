@@ -1,6 +1,5 @@
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -217,10 +216,16 @@ model AdminUser {
   passwordHash String   @db.Text
   token        String?  @db.Text
   supportPhone String?  @default("+91 97732 72749") @db.VarChar(50)
-  supportEmail String?  @default("jainishdabgar2901@gmail.com") @db.VarChar(255)
+  supportEmail String?  @default("support.gallamitra@gmail.com") @db.VarChar(255)
   backendUrl   String?  @db.Text
   frontendUrl  String?  @db.Text
   adminUrl     String?  @db.Text
+  smtpHost     String?  @db.VarChar(255)
+  smtpPort     Int?     @default(587)
+  smtpSecure   Boolean? @default(false)
+  smtpUser     String?  @db.VarChar(255)
+  smtpPass     String?  @db.Text
+  smtpFrom     String?  @db.VarChar(255)
   createdAt    DateTime @default(now()) @db.Timestamp(6)
   updatedAt    DateTime @default(now()) @db.Timestamp(6)
 }

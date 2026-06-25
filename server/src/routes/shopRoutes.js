@@ -33,11 +33,13 @@ import {
     getShopStatus,
     getAdminSettings,
     updateAdminSettings,
+    testAdminSmtpConnection,
     getPublicConfig,
     getPublicStats,
     deleteShopWorkspace,
     getWorkspaceData,
-    logoutShop
+    logoutShop,
+    switchWorkspace
 } from '../controllers/shopController.js';
 import { shopAuth, requireBodyShopId, requireParamShopIdAsId, requireMatchingEmail, requireParamShopId } from '../middleware/shopAuth.js';
 
@@ -60,6 +62,7 @@ router.get('/my-workspaces/:email', shopAuth, requireMatchingEmail, getMyWorkspa
 router.put('/settings', shopAuth, requireBodyShopId, updateShopSettings);
 router.get('/workspace-data/:shopId', shopAuth, requireParamShopId, getWorkspaceData);
 router.post('/logout', shopAuth, logoutShop);
+router.post('/switch-workspace', shopAuth, switchWorkspace);
 router.delete('/:id', shopAuth, requireParamShopIdAsId, deleteShopWorkspace);
 
 router.post('/admin/login', loginAdmin);
@@ -67,6 +70,7 @@ router.get('/admin/list', adminAuth, getAdminShops);
 router.get('/admin/stats', adminAuth, getAdminStats);
 router.get('/admin/settings', adminAuth, getAdminSettings);
 router.post('/admin/settings', adminAuth, updateAdminSettings);
+router.post('/admin/settings/test-smtp', adminAuth, testAdminSmtpConnection);
 router.get('/admin/inspect/:id', adminAuth, inspectShopWorkspace);
 router.patch('/admin/shops/:id/status', adminAuth, toggleShopStatus);
 router.patch('/admin/shops/:id/approve', adminAuth, approveShop);

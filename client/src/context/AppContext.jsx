@@ -608,8 +608,10 @@ export const AppProvider = ({ children }) => {
             });
 
             if (createRes.ok) {
+                const resData = await createRes.json();
+                const actualShortId = resData.id || shortId;
                 const frontendBase = window.location.origin;
-                const shortUrl = `${frontendBase}/s/${shortId}`;
+                const shortUrl = `${frontendBase}/s/${actualShortId}`;
                 return { success: true, shortUrl, fullUrl };
             }
             return { success: true, shortUrl: fullUrl, fullUrl };
@@ -712,6 +714,33 @@ export const AppProvider = ({ children }) => {
             console.error('🚨 Error fetching workspaces:', error);
         }
         return [];
+    };
+
+    // Switch to another workspace owned by the same email — gets a fresh JWT token
+    const switchWorkspace = async (targetShopId) => {
+        if (!targetShopId) return { success: false, error: 'No target workspace' };
+        setLoading(true);
+        try {
+            const response = await fetch(`${BACKEND_URL}/shops/switch-workspace`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ targetShopId })
+            });
+            const data = await response.json();
+            if (response.ok && data.success) {
+                if (data.token) setCookie('gm_shop_token', data.token);
+                setActiveShop(data.shop);
+                setCookie('gm_session_tenant', JSON.stringify(data.shop));
+                await fetchAllWorkspaceData(data.shop.id);
+                return { success: true, shop: data.shop };
+            }
+            return { success: false, error: data.error || 'Failed to switch workspace.' };
+        } catch (error) {
+            console.error('🚨 Error switching workspace:', error);
+            return { success: false, error: 'Server cluster unreachable' };
+        } finally {
+            setLoading(false);
+        }
     };
 
     // PWA Prompt Capturer
@@ -837,9 +866,13 @@ export const AppProvider = ({ children }) => {
                 
                 if (remaining.length > 0) {
                     const nextActive = remaining[0];
-                    setActiveShop(nextActive);
-                    setCookie('gm_session_tenant', JSON.stringify(nextActive));
-                    await fetchAllWorkspaceData(nextActive.id);
+                    // Use switchWorkspace to get a fresh token for the next workspace
+                    const switchRes = await switchWorkspace(nextActive.id);
+                    if (!switchRes.success) {
+                        // Fallback: set directly (may cause 403 on next API call)
+                        setActiveShop(nextActive);
+                        setCookie('gm_session_tenant', JSON.stringify(nextActive));
+                    }
                     return { success: true, remaining: true, message: `Workspace deleted successfully. Switched to "${nextActive.businessName}".` };
                 } else {
                     localStorage.setItem('gm_deleted_only_business', 'true');
@@ -876,7 +909,7 @@ export const AppProvider = ({ children }) => {
             fetchPublicCustomer, fetchPublicSupplier, fetchPlans, requestForgotPasswordOtp, submitResetPassword,
             requestPlanChange, installApp, isInstallable: !!installPrompt, editPurchaseBill, editManualLedgerEntry, deleteManualLedgerEntry,
             editPaymentReceipt, triggerReload: () => fetchAllWorkspaceData(activeShop?.id),
-            deleteBusinessWorkspace, platformUrls,
+            deleteBusinessWorkspace, platformUrls, switchWorkspace,
             addProductRecord, updateProductRecord, removeProductRecord
         }}>
             {children}

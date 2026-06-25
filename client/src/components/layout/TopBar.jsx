@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppContext } from '../../context/AppContext.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
 import { translations } from '../../utils/translations.js';
 import {
   Store, Plus, Calendar, Clock, Users, UserCheck,
@@ -9,10 +10,9 @@ import {
   Package
 } from 'lucide-react';
 import RegisterBusinessModal from './RegisterBusinessModal.jsx';
-import { setCookie } from '../../utils/cookies.js';
 
 export default function TopBar({ activeTab, setActiveTab, setSearchTerm, isMobileMenuOpen, setIsMobileMenuOpen }) {
-  const { activeShop, setActiveShop, workspaces, updateShopSettings, isInstallable, installApp } = useContext(AppContext);
+  const { activeShop, setActiveShop, workspaces, updateShopSettings, isInstallable, installApp, switchWorkspace } = useContext(AppContext);
   const activeLang = activeShop?.language || 'gu';
   const t = translations[activeLang] || translations.en;
 
@@ -30,9 +30,15 @@ export default function TopBar({ activeTab, setActiveTab, setSearchTerm, isMobil
     await updateShopSettings({ language: e.target.value });
   };
 
-  const handleSwitchWorkspace = (workspace) => {
-    setActiveShop(workspace);
-    setCookie('gm_session_tenant', JSON.stringify(workspace));
+  const toast = useToast();
+
+  const handleSwitchWorkspace = async (workspace) => {
+    const res = await switchWorkspace(workspace.id);
+    if (res.success) {
+      toast.success(`Switched to ${workspace.businessName}`);
+    } else {
+      toast.error(res.error || 'Failed to switch workspace.');
+    }
     setSwitcherOpen(false);
   };
 

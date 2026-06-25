@@ -194,7 +194,7 @@ export default function AdminLogin() {
           </div>
 
           <p style={{ textAlign: 'center', fontSize: '.65rem', color: 'var(--text-3)', marginTop: '1.5rem', fontFamily: 'JetBrains Mono, monospace' }}>
-            GallaMitra SaaS Platform • Admin Console v1.1
+            GallaMitra ERP Platform • Admin Console v1.1
           </p>
         </div>
       </div>

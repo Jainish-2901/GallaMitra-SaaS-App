@@ -116,6 +116,7 @@ export const initDatabase = async () => {
       "slipDetails" VARCHAR(255),
       "totalAmount" DECIMAL(12, 2) NOT NULL,
       "advancePayment" DECIMAL(12, 2) DEFAULT 0.00,
+      "paymentMode" VARCHAR(50) DEFAULT 'CASH',
       "isEdited" BOOLEAN DEFAULT FALSE,
       "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
       CONSTRAINT "fk_pbill_shop" FOREIGN KEY ("shopId") REFERENCES "Shop"("id") ON DELETE CASCADE,
@@ -134,6 +135,8 @@ export const initDatabase = async () => {
       "remark" VARCHAR(550),
       "isEdited" BOOLEAN DEFAULT FALSE,
       "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      "invoiceId" UUID,
+      "purchaseBillId" UUID,
       CONSTRAINT "fk_receipt_shop" FOREIGN KEY ("shopId") REFERENCES "Shop"("id") ON DELETE CASCADE,
       CONSTRAINT "fk_receipt_customer" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE SET NULL,
       CONSTRAINT "fk_receipt_supplier" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE SET NULL
@@ -151,6 +154,12 @@ export const initDatabase = async () => {
       "name" VARCHAR(255) NOT NULL,
       "price" DECIMAL(12, 2) DEFAULT 0.00,
       "description" TEXT,
+      "hsnCode" VARCHAR(50),
+      "sacCode" VARCHAR(50),
+      "uqc" VARCHAR(20) DEFAULT 'NOS',
+      "currentStock" DECIMAL(12, 2) DEFAULT 0.00,
+      "minStockLevel" DECIMAL(12, 2) DEFAULT 0.00,
+      "averageCostPrice" DECIMAL(12, 2) DEFAULT 0.00,
       "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
       "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW(),
       CONSTRAINT "fk_product_shop" FOREIGN KEY ("shopId") REFERENCES "Shop"("id") ON DELETE CASCADE
@@ -183,6 +192,14 @@ export const initDatabase = async () => {
     ALTER TABLE "PurchaseBill" ADD COLUMN IF NOT EXISTS "paymentMode" VARCHAR(50) DEFAULT 'CASH';
     ALTER TABLE "PaymentReceipt" ADD COLUMN IF NOT EXISTS "invoiceId" UUID;
     ALTER TABLE "PaymentReceipt" ADD COLUMN IF NOT EXISTS "purchaseBillId" UUID;
+
+    -- Product Inventory columns migration
+    ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "hsnCode" VARCHAR(50);
+    ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "sacCode" VARCHAR(50);
+    ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "uqc" VARCHAR(20) DEFAULT 'NOS';
+    ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "currentStock" DECIMAL(12, 2) DEFAULT 0.00;
+    ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "minStockLevel" DECIMAL(12, 2) DEFAULT 0.00;
+    ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "averageCostPrice" DECIMAL(12, 2) DEFAULT 0.00;
 
     -- Plan & Approval System (v1.1 migration)
     ALTER TABLE "Shop" ADD COLUMN IF NOT EXISTS "plan" VARCHAR(50) DEFAULT 'starter';
@@ -233,10 +250,16 @@ export const initDatabase = async () => {
     );
 
     ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "supportPhone" VARCHAR(50) DEFAULT '+91 97732 72749';
-    ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "supportEmail" VARCHAR(255) DEFAULT 'jainishdabgar2901@gmail.com';
+    ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "supportEmail" VARCHAR(255) DEFAULT 'support.gallamitra@gmail.com';
     ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "backendUrl" TEXT;
     ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "frontendUrl" TEXT;
     ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "adminUrl" TEXT;
+    ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "smtpHost" VARCHAR(255);
+    ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "smtpPort" INTEGER DEFAULT 587;
+    ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "smtpSecure" BOOLEAN DEFAULT FALSE;
+    ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "smtpUser" VARCHAR(255);
+    ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "smtpPass" TEXT;
+    ALTER TABLE "AdminUser" ADD COLUMN IF NOT EXISTS "smtpFrom" VARCHAR(255);
 
     CREATE TABLE IF NOT EXISTS "EmailQueue" (
       "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),

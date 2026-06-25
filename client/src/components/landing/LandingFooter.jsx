@@ -32,7 +32,7 @@ export default function LandingFooter() {
             <div className="bg-white border border-slate-200 p-1 w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shadow-xs transition-transform group-hover:scale-105">
               <img src="/logo.png" alt="GallaMitra Logo" className="w-full h-full object-contain" />
             </div>
-            <span className="font-black text-slate-900 text-base tracking-tight transition-colors group-hover:text-blue-600">GallaMitra SaaS</span>
+            <span className="font-black text-slate-900 text-base tracking-tight transition-colors group-hover:text-blue-600">GallaMitra ERP</span>
           </div>
           <p className="text-slate-500 text-xs font-semibold leading-relaxed max-w-sm">
             A high-performance Multi-Tenant ledger and invoicing engine built explicitly to optimize retail accounting loops with absolute 0 Buffering Delay metrics.
@@ -75,11 +75,11 @@ export default function LandingFooter() {
 
               {/* Mailto Trigger */}
               <a
-                href="mailto:jainishdabgar2901@gmail.com"
+                href="mailto:support.gallamitra@gmail.com"
                 className="flex items-center gap-2.5 transition-all duration-250 hover:text-blue-600 hover:translate-x-1 w-fit group"
               >
                 <Mail size={12} className="text-slate-400 transition-colors group-hover:text-blue-500" />
-                <span>jainishdabgar2901@gmail.com</span>
+                <span>support.gallamitra@gmail.com</span>
               </a>
 
               {/* Maps Location Open Trigger */}

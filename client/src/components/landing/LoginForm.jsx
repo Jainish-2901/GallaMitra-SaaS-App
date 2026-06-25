@@ -3,10 +3,12 @@ import { motion } from 'framer-motion';
 import { LogIn, Mail, Lock, Eye, EyeOff, ArrowRight, Key, ArrowLeft, CheckCircle, Clock } from 'lucide-react';
 import { AppContext } from '../../context/AppContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useNavigate } from 'react-router-dom';
 
 export default function LoginForm({ onSwitchToRegister, onClose }) {
   const { loginShopOwner, requestForgotPasswordOtp, submitResetPassword, loading } = useContext(AppContext);
   const toast = useToast();
+  const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -57,17 +59,29 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
     setError('');
     const res = await loginShopOwner(email.trim(), password);
     if (res.success) {
+      // Auto-select first shop if multiple
       if (res.shops && res.shops.length > 0) {
-        setAvailShops(res.shops);
-      } else if (res.shop) {
+        const firstShop = res.shops[0];
+        const shopRes = await loginShopOwner(email.trim(), password, firstShop.businessName);
+        if (shopRes.success && shopRes.shop) {
+          toast.success(`Welcome back! Logged into ${shopRes.shop.businessName}`);
+          onClose?.();
+          navigate('/', { replace: true });
+          return;
+        }
+      }
+      if (res.shop) {
         toast.success(`Welcome back! Logged into ${res.shop.businessName}`);
         onClose?.();
+        navigate('/', { replace: true });
+        return;
       }
+      setError('Workspace not found.');
     } else if (res.pending) {
-      toast.info('Your workspace registration is under review. Redirecting...');
+      toast.info('Your workspace registration is under review.');
       onClose?.();
     } else {
-      setError(res.error || 'Login failed. Please check credentials.');
+      setError(res.error || 'Login failed.');
       toast.error(res.error || 'Login failed');
     }
   };
@@ -78,8 +92,9 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
     if (res.success && res.shop) {
       toast.success(`Welcome back! Logged into ${res.shop.businessName}`);
       onClose?.();
+      navigate('/', { replace: true });
     } else if (res.pending) {
-      toast.info('Your workspace registration is under review. Redirecting...');
+      toast.info('Your workspace registration is under review.');
       onClose?.();
     } else {
       setError(res.error || 'Failed to load workspace.');
@@ -184,7 +199,7 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="owner@example.com"
-                autocomplete="email"
+                autoComplete="email"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-semibold text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
               />
             </div>
@@ -234,7 +249,7 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
                 value={otp}
                 onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
                 placeholder="e.g. 123456"
-                autocomplete="one-time-code"
+                autoComplete="one-time-code"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-black text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white transition-all font-mono tracking-widest text-center"
               />
             </div>
@@ -254,7 +269,7 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
                   placeholder="Min 6 chars"
-                  autocomplete="new-password"
+                  autoComplete="new-password"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
                 />
                 <button type="button" onClick={() => setShowNewPass(!showNewPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
@@ -287,7 +302,7 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   placeholder="Re-enter"
-                  autocomplete="new-password"
+                  autoComplete="new-password"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
                 />
                 <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
@@ -333,7 +348,7 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="owner@example.com"
-                autocomplete="username"
+                autoComplete="username"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
               />
             </div>
@@ -362,7 +377,7 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
-                autocomplete="current-password"
+                autoComplete="current-password"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-12 py-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
               />
               <button type="button" onClick={() => setShowPass(p => !p)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">

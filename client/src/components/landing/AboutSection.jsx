@@ -5,7 +5,7 @@ import { Store, Shield, Sparkles, Smartphone, CheckCircle, Heart } from 'lucide-
 const coreValues = [
   { icon: Store, title: 'What does GallaMitra mean?', desc: '"Galla" tracks the traditional core cash drawer counter box, and "Mitra" names a trusted friend. This platform serves as your digitizing accounting ally.', color: 'text-blue-600 bg-blue-50 border-blue-200/60' },
   { icon: Shield, title: 'Tenant Isolation Architecture', desc: 'All credential nodes and data blocks are isolated with high-tier transactional boundaries keeping metrics completely secure.', color: 'text-emerald-600 bg-emerald-50 border-emerald-200/60' },
-  { icon: Sparkles, title: 'Dynamic SaaS Matrix', desc: 'System administrators manage subscription levels flexibly, unlocking interface access parameters on the fly.', color: 'text-purple-600 bg-purple-50 border-purple-200/60' },
+  { icon: Sparkles, title: 'Dynamic ERP Matrix', desc: 'System administrators manage subscription and module levels flexibly, unlocking interface access parameters on the fly.', color: 'text-purple-600 bg-purple-50 border-purple-200/60' },
   { icon: Smartphone, title: 'Zero Search Friction Flow', desc: 'Tailored for fast operation cycles under intense physical conditions. High-contrast typography optimized for immediate lookup actions.', color: 'text-amber-600 bg-amber-50 border-amber-200/60' },
 ];
 
@@ -26,7 +26,7 @@ export default function AboutSection() {
             </h3>
 
             <p className="text-slate-500 text-xs md:text-sm font-semibold leading-relaxed">
-              GallaMitra solves data tracking overheads cleanly. Instead of enforcing complex ERP configurations, we deploy unified operational canvases engineered to synchronize information loops across endpoints securely.
+              GallaMitra solves data tracking overheads cleanly. We deploy unified, high-performance ERP operational canvases engineered to synchronize information loops and inventory tracking across endpoints securely.
             </p>
 
             <div className="space-y-3.5 pt-2">
