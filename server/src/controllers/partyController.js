@@ -123,17 +123,27 @@ export const getActiveParties = async (req, res) => {
         if (role === 'supplier') {
             if (includeAll) {
                 result = await prisma.$queryRaw`
-                    SELECT s.*, 
-                      COALESCE((SELECT SUM(CASE WHEN l.type = 'CREDIT' THEN l.amount ELSE -l.amount END) FROM "LedgerEntry" l WHERE l."supplierId" = s.id), 0.00) AS balance
+                    SELECT s.*, COALESCE(b.balance, 0.00) AS balance
                     FROM "Supplier" s
+                    LEFT JOIN (
+                      SELECT "supplierId", SUM(CASE WHEN type = 'CREDIT' THEN amount ELSE -amount END) AS balance
+                      FROM "LedgerEntry"
+                      WHERE "shopId" = ${shopId}::uuid AND "supplierId" IS NOT NULL
+                      GROUP BY "supplierId"
+                    ) b ON s.id = b."supplierId"
                     WHERE s."shopId" = ${shopId}::uuid
                     ORDER BY s."createdAt" DESC
                 `;
             } else {
                 result = await prisma.$queryRaw`
-                    SELECT s.*, 
-                      COALESCE((SELECT SUM(CASE WHEN l.type = 'CREDIT' THEN l.amount ELSE -l.amount END) FROM "LedgerEntry" l WHERE l."supplierId" = s.id), 0.00) AS balance
+                    SELECT s.*, COALESCE(b.balance, 0.00) AS balance
                     FROM "Supplier" s
+                    LEFT JOIN (
+                      SELECT "supplierId", SUM(CASE WHEN type = 'CREDIT' THEN amount ELSE -amount END) AS balance
+                      FROM "LedgerEntry"
+                      WHERE "shopId" = ${shopId}::uuid AND "supplierId" IS NOT NULL
+                      GROUP BY "supplierId"
+                    ) b ON s.id = b."supplierId"
                     WHERE s."shopId" = ${shopId}::uuid AND s."isDeleted" = FALSE 
                     ORDER BY s."createdAt" DESC
                 `;
@@ -141,17 +151,27 @@ export const getActiveParties = async (req, res) => {
         } else {
             if (includeAll) {
                 result = await prisma.$queryRaw`
-                    SELECT c.*, 
-                      COALESCE((SELECT SUM(CASE WHEN l.type = 'DEBIT' THEN l.amount ELSE -l.amount END) FROM "LedgerEntry" l WHERE l."customerId" = c.id), 0.00) AS balance
+                    SELECT c.*, COALESCE(b.balance, 0.00) AS balance
                     FROM "Customer" c
+                    LEFT JOIN (
+                      SELECT "customerId", SUM(CASE WHEN type = 'DEBIT' THEN amount ELSE -amount END) AS balance
+                      FROM "LedgerEntry"
+                      WHERE "shopId" = ${shopId}::uuid AND "customerId" IS NOT NULL
+                      GROUP BY "customerId"
+                    ) b ON c.id = b."customerId"
                     WHERE c."shopId" = ${shopId}::uuid
                     ORDER BY c."createdAt" DESC
                 `;
             } else {
                 result = await prisma.$queryRaw`
-                    SELECT c.*, 
-                      COALESCE((SELECT SUM(CASE WHEN l.type = 'DEBIT' THEN l.amount ELSE -l.amount END) FROM "LedgerEntry" l WHERE l."customerId" = c.id), 0.00) AS balance
+                    SELECT c.*, COALESCE(b.balance, 0.00) AS balance
                     FROM "Customer" c
+                    LEFT JOIN (
+                      SELECT "customerId", SUM(CASE WHEN type = 'DEBIT' THEN amount ELSE -amount END) AS balance
+                      FROM "LedgerEntry"
+                      WHERE "shopId" = ${shopId}::uuid AND "customerId" IS NOT NULL
+                      GROUP BY "customerId"
+                    ) b ON c.id = b."customerId"
                     WHERE c."shopId" = ${shopId}::uuid AND c."isDeleted" = FALSE 
                     ORDER BY c."createdAt" DESC
                 `;
