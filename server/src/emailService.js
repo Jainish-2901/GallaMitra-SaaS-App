@@ -9,6 +9,21 @@ const ipv4Lookup = (hostname, options, callback) => {
   return dns.lookup(hostname, { ...options, family: 4 }, callback);
 };
 
+// Helper to ensure display name is correctly quoted if it has spaces/dots and is not already quoted
+const formatEmailFromField = (fromStr) => {
+  if (!fromStr) return fromStr;
+  const match = fromStr.match(/^([^<]+)<([^>]+)>$/);
+  if (match) {
+    let displayName = match[1].trim();
+    const email = match[2].trim();
+    if (displayName && (displayName.includes(' ') || displayName.includes('.')) && !displayName.startsWith('"') && !displayName.endsWith('"')) {
+      displayName = `"${displayName}"`;
+    }
+    return `${displayName} <${email}>`;
+  }
+  return fromStr;
+};
+
 let cachedTransporter = null;
 let cachedConfigKey = null;
 
@@ -20,7 +35,8 @@ const getSmtpTransporter = async () => {
     const secure = process.env.SMTP_SECURE === 'true';
     const user = process.env.SMTP_USER || '';
     const pass = process.env.SMTP_PASS || '';
-    const from = process.env.SMTP_FROM || '"GallaMitra Support" <support.gallamitra@gmail.com>';
+    const rawFrom = process.env.SMTP_FROM || '"GallaMitra Support" <support.gallamitra@gmail.com>';
+    const from = formatEmailFromField(rawFrom);
 
     if (!host || !user || !pass) {
       if (cachedTransporter) {
@@ -120,7 +136,7 @@ export const processEmailQueue = async () => {
 
     const resendApiKey = process.env.RESEND_API_KEY;
     let transporter = null;
-    let from = process.env.RESEND_FROM || 'onboarding@resend.dev';
+    let from = formatEmailFromField(process.env.RESEND_FROM || 'onboarding@resend.dev');
 
     if (!resendApiKey) {
       const smtpConfig = await getSmtpTransporter();
@@ -155,7 +171,7 @@ export const processEmailQueue = async () => {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              from: process.env.RESEND_FROM || from,
+              from: from,
               to: email.toEmail,
               subject: email.subject,
               text: isHtml ? 'Please view this email in an HTML-compatible client.' : email.body,
