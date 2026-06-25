@@ -82,7 +82,7 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
       onClose?.();
     } else {
       setError(res.error || 'Login failed.');
-      toast.error(res.error || 'Login failed');
+      toast.error(res.error || 'Login failed.');
     }
   };
 
@@ -98,6 +98,7 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
       onClose?.();
     } else {
       setError(res.error || 'Failed to load workspace.');
+      toast.error(res.error || 'Failed to load workspace.');
     }
   };
 

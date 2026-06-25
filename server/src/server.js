@@ -17,6 +17,8 @@ import transactionalRoutes from './routes/transactionalRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import { processSubscriptionChecks } from './controllers/shopController.js';
 
+import { requestLogger } from './middleware/requestLogger.js';
+
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
@@ -51,6 +53,7 @@ const globalLimiter = rateLimit({
 });
 
 app.use('/api', globalLimiter);
+app.use('/api', requestLogger);
 
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
