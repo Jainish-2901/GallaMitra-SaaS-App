@@ -592,7 +592,7 @@ export const requestPasswordResetOtp = async (req, res) => {
 
         // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const expires = new Date(Date.now() + 1 * 60 * 1000); // 1 min
+        const expires = new Date(Date.now() + 2 * 60 * 1000); // 2 mins
 
         await prisma.shop.updateMany({
             where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
@@ -606,7 +606,7 @@ export const requestPasswordResetOtp = async (req, res) => {
 
         // Send OTP email
         const subject = 'GallaMitra Password Reset Verification Code';
-        const body = `Hello ${shop.ownerName},\nYou requested a password reset. Your 6-digit verification OTP code is: ${otp}\nThis code is valid for 1 minute.`;
+        const body = `Hello ${shop.ownerName},\nYou requested a password reset. Your 6-digit verification OTP code is: ${otp}\nThis code is valid for 2 minutes.`;
 
         const otpHtml = generateHtmlEmail({
             title: 'Password Reset Verification Code 🔑',
@@ -614,7 +614,7 @@ export const requestPasswordResetOtp = async (req, res) => {
             leadText: `You requested a password reset for your GallaMitra workspace. Use the verification code below to set a new password.`,
             details: [
                 { label: 'Verification Code', value: otp },
-                { label: 'Expires In', value: '1 Minute' }
+                { label: 'Expires In', value: '2 Minutes' }
             ],
             supportPhone,
             supportEmail

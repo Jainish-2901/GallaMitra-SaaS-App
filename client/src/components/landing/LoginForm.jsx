@@ -26,7 +26,7 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
   // Advanced Visuals States
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(60); // 1 minute dynamic countdown
+  const [timeLeft, setTimeLeft] = useState(120); // 2 minutes dynamic countdown
 
   // Countdown timer clock engine
   useEffect(() => {
@@ -112,7 +112,7 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
 
     if (res.success) {
       toast.success('Verification OTP code sent to your email.');
-      setTimeLeft(60); // Reset clock to 1 min cleanly
+      setTimeLeft(120); // Reset clock to 2 mins cleanly
       setMode('reset');
     } else {
       setError(res.error || 'Failed to send OTP code.');
@@ -231,7 +231,7 @@ export default function LoginForm({ onSwitchToRegister, onClose }) {
             {/* Dynamic 1-Minute Visual Clock Node */}
             <div className="flex items-center gap-1 font-mono text-[11px] font-bold text-blue-600 bg-white px-2 py-0.5 rounded-md border border-blue-200/60">
               <Clock size={11} className={timeLeft > 0 ? "animate-spin" : ""} style={{ animationDuration: '3s' }} />
-              <span>00:{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span>
+              <span>{Math.floor(timeLeft / 60).toString().padStart(2, '0')}:{String(timeLeft % 60).padStart(2, '0')}</span>
             </div>
           </div>
 

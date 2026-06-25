@@ -5,6 +5,10 @@ import { prisma } from './utils/prisma.js';
 // Force Node to prefer IPv4 DNS resolution over IPv6 in email worker contexts
 dns.setDefaultResultOrder('ipv4first');
 
+const ipv4Lookup = (hostname, options, callback) => {
+  return dns.lookup(hostname, { ...options, family: 4 }, callback);
+};
+
 let cachedTransporter = null;
 let cachedConfigKey = null;
 
@@ -62,6 +66,7 @@ const getSmtpTransporter = async () => {
       greetingTimeout: 10000,    // 10s
       socketTimeout: 15000,      // 15s
       family: 4,
+      lookup: ipv4Lookup,
     });
 
     cachedTransporter = transporter;
@@ -393,6 +398,7 @@ export const verifySmtpConnection = async ({ host, port, secure, user, pass }) =
     greetingTimeout: 10000,    // 10s
     socketTimeout: 10000,      // 10s
     family: 4,
+    lookup: ipv4Lookup,
   });
 
   try {
