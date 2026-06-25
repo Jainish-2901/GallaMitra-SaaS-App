@@ -27,15 +27,31 @@ const formatEmailFromField = (fromStr) => {
 let cachedTransporter = null;
 let cachedConfigKey = null;
 
-// Helper to construct SMTP transporter dynamically from environment configuration
+// Helper to construct SMTP transporter dynamically from database or environment configuration
 const getSmtpTransporter = async () => {
   try {
-    const host = process.env.SMTP_HOST || '';
-    const port = parseInt(process.env.SMTP_PORT || '587');
-    const secure = process.env.SMTP_SECURE === 'true';
-    const user = process.env.SMTP_USER || '';
-    const pass = process.env.SMTP_PASS || '';
-    const rawFrom = process.env.SMTP_FROM || '"GallaMitra Support" <support.gallamitra@gmail.com>';
+    // Fetch SMTP settings from database configuration first (AdminUser table)
+    const adminConfig = await prisma.adminUser.findFirst({
+      select: {
+        smtpHost: true,
+        smtpPort: true,
+        smtpSecure: true,
+        smtpUser: true,
+        smtpPass: true,
+        smtpFrom: true
+      }
+    });
+
+    const host = adminConfig?.smtpHost || process.env.SMTP_HOST || '';
+    const port = adminConfig?.smtpPort !== null && adminConfig?.smtpPort !== undefined 
+      ? adminConfig.smtpPort 
+      : parseInt(process.env.SMTP_PORT || '587');
+    const secure = adminConfig?.smtpSecure !== null && adminConfig?.smtpSecure !== undefined 
+      ? adminConfig.smtpSecure 
+      : (process.env.SMTP_SECURE === 'true');
+    const user = adminConfig?.smtpUser || process.env.SMTP_USER || '';
+    const pass = adminConfig?.smtpPass || process.env.SMTP_PASS || '';
+    const rawFrom = adminConfig?.smtpFrom || process.env.SMTP_FROM || '"GallaMitra Support" <support.gallamitra@gmail.com>';
     const from = formatEmailFromField(rawFrom);
 
     if (!host || !user || !pass) {
@@ -134,25 +150,16 @@ export const processEmailQueue = async () => {
       return; // Exit silently when there are no pending emails
     }
 
-    const resendApiKey = process.env.RESEND_API_KEY;
-    let transporter = null;
-    let from = formatEmailFromField(process.env.RESEND_FROM || 'onboarding@resend.dev');
-
-    if (!resendApiKey) {
-      const smtpConfig = await getSmtpTransporter();
-      if (!smtpConfig) {
-        console.log('⚠️ Neither SMTP credentials nor RESEND_API_KEY are configured. Reverting reserved email.');
-        await prisma.emailQueue.update({
-          where: { id: reservedEmails[0].id },
-          data: { status: 'pending', attempts: { decrement: 1 } }
-        });
-        return;
-      }
-      transporter = smtpConfig.transporter;
-      from = smtpConfig.from;
-    } else {
-      console.log('📬 RESEND_API_KEY detected. Routing email queue processing via Resend HTTP API.');
+    const smtpConfig = await getSmtpTransporter();
+    if (!smtpConfig) {
+      console.log('⚠️ SMTP credentials are not configured. Reverting reserved email.');
+      await prisma.emailQueue.update({
+        where: { id: reservedEmails[0].id },
+        data: { status: 'pending', attempts: { decrement: 1 } }
+      });
+      return;
     }
+    const { transporter, from } = smtpConfig;
 
     while (true) {
       const email = reservedEmails[0];
@@ -160,40 +167,16 @@ export const processEmailQueue = async () => {
       let success = false;
       let errorMsg = null;
 
-      // Send execution branch (Resend API vs standard Nodemailer SMTP)
       try {
         const isHtml = email.body.trim().startsWith('<');
-        if (resendApiKey) {
-          const res = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${resendApiKey}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              from: from,
-              to: email.toEmail,
-              subject: email.subject,
-              text: isHtml ? 'Please view this email in an HTML-compatible client.' : email.body,
-              html: isHtml ? email.body : email.body.replace(/\n/g, '<br>')
-            })
-          });
-          const resJson = await res.json();
-          if (res.ok && resJson.id) {
-            success = true;
-          } else {
-            throw new Error(resJson.message || `Resend API returned status ${res.status}`);
-          }
-        } else {
-          await transporter.sendMail({
-            from,
-            to: email.toEmail,
-            subject: email.subject,
-            text: isHtml ? 'Please view this email in an HTML-compatible client.' : email.body,
-            html: isHtml ? email.body : email.body.replace(/\n/g, '<br>')
-          });
-          success = true;
-        }
+        await transporter.sendMail({
+          from,
+          to: email.toEmail,
+          subject: email.subject,
+          text: isHtml ? 'Please view this email in an HTML-compatible client.' : email.body,
+          html: isHtml ? email.body : email.body.replace(/\n/g, '<br>')
+        });
+        success = true;
       } catch (err) {
         errorMsg = err.message || 'Email dispatch failed';
         console.error(`❌ Email dispatch failed for queue item ${email.id}:`, err);
@@ -462,6 +445,9 @@ export const generateHtmlEmail = ({ title, greeting, leadText, details, actionUr
       <div class="footer">
         <p>If you have any questions, feel free to contact our support team at <a href="mailto:${sEmail}">${sEmail}</a> or call us at <a href="tel:${sPhone.replace(/\s+/g, '')}">${sPhone}</a>.</p>
         <p>&copy; 2026 GallaMitra ERP. All rights reserved.</p>
+        <div style="font-size: 10px; color: #94a3b8; margin-top: 12px; text-align: center; font-family: monospace;">
+          Ref: GM-${Math.random().toString(36).substring(2, 9).toUpperCase()} | Sent on: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+        </div>
       </div>
     </div>
   </div>
