@@ -100,53 +100,87 @@ const getSmtpTransporter = async () => {
 
 export const processEmailQueue = async () => {
   try {
-    const smtpConfig = await getSmtpTransporter();
-    if (!smtpConfig) {
-      console.log('⚠️ SMTP host, user or password not configured. Email queue processing suspended.');
-      return;
+    // 1. Try to reserve one email atomically first to avoid spamming logs when queue is empty
+    let reservedEmails = await prisma.$queryRaw`
+      UPDATE "EmailQueue"
+      SET "status" = 'processing', "attempts" = "attempts" + 1
+      WHERE id = (
+          SELECT id FROM "EmailQueue"
+          WHERE "status" = 'pending' AND "attempts" < 3
+          ORDER BY "createdAt" ASC
+          LIMIT 1
+          FOR UPDATE SKIP LOCKED
+      )
+      RETURNING *
+    `;
+
+    if (!reservedEmails || reservedEmails.length === 0) {
+      return; // Exit silently when there are no pending emails
     }
 
-    const { transporter, from } = smtpConfig;
+    const resendApiKey = process.env.RESEND_API_KEY;
+    let transporter = null;
+    let from = process.env.RESEND_FROM || 'onboarding@resend.dev';
+
+    if (!resendApiKey) {
+      const smtpConfig = await getSmtpTransporter();
+      if (!smtpConfig) {
+        console.log('⚠️ Neither SMTP credentials nor RESEND_API_KEY are configured. Reverting reserved email.');
+        await prisma.emailQueue.update({
+          where: { id: reservedEmails[0].id },
+          data: { status: 'pending', attempts: { decrement: 1 } }
+        });
+        return;
+      }
+      transporter = smtpConfig.transporter;
+      from = smtpConfig.from;
+    } else {
+      console.log('📬 RESEND_API_KEY detected. Routing email queue processing via Resend HTTP API.');
+    }
 
     while (true) {
-      // Reserve one email atomically using SKIP LOCKED
-      const reservedEmails = await prisma.$queryRaw`
-        UPDATE "EmailQueue"
-        SET "status" = 'processing', "attempts" = "attempts" + 1
-        WHERE id = (
-            SELECT id FROM "EmailQueue"
-            WHERE "status" = 'pending' AND "attempts" < 3
-            ORDER BY "createdAt" ASC
-            LIMIT 1
-            FOR UPDATE SKIP LOCKED
-        )
-        RETURNING *
-      `;
-
-      if (!reservedEmails || reservedEmails.length === 0) {
-        // No more pending emails in queue
-        break;
-      }
-
       const email = reservedEmails[0];
       const nextAttempts = email.attempts;
       let success = false;
       let errorMsg = null;
 
-      // SMTP Send Check
+      // Send execution branch (Resend API vs standard Nodemailer SMTP)
       try {
         const isHtml = email.body.trim().startsWith('<');
-        await transporter.sendMail({
-          from,
-          to: email.toEmail,
-          subject: email.subject,
-          text: isHtml ? 'Please view this email in an HTML-compatible client.' : email.body,
-          html: isHtml ? email.body : email.body.replace(/\n/g, '<br>')
-        });
-        success = true;
+        if (resendApiKey) {
+          const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${resendApiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              from: process.env.RESEND_FROM || from,
+              to: email.toEmail,
+              subject: email.subject,
+              text: isHtml ? 'Please view this email in an HTML-compatible client.' : email.body,
+              html: isHtml ? email.body : email.body.replace(/\n/g, '<br>')
+            })
+          });
+          const resJson = await res.json();
+          if (res.ok && resJson.id) {
+            success = true;
+          } else {
+            throw new Error(resJson.message || `Resend API returned status ${res.status}`);
+          }
+        } else {
+          await transporter.sendMail({
+            from,
+            to: email.toEmail,
+            subject: email.subject,
+            text: isHtml ? 'Please view this email in an HTML-compatible client.' : email.body,
+            html: isHtml ? email.body : email.body.replace(/\n/g, '<br>')
+          });
+          success = true;
+        }
       } catch (err) {
-        errorMsg = err.message || 'SMTP dispatch failed';
-        console.error(`❌ SMTP Email dispatch failed for queue item ${email.id}:`, err);
+        errorMsg = err.message || 'Email dispatch failed';
+        console.error(`❌ Email dispatch failed for queue item ${email.id}:`, err);
       }
 
       // Update queue status
@@ -169,6 +203,24 @@ export const processEmailQueue = async () => {
             processedAt: new Date()
           }
         });
+      }
+
+      // Reserve next email
+      reservedEmails = await prisma.$queryRaw`
+        UPDATE "EmailQueue"
+        SET "status" = 'processing', "attempts" = "attempts" + 1
+        WHERE id = (
+            SELECT id FROM "EmailQueue"
+            WHERE "status" = 'pending' AND "attempts" < 3
+            ORDER BY "createdAt" ASC
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+        )
+        RETURNING *
+      `;
+
+      if (!reservedEmails || reservedEmails.length === 0) {
+        break; // No more pending emails in queue
       }
     }
   } catch (err) {
