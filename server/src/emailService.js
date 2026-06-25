@@ -8,28 +8,15 @@ dns.setDefaultResultOrder('ipv4first');
 let cachedTransporter = null;
 let cachedConfigKey = null;
 
-// Helper to construct SMTP transporter dynamically from Database or environment fallback
+// Helper to construct SMTP transporter dynamically from environment configuration
 const getSmtpTransporter = async () => {
   try {
-    const adminRes = await prisma.adminUser.findFirst({
-      select: {
-        smtpHost: true,
-        smtpPort: true,
-        smtpSecure: true,
-        smtpUser: true,
-        smtpPass: true,
-        smtpFrom: true,
-      }
-    });
-
-    const host = adminRes?.smtpHost || process.env.SMTP_HOST || '';
-    const port = adminRes?.smtpPort ? parseInt(adminRes.smtpPort) : parseInt(process.env.SMTP_PORT || '587');
-    const secure = adminRes?.smtpHost
-      ? !!adminRes.smtpSecure
-      : process.env.SMTP_SECURE === 'true';
-    const user = adminRes?.smtpUser || process.env.SMTP_USER || '';
-    const pass = adminRes?.smtpPass || process.env.SMTP_PASS || '';
-    const from = adminRes?.smtpFrom || process.env.SMTP_FROM || '"GallaMitra Support" <support.gallamitra@gmail.com>';
+    const host = process.env.SMTP_HOST || '';
+    const port = parseInt(process.env.SMTP_PORT || '587');
+    const secure = process.env.SMTP_SECURE === 'true';
+    const user = process.env.SMTP_USER || '';
+    const pass = process.env.SMTP_PASS || '';
+    const from = process.env.SMTP_FROM || '"GallaMitra Support" <support.gallamitra@gmail.com>';
 
     if (!host || !user || !pass) {
       if (cachedTransporter) {
