@@ -199,7 +199,7 @@ export const AppProvider = ({ children }) => {
             const headers = getAuthHeaders();
             const response = await fetch(`${BACKEND_URL}/shops/workspace-data/${shopId}`, { headers });
             handleSessionExpiry(response);
-            
+
             if (response.ok) {
                 const data = await response.json();
                 setCustomers(data.customers || []);
@@ -863,7 +863,7 @@ export const AppProvider = ({ children }) => {
             if (response.ok && data.success) {
                 const remaining = workspaces.filter(w => w.id !== shopId);
                 setWorkspaces(remaining);
-                
+
                 if (remaining.length > 0) {
                     const nextActive = remaining[0];
                     // Use switchWorkspace to get a fresh token for the next workspace

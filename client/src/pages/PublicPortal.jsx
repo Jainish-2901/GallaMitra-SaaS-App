@@ -524,7 +524,7 @@ export default function PublicPortal() {
   const ReceiptPrintBody = ({ receipt }) => {
     return (
       <div ref={receiptPrintRef} style={{ background: '#fff', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif', width: '420px', border: '1px solid #000', borderRadius: '8px', position: 'relative', margin: '0 auto', boxSizing: 'border-box' }}>
-        
+
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', marginBottom: '10px' }}>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', textAlign: 'left' }}>
@@ -577,7 +577,7 @@ export default function PublicPortal() {
             </div>
           ))}
         </div>
-        
+
         {/* Amount Card */}
         <div style={{ background: '#fafafa', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', textAlign: 'center', margin: '12px 0' }}>
           <div style={{ color: '#555', fontSize: '8px', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 700 }}>Amount Received</div>
@@ -968,35 +968,37 @@ export default function PublicPortal() {
             )}
 
             {/* Balance card */}
-            <div className={`rounded-2xl p-6 border shadow-sm relative overflow-hidden ${isOwed ? 'bg-rose-600 border-rose-500' : 'bg-emerald-600 border-emerald-500'}`}>
+            <div className={`rounded-2xl p-6 border shadow-sm relative overflow-hidden ${balance > 0 ? 'bg-rose-600 border-rose-500' : 'bg-emerald-600 border-emerald-500'}`}>
               <div className="absolute right-0 top-0 w-48 h-48 rounded-full opacity-10" style={{ background: 'white', transform: 'translate(30%,-30%)' }} />
               <div className="relative z-10">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-white/70 text-[10px] font-black uppercase tracking-widest font-mono">
-                      {portalType === 'customer' ? 'Outstanding Balance Due' : 'Receivable Amount'}
+                      {portalType === 'customer' 
+                        ? (balance < 0 ? 'Advance / Credit Balance' : 'Outstanding Balance Due') 
+                        : (balance < 0 ? 'Advance Paid' : 'Receivable Amount')}
                     </p>
                     <p className="text-white font-black text-4xl mt-2 font-mono">
                       ₹{Math.abs(balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </p>
                     <p className="text-white/70 text-xs font-semibold mt-2">
-                      Status: <span className="text-white font-black">{isOwed ? 'Outstanding' : 'Cleared ✓'}</span>
+                      Status: <span className="text-white font-black">{balance > 0 ? 'Outstanding' : (balance < 0 ? 'In Credit ✓' : 'Cleared ✓')}</span>
                     </p>
                   </div>
                   <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center">
-                    {isOwed ? <ArrowUpRight size={28} className="text-white" /> : <ArrowDownLeft size={28} className="text-white" />}
+                    {balance > 0 ? <ArrowUpRight size={28} className="text-white" /> : <ArrowDownLeft size={28} className="text-white" />}
                   </div>
                 </div>
                 <p className="text-white/60 text-[10px] font-mono mt-3">
                   {portalType === 'customer'
-                    ? (isOwed ? 'તમારે ચૂકવવાના બાકી છે' : 'ચુકવણી પૂર્ણ — ધન્યવાદ!')
-                    : (isOwed ? 'તમારે મળવાના બાકી છે' : 'બધી ચૂકવણી પ્રાપ્ત')}
+                    ? (balance > 0 ? 'તમારે ચૂકવવાના બાકી છે' : (balance < 0 ? 'તમારી જમા રકમ છે' : 'ચુકવણી પૂર્ણ — ધન્યવાદ!'))
+                    : (balance > 0 ? 'તમારે મળવાના બાકી છે' : (balance < 0 ? 'જમા રકમ ચૂકવેલ છે' : 'બધી ચૂકવણી પ્રાપ્ત'))}
                 </p>
               </div>
             </div>
 
             {/* UPI QR (only customer with dues) */}
-            {portalType === 'customer' && isOwed && (
+            {portalType === 'customer' && balance > 0 && (
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
                   <CreditCard size={14} className="text-blue-600" />
@@ -1038,6 +1040,71 @@ export default function PublicPortal() {
                       </div>
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Bank Details & UPI VPA Card with dynamic QR */}
+            {portalType === 'customer' && (profile?.shopBankDetails || profile?.vpa) && (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
+                  <Building2 size={14} className="text-blue-600" />
+                  <h3 className="font-black text-sm text-slate-900">Payment & Bank Transfer Details</h3>
+                </div>
+                <div className="p-5 flex flex-col md:flex-row items-stretch gap-6">
+                  {/* Left Column: Text details */}
+                  <div className="flex-1 space-y-4">
+                    {profile?.vpa && (
+                      <div className="space-y-2">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-sans">UPI Transfer</span>
+                        <div className="space-y-2 text-[11px] font-mono">
+                          <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
+                            <span className="text-slate-500">Payee Name</span>
+                            <span className="font-bold text-slate-900">{profile.businessName || 'Merchant'}</span>
+                          </div>
+                          <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
+                            <span className="text-slate-500">UPI ID / VPA</span>
+                            <span className="font-bold text-slate-900 font-mono">{profile.vpa}</span>
+                          </div>
+                          {balance > 0 && (
+                            <div className="flex justify-between p-2 bg-rose-50 rounded-lg border border-rose-100">
+                              <span className="text-rose-500 font-bold">Outstanding Due</span>
+                              <span className="font-black text-rose-700">₹{balance.toFixed(2)}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {profile?.shopBankDetails && (
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-sans">Bank Transfer</span>
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                          <p className="font-mono text-xs text-slate-700 whitespace-pre-wrap leading-relaxed font-bold">
+                            {profile.shopBankDetails}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column: Dynamic QR Code (if VPA configured) */}
+                  {profile?.vpa && (
+                    <div className="shrink-0 flex flex-col items-center justify-center p-4 bg-slate-50 border rounded-2xl shadow-inner min-w-[200px]">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                          balance > 0
+                            ? `upi://pay?pa=${profile.vpa}&pn=${encodeURIComponent(profile.businessName || 'Merchant')}&am=${balance.toFixed(2)}&cu=INR&tn=Balance+Payment`
+                            : `upi://pay?pa=${profile.vpa}&pn=${encodeURIComponent(profile.businessName || 'Merchant')}&cu=INR&tn=Payment`
+                        )}`}
+                        alt="UPI QR Code"
+                        className="w-36 h-36 object-contain rounded-xl border bg-white shadow-sm"
+                      />
+                      <p className="text-[9px] font-black text-slate-500 mt-2.5 uppercase tracking-wide text-center font-sans">
+                        {balance > 0 ? 'Scan to pay outstanding' : 'Scan to pay any amount'}
+                      </p>
+                      <p className="text-[8px] text-slate-400 mt-0.5 tracking-widest text-center font-mono">BHIM · GPay · PhonePe · Paytm</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

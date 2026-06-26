@@ -45,6 +45,8 @@ const toSafeShop = (shop) => {
         gstin: shop.gstin,
         state: shop.state,
         vpa: shop.vpa,
+        bankDetails: shop.bankDetails,
+        invoiceTerms: shop.invoiceTerms,
         isActive: shop.isActive,
         language: shop.language,
         plan: shop.plan,
@@ -227,7 +229,7 @@ export const registerShop = async (req, res) => {
             }
             passwordHash = await bcrypt.hash(password, 12);
         }
-        
+
         // Check for existing shop (parent-child logic)
         const existingShops = await prisma.shop.findMany({
             where: {
@@ -435,7 +437,7 @@ export const loginShop = async (req, res) => {
                     // Send Subscription Expired Email
                     const expirySubject = 'GallaMitra Account Status Update: Subscription Expired';
                     const expiryBody = `Hello ${shop.ownerName},\nYour subscription for GallaMitra workspace "${shop.businessName}" has expired on ${new Date(shop.subscriptionExpiresAt).toLocaleDateString()}.\nConsequently, your account has been temporarily suspended. Please contact the platform administrator to renew your billing package.`;
-                    
+
                     const expiryHtml = generateHtmlEmail({
                         title: 'Account Status Update: Subscription Expired ⚠️',
                         greeting: `Hello ${shop.ownerName},`,
@@ -482,7 +484,7 @@ export const loginShop = async (req, res) => {
         }
 
         const safeShop = toSafeShop(shop);
-        
+
         // Fetch Allowed Tabs dynamically from Plan table
         const planDetails = await prisma.plan.findUnique({
             where: { id: safeShop.plan },
@@ -699,7 +701,8 @@ export const updateShopSettings = async (req, res) => {
     const {
         shopId, logoUrl, signatureUrl, language,
         address, businessPhone, businessEmail,
-        gstin, state, vpa, ownerName, businessName
+        gstin, state, vpa, bankDetails, invoiceTerms,
+        ownerName, businessName
     } = req.body;
 
     try {
@@ -717,7 +720,9 @@ export const updateShopSettings = async (req, res) => {
         if (businessEmail !== undefined && businessEmail !== null) data.businessEmail = businessEmail;
         if (gstin !== undefined && gstin !== null) data.gstin = gstin;
         if (state !== undefined && state !== null) data.state = state;
-        if (vpa !== undefined && vpa !== null) data.vpa = vpa;
+        if (vpa !== undefined) data.vpa = vpa;                           // allow clearing to empty string
+        if (bankDetails !== undefined) data.bankDetails = bankDetails;   // allow clearing to empty string
+        if (invoiceTerms !== undefined) data.invoiceTerms = invoiceTerms; // allow clearing to empty string
         if (ownerName !== undefined && ownerName !== null) data.ownerName = ownerName;
         if (businessName !== undefined && businessName !== null) data.businessName = businessName;
         data.updatedAt = new Date();
@@ -728,7 +733,7 @@ export const updateShopSettings = async (req, res) => {
         });
 
         const shop = toSafeShop(updatedShop);
-        
+
         const planRes = await prisma.plan.findUnique({
             where: { id: shop.plan },
             select: { allowedTabs: true }
@@ -815,11 +820,11 @@ export const toggleShopStatus = async (req, res) => {
         // Send Email Notice
         const subject = `GallaMitra Account Status Update: ${isActive ? 'Activated' : 'Suspended'}`;
         const body = `Hello ${shop.ownerName},\nYour GallaMitra workspace "${shop.businessName}" has been ${isActive ? 'reactivated' : 'suspended'} by the platform administrator.`;
-        
+
         const toggleHtml = generateHtmlEmail({
             title: `Account Status Update: ${isActive ? 'Activated 🎉' : 'Suspended ⚠️'}`,
             greeting: `Hello ${shop.ownerName},`,
-            leadText: isActive 
+            leadText: isActive
                 ? `Your GallaMitra workspace "${shop.businessName}" has been reactivated by the platform administrator. You can now log back in.`
                 : `Your GallaMitra workspace "${shop.businessName}" has been temporarily suspended by the platform administrator. Access has been blocked.`,
             details: [
@@ -1042,15 +1047,15 @@ export const getAdminStats = async (req, res) => {
         res.json({
             success: true,
             stats: {
-                totalShops:        total,
-                activeShops:       active,
-                pendingShops:      pending,
-                rejectedShops:     rejected,
-                totalCustomers:    customers,
-                totalSuppliers:    suppliers,
-                totalInvoices:     invoices,
-                totalLedger:       ledger,
-                totalPurchaseBills:purchases,
+                totalShops: total,
+                activeShops: active,
+                pendingShops: pending,
+                rejectedShops: rejected,
+                totalCustomers: customers,
+                totalSuppliers: suppliers,
+                totalInvoices: invoices,
+                totalLedger: ledger,
+                totalPurchaseBills: purchases,
             }
         });
     } catch (error) {
@@ -1085,12 +1090,12 @@ export const inspectShopWorkspace = async (req, res) => {
         ]);
 
         res.json({
-            customersCount:     custCount,
-            suppliersCount:     suppCount,
-            invoicesCount:      invAgg._count || 0,
-            invoicesTotal:      parseFloat(invAgg._sum.grandTotal || 0),
-            receiptsCount:      recAgg._count || 0,
-            receiptsTotal:      parseFloat(recAgg._sum.amount || 0),
+            customersCount: custCount,
+            suppliersCount: suppCount,
+            invoicesCount: invAgg._count || 0,
+            invoicesTotal: parseFloat(invAgg._sum.grandTotal || 0),
+            receiptsCount: recAgg._count || 0,
+            receiptsTotal: parseFloat(recAgg._sum.amount || 0),
             purchaseBillsCount: pbAgg._count || 0,
             purchaseBillsTotal: parseFloat(pbAgg._sum.totalAmount || 0),
             ledgerEntriesCount: ledCount
@@ -1219,7 +1224,7 @@ export const broadcastEmail = async (req, res) => {
 
         for (const shop of activeShops) {
             const customizedBody = `Hello ${shop.ownerName},\n\n${text}\n\nBest regards,\nGallaMitra Platform Announcement`;
-            
+
             const broadcastHtml = generateHtmlEmail({
                 title: 'Platform Announcement 📢',
                 greeting: `Hello ${shop.ownerName},`,
@@ -1257,22 +1262,22 @@ export const loginAdmin = async (req, res) => {
         if (!admin) {
             return res.status(401).json({ error: 'Invalid admin credentials.' });
         }
-        
+
         const isMatch = await bcrypt.compare(password, admin.passwordHash);
         if (!isMatch) {
             return res.status(401).json({ error: 'Invalid admin credentials.' });
         }
-        
+
         const crypto = await import('crypto');
         const token = 'Admin-Token-' + crypto.randomBytes(24).toString('hex');
-        
+
         await prisma.adminUser.update({
             where: { id: admin.id },
             data: { token }
         });
-        
+
         await logActivity(null, 'ADMIN_LOGIN', 'Admin', `Super Admin logged in from portal`);
-        
+
         res.json({ success: true, token });
     } catch (error) {
         console.error('🚨 Error in admin login:', error);
@@ -1299,7 +1304,7 @@ export const updateShopPasswordFromAdmin = async (req, res) => {
                 updatedAt: new Date()
             }
         });
-        
+
         await logActivity(id, 'ADMIN_SHOP_PASSWORD_UPDATED', 'Admin', `Password reset by administrator`);
         res.json({ success: true, message: 'Shop owner password updated successfully.' });
     } catch (error) {
@@ -1366,7 +1371,7 @@ export const requestPlanChange = async (req, res) => {
         await sendNotificationEmail(supportEmail, adminSubject, adminBody, adminHtml);
 
         await logActivity(shopId, 'SHOP_PLAN_REQUESTED', 'Owner', `Requested plan upgrade to ${requestedPlanDetails.name}`);
-        
+
         const mappedShop = {
             id: updatedShop.id,
             plan: updatedShop.plan,
@@ -1386,16 +1391,16 @@ export const approvePlanChange = async (req, res) => {
     try {
         const shop = await prisma.shop.findUnique({ where: { id } });
         if (!shop) return res.status(404).json({ error: 'Shop not found' });
-        
+
         if (shop.planRequestStatus !== 'pending' || !shop.requestedPlan) {
             return res.status(400).json({ error: 'No pending plan change request found for this shop.' });
         }
-        
+
         const planDetails = await prisma.plan.findUnique({ where: { id: shop.requestedPlan } });
         if (!planDetails) return res.status(400).json({ error: 'Invalid target plan.' });
-        
+
         const expiryDate = calculateExpiryDate(planDetails.billingCycle);
-        
+
         const updatedShop = await prisma.shop.update({
             where: { id },
             data: {
@@ -1412,16 +1417,16 @@ export const approvePlanChange = async (req, res) => {
                 updatedAt: new Date()
             }
         });
-        
+
         const safeShop = toSafeShop(updatedShop);
         safeShop.allowedTabs = planDetails.allowedTabs;
-        
+
         const { supportPhone, supportEmail, frontendUrl } = await getSupportContacts();
 
         // Send approval email
         const subject = `GallaMitra Plan Upgrade Approved: ${planDetails.name} 🎉`;
         const body = `Hello ${shop.ownerName},\nYour request to change your plan to "${planDetails.name}" for workspace "${shop.businessName}" has been APPROVED by the administrator!\nYour new billing/subscription features are active now.\n${expiryDate ? `Your plan is active until: ${new Date(expiryDate).toLocaleDateString()}` : 'Your plan has no expiration (Free).'}`;
-        
+
         const planUpgradeHtml = generateHtmlEmail({
             title: 'Plan Upgrade Approved! 🎉',
             greeting: `Hello ${shop.ownerName},`,
@@ -1455,17 +1460,17 @@ export const rejectPlanChange = async (req, res) => {
     try {
         const shop = await prisma.shop.findUnique({ where: { id } });
         if (!shop) return res.status(404).json({ error: 'Shop not found' });
-        
+
         if (shop.planRequestStatus !== 'pending' || !shop.requestedPlan) {
             return res.status(400).json({ error: 'No pending plan change request found.' });
         }
-        
+
         const planRes = await prisma.plan.findUnique({
             where: { id: shop.requestedPlan },
             select: { name: true }
         });
         const planName = planRes?.name || shop.requestedPlan;
-        
+
         await prisma.shop.update({
             where: { id },
             data: {
@@ -1474,13 +1479,13 @@ export const rejectPlanChange = async (req, res) => {
                 updatedAt: new Date()
             }
         });
-        
+
         const { supportPhone, supportEmail } = await getSupportContacts();
 
         // Send rejection email
         const subject = 'GallaMitra Plan Upgrade Request Rejected';
         const body = `Hello ${shop.ownerName},\nWe regret to inform you that your request to change your plan to "${planName}" for workspace "${shop.businessName}" has been rejected by the administrator.\nReason: ${reason || 'Subscription details could not be verified.'}`;
-        
+
         const planUpgradeRejectHtml = generateHtmlEmail({
             title: 'Plan Upgrade Request Rejected ❌',
             greeting: `Hello ${shop.ownerName},`,
@@ -1497,7 +1502,7 @@ export const rejectPlanChange = async (req, res) => {
         await sendNotificationEmail(shop.email, subject, body, planUpgradeRejectHtml);
         await logActivity(id, 'SHOP_PLAN_REJECTED', 'Admin', `Upgrade to ${planName} rejected. Reason: ${reason}`);
         await logActivity(null, 'ADMIN_PLAN_REQUEST_REJECTED', 'Admin', `Rejected plan upgrade request for '${shop.businessName}'`);
-        
+
         res.json({ success: true, message: 'Plan request rejected.' });
     } catch (error) {
         console.error('🚨 Error rejecting plan change:', error);
@@ -1574,7 +1579,7 @@ export const getMyWorkspaces = async (req, res) => {
             select: { id: true, allowMultiBusiness: true }
         });
         const planMap = new Map(plans.map(p => [p.id, p.allowMultiBusiness]));
-        
+
         const shops = activeShops.map(s => ({
             id: s.id,
             businessName: s.businessName,
@@ -1663,8 +1668,8 @@ export const getAdminSettings = async (req, res) => {
     try {
         const adminRes = await prisma.adminUser.findUnique({
             where: { id: req.admin.id },
-            select: { 
-                supportPhone: true, 
+            select: {
+                supportPhone: true,
                 supportEmail: true,
                 smtpHost: true,
                 smtpPort: true,
@@ -1682,7 +1687,7 @@ export const getAdminSettings = async (req, res) => {
         let smtpUser = '';
         let smtpPass = '';
         let smtpFrom = '';
-        
+
         if (adminRes) {
             supportPhone = adminRes.supportPhone || supportPhone;
             supportEmail = adminRes.supportEmail || supportEmail;
@@ -1694,8 +1699,8 @@ export const getAdminSettings = async (req, res) => {
             smtpFrom = adminRes.smtpFrom || '';
         } else {
             const fallbackRes = await prisma.adminUser.findFirst({
-                select: { 
-                    supportPhone: true, 
+                select: {
+                    supportPhone: true,
                     supportEmail: true,
                     smtpHost: true,
                     smtpPort: true,
@@ -1768,7 +1773,7 @@ export const testAdminSmtpConnection = async (req, res) => {
     if (!smtpHost || !smtpUser || !smtpPass) {
         return res.status(400).json({ error: 'SMTP Host, Username and Password are required to test connection.' });
     }
-    
+
     try {
         const port = smtpPort ? parseInt(smtpPort) : 587;
         const result = await verifySmtpConnection({
@@ -1778,7 +1783,7 @@ export const testAdminSmtpConnection = async (req, res) => {
             user: smtpUser.trim(),
             pass: smtpPass.trim()
         });
-        
+
         if (result.success) {
             res.json({ success: true, message: 'SMTP handshake and authentication succeeded! Your SMTP settings are correct.' });
         } else {
@@ -1825,7 +1830,7 @@ export const deleteShopWorkspace = async (req, res) => {
     try {
         const deletedShop = await prisma.$transaction(async (tx) => {
             await tx.activityLog.deleteMany({ where: { shopId: id } });
-            
+
             const shop = await tx.shop.findUnique({ where: { id } });
             if (!shop) return null;
 
@@ -1855,15 +1860,15 @@ export const getPublicStats = async (req, res) => {
         const invoiceCountPromise = prisma.invoice.count();
         const purchaseCountPromise = prisma.purchaseBill.count();
         const receiptCountPromise = prisma.paymentReceipt.count().catch(err => {
-          console.error('🚨 Error counting payment receipts:', err);
-          return 0; // fallback to zero on error
+            console.error('🚨 Error counting payment receipts:', err);
+            return 0; // fallback to zero on error
         });
         const [activeShopsCount, ledgerCount, invoiceCount, purchaseCount, receiptCount] = await Promise.all([
-          activeShopsPromise,
-          ledgerCountPromise,
-          invoiceCountPromise,
-          purchaseCountPromise,
-          receiptCountPromise
+            activeShopsPromise,
+            ledgerCountPromise,
+            invoiceCountPromise,
+            purchaseCountPromise,
+            receiptCountPromise
         ]);
 
         const totalTxCount = ledgerCount + invoiceCount + purchaseCount + receiptCount;
@@ -1915,7 +1920,7 @@ export const processSubscriptionChecks = async () => {
                 // Send 10th-day warning email (5 days left)
                 const subject = 'Your GallaMitra Free Trial Expires in 5 Days';
                 const body = `Hello ${shop.ownerName},\n\nYour 15-day free trial for workspace "${shop.businessName}" will expire in 5 days (on ${expiryDate.toLocaleDateString('en-IN')}).\n\nPlease upgrade to the Professional plan to keep access to all professional features. If you do not upgrade, you will be automatically moved to the free Starter plan when the trial ends, with no data lost.\n\nBest regards,\nGallaMitra Team`;
-                
+
                 const html = generateHtmlEmail({
                     title: 'Trial Expiring in 5 Days ⏳',
                     greeting: `Hello ${shop.ownerName},`,
@@ -1939,7 +1944,7 @@ export const processSubscriptionChecks = async () => {
                 // Send 14th-day warning email (1 day left)
                 const subject = 'Your GallaMitra Free Trial Expires Tomorrow!';
                 const body = `Hello ${shop.ownerName},\n\nYour 15-day free trial for workspace "${shop.businessName}" will expire tomorrow (on ${expiryDate.toLocaleDateString('en-IN')}).\n\nPlease upgrade to the Professional plan to keep access to all professional features. If you do not upgrade, you will be automatically moved to the free Starter plan tomorrow, with no data lost.\n\nBest regards,\nGallaMitra Team`;
-                
+
                 const html = generateHtmlEmail({
                     title: 'Trial Expiring Tomorrow ⏳',
                     greeting: `Hello ${shop.ownerName},`,
@@ -1991,7 +1996,7 @@ export const processSubscriptionChecks = async () => {
                 // Send 5-days remaining warning email
                 const subject = `Your GallaMitra Subscription for "${shop.businessName}" Expires in 5 Days`;
                 const body = `Hello ${shop.ownerName},\n\nYour subscription for workspace "${shop.businessName}" will expire in 5 days (on ${expiryDate.toLocaleDateString('en-IN')}).\n\nPlease renew your subscription to maintain continuous access to your business ledger, invoices, and analytics.\n\nBest regards,\nGallaMitra Team`;
-                
+
                 const html = generateHtmlEmail({
                     title: 'Subscription Expiring in 5 Days ⏳',
                     greeting: `Hello ${shop.ownerName},`,
@@ -2015,7 +2020,7 @@ export const processSubscriptionChecks = async () => {
                 // Send 1-day remaining warning email
                 const subject = `Urgent: Your GallaMitra Subscription for "${shop.businessName}" Expires Tomorrow!`;
                 const body = `Hello ${shop.ownerName},\n\nYour subscription for workspace "${shop.businessName}" will expire tomorrow (on ${expiryDate.toLocaleDateString('en-IN')}).\n\nPlease renew your subscription today to avoid account suspension and keep managing your billing ledgers without interruption.\n\nBest regards,\nGallaMitra Team`;
-                
+
                 const html = generateHtmlEmail({
                     title: 'Subscription Expiring Tomorrow ⏳',
                     greeting: `Hello ${shop.ownerName},`,
@@ -2119,7 +2124,7 @@ export const processSubscriptionChecks = async () => {
                     updatedAt: new Date()
                 }
             });
-            
+
             // Send Paid Expiration Email
             const subject = 'GallaMitra Account Status Update: Subscription Expired';
             const body = `Hello ${shop.ownerName},\n\nYour subscription for GallaMitra workspace "${shop.businessName}" has expired on ${new Date(shop.subscriptionExpiresAt).toLocaleDateString('en-IN')}.\n\nConsequently, your account has been temporarily suspended. Please contact the platform administrator to renew your billing package.`;
