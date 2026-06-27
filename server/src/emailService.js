@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { BrevoClient } from '@getbrevo/brevo';
 import dns from 'dns';
 import { prisma } from './utils/prisma.js';
 
@@ -27,6 +28,55 @@ const formatEmailFromField = (fromStr) => {
 let cachedTransporter = null;
 let cachedConfigKey = null;
 
+// Helper to construct Brevo client dynamically from database or environment configuration
+const getBrevoClient = async () => {
+  try {
+    // 1. Check database config first (AdminUser table)
+    const adminConfig = await prisma.adminUser.findFirst({
+      select: {
+        smtpHost: true,
+        smtpPort: true,
+        smtpPass: true,
+        smtpFrom: true
+      }
+    });
+
+    const isDbBrevo = adminConfig?.smtpHost?.includes('brevo') && 
+      (adminConfig?.smtpPort === 443 || adminConfig?.smtpPass?.startsWith('xkeysib-') || adminConfig?.smtpHost?.includes('api'));
+
+    if (isDbBrevo) {
+      const apiKey = adminConfig.smtpPass;
+      const rawFrom = adminConfig.smtpFrom || '"GallaMitra Support" <support.gallamitra@gmail.com>';
+      
+      let senderName = 'GallaMitra Support';
+      let senderEmail = 'support.gallamitra@gmail.com';
+      if (rawFrom) {
+        const match = rawFrom.match(/^([^<]+)<([^>]+)>$/);
+        if (match) {
+          senderName = match[1].replace(/"/g, '').trim() || 'GallaMitra Support';
+          senderEmail = match[2].trim() || 'support.gallamitra@gmail.com';
+        } else if (rawFrom.includes('@')) {
+          senderEmail = rawFrom.trim();
+        }
+      }
+      const client = new BrevoClient({ apiKey });
+      return { client, senderName, senderEmail };
+    }
+
+    // 2. Check environment variables fallback
+    const apiKey = process.env.BREVO_API_KEY;
+    if (apiKey && apiKey !== 'YOUR_BREVO_API_KEY') {
+      const senderName = process.env.BREVO_SENDER_NAME || 'GallaMitra Support';
+      const senderEmail = process.env.BREVO_SENDER_EMAIL || 'support.gallamitra@gmail.com';
+      const client = new BrevoClient({ apiKey });
+      return { client, senderName, senderEmail };
+    }
+  } catch (err) {
+    console.error('Error fetching Brevo configuration:', err);
+  }
+  return null;
+};
+
 // Helper to construct SMTP transporter dynamically from database or environment configuration
 const getSmtpTransporter = async () => {
   try {
@@ -42,6 +92,9 @@ const getSmtpTransporter = async () => {
       }
     });
 
+    const isDbBrevo = adminConfig?.smtpHost?.includes('brevo') && 
+      (adminConfig?.smtpPort === 443 || adminConfig?.smtpPass?.startsWith('xkeysib-') || adminConfig?.smtpHost?.includes('api'));
+
     const host = adminConfig?.smtpHost || process.env.SMTP_HOST || '';
     const port = adminConfig?.smtpPort !== null && adminConfig?.smtpPort !== undefined 
       ? adminConfig.smtpPort 
@@ -54,7 +107,7 @@ const getSmtpTransporter = async () => {
     const rawFrom = adminConfig?.smtpFrom || process.env.SMTP_FROM || '"GallaMitra Support" <support.gallamitra@gmail.com>';
     const from = formatEmailFromField(rawFrom);
 
-    if (!host || !user || !pass) {
+    if (isDbBrevo || !host || !user || !pass) {
       if (cachedTransporter) {
         try {
           console.log('🧹 Clearing cached SMTP transporter pool (config empty/removed)');
@@ -150,16 +203,20 @@ export const processEmailQueue = async () => {
       return; // Exit silently when there are no pending emails
     }
 
-    const smtpConfig = await getSmtpTransporter();
-    if (!smtpConfig) {
-      console.log('⚠️ SMTP credentials are not configured. Reverting reserved email.');
+    const brevoConfig = await getBrevoClient();
+    let smtpConfig = null;
+    if (!brevoConfig) {
+      smtpConfig = await getSmtpTransporter();
+    }
+
+    if (!brevoConfig && !smtpConfig) {
+      console.log('⚠️ Neither Brevo API nor SMTP credentials are configured. Reverting reserved email.');
       await prisma.emailQueue.update({
         where: { id: reservedEmails[0].id },
         data: { status: 'pending', attempts: { decrement: 1 } }
       });
       return;
     }
-    const { transporter, from } = smtpConfig;
 
     while (true) {
       const email = reservedEmails[0];
@@ -169,13 +226,25 @@ export const processEmailQueue = async () => {
 
       try {
         const isHtml = email.body.trim().startsWith('<');
-        await transporter.sendMail({
-          from,
-          to: email.toEmail,
-          subject: email.subject,
-          text: isHtml ? 'Please view this email in an HTML-compatible client.' : email.body,
-          html: isHtml ? email.body : email.body.replace(/\n/g, '<br>')
-        });
+        if (brevoConfig) {
+          const { client, senderName, senderEmail } = brevoConfig;
+          await client.transactionalEmails.sendTransacEmail({
+            subject: email.subject,
+            htmlContent: isHtml ? email.body : email.body.replace(/\n/g, '<br>'),
+            textContent: isHtml ? 'Please view this email in an HTML-compatible client.' : email.body,
+            sender: { name: senderName, email: senderEmail },
+            to: [{ email: email.toEmail }]
+          });
+        } else {
+          const { transporter, from } = smtpConfig;
+          await transporter.sendMail({
+            from,
+            to: email.toEmail,
+            subject: email.subject,
+            text: isHtml ? 'Please view this email in an HTML-compatible client.' : email.body,
+            html: isHtml ? email.body : email.body.replace(/\n/g, '<br>')
+          });
+        }
         success = true;
       } catch (err) {
         errorMsg = err.message || 'Email dispatch failed';
@@ -461,6 +530,20 @@ setInterval(() => {
 }, 30000);
 
 export const verifySmtpConnection = async ({ host, port, secure, user, pass }) => {
+  const isBrevo = host?.includes('brevo') && (port === 443 || pass?.startsWith('xkeysib-') || host.includes('api'));
+  if (isBrevo) {
+    console.log(`📡 Brevo API Connection Test requested with API Key: ${pass ? pass.substring(0, 8) + '...' : 'none'}`);
+    try {
+      const client = new BrevoClient({ apiKey: pass });
+      await client.account.getAccount();
+      console.log('✅ Brevo API connection test succeeded');
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Brevo API connection test failed:', error);
+      return { success: false, error: error.message || 'Brevo API authentication failed' };
+    }
+  }
+
   console.log(`📡 SMTP Connection Test requested for user: ${user} on host: ${host}:${port} (secure: ${secure})`);
   
   let resolvedHost = host;
