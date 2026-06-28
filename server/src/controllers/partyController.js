@@ -29,7 +29,7 @@ export const getPortalShareToken = async (req, res) => {
     try {
         const party = await model.findFirst({
             where: { id, isDeleted: false },
-            select: { id: true, shopId: true }
+            select: { id: true, shopId: true, shareId: true }
         });
         if (!party) {
             return res.status(404).json({ error: 'Profile not found or inactive.' });
@@ -38,11 +38,28 @@ export const getPortalShareToken = async (req, res) => {
             return res.status(403).json({ error: 'Forbidden.' });
         }
 
+        let shareId = party.shareId;
+        if (!shareId) {
+            while (true) {
+                const shortId = Math.random().toString(36).substring(2, 9);
+                const exists = await prisma.customer.findFirst({ where: { shareId: shortId } }) || await prisma.supplier.findFirst({ where: { shareId: shortId } });
+                if (!exists) {
+                    shareId = shortId;
+                    break;
+                }
+            }
+            await model.update({
+                where: { id },
+                data: { shareId }
+            });
+        }
+
         const portalToken = signPortalToken(id, role, req.shop.id);
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
         const portalUrl = `${frontendUrl}/public-portal?type=${role}&id=${id}&token=${portalToken}`;
+        const shortUrl = `${frontendUrl}/s/${shareId}`;
 
-        res.json({ success: true, token: portalToken, portalUrl });
+        res.json({ success: true, token: portalToken, portalUrl, shareId, shortUrl });
     } catch (error) {
         console.error('Error generating portal token:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -64,6 +81,16 @@ export const createParty = async (req, res) => {
     const model = role === 'supplier' ? prisma.supplier : prisma.customer;
 
     try {
+        let shareId = '';
+        while (true) {
+            const shortId = Math.random().toString(36).substring(2, 9);
+            const exists = await prisma.customer.findFirst({ where: { shareId: shortId } }) || await prisma.supplier.findFirst({ where: { shareId: shortId } });
+            if (!exists) {
+                shareId = shortId;
+                break;
+            }
+        }
+
         const party = await model.create({
             data: {
                 shopId,
@@ -76,7 +103,8 @@ export const createParty = async (req, res) => {
                 gstin: gstin || null,
                 state: state || null,
                 creditLimit: parseFloat(creditLimit || 0.00),
-                openingBalance: parseFloat(openingBalance || 0.00)
+                openingBalance: parseFloat(openingBalance || 0.00),
+                shareId
             }
         });
 
@@ -253,11 +281,18 @@ export const getCustomerPublicProfile = async (req, res) => {
             orderBy: { date: 'desc' }
         });
 
+        // 5. Fetch Credit Notes
+        const creditNotes = await prisma.creditNote.findMany({
+            where: { customerId: id },
+            orderBy: { date: 'desc' }
+        });
+
         res.json({
             customer: customerQuery[0],
             ledgers: ledgers || [],
             invoices: invoices || [],
-            receipts: receipts || []
+            receipts: receipts || [],
+            creditNotes: creditNotes || []
         });
     } catch (error) {
         console.error('🚨 Error fetching public customer portal metadata:', error);
@@ -301,11 +336,18 @@ export const getSupplierPublicProfile = async (req, res) => {
             orderBy: { date: 'desc' }
         });
 
+        // 5. Fetch Debit Notes
+        const debitNotes = await prisma.debitNote.findMany({
+            where: { supplierId: id },
+            orderBy: { date: 'desc' }
+        });
+
         res.json({
             supplier: supplierQuery[0],
             ledgers: ledgers || [],
             purchaseBills: purchaseBills || [],
-            receipts: receipts || []
+            receipts: receipts || [],
+            debitNotes: debitNotes || []
         });
     } catch (error) {
         console.error('🚨 Error fetching public supplier portal metadata:', error);

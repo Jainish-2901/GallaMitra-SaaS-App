@@ -6,7 +6,7 @@ import AnalyticsCards from '../components/AnalyticsCards.jsx';
 import {
   PlusCircle, Receipt, FileCheck, Users, UserCheck, Scroll,
   History, FileSpreadsheet, Layers, FileDigit, BarChart3, Settings,
-  Package
+  Package, FileText
 } from 'lucide-react';
 import { SalesExpensesChart, PaymentModesDonut, ProfitGauge } from '../components/CustomCharts.jsx';
 
@@ -154,6 +154,8 @@ export default function OwnerDashboard({ setActiveTab, setSearchTerm }) {
     { label: 'Products & Services', tab: 'product_list', actionKey: 'product_list', color: 'bg-emerald-50 text-emerald-850 border-emerald-200/50 hover:bg-emerald-100/50', icon: Package },
     { label: 'Profile', tab: 'user_settings', actionKey: 'profile', color: 'bg-slate-50 text-slate-800 border-slate-200/50 hover:bg-slate-100/50', icon: Settings },
     { label: 'Business Config', tab: 'business_settings', actionKey: 'businessConfig', color: 'bg-teal-50 text-teal-800 border-teal-200/50 hover:bg-teal-100/50', icon: Settings },
+    { label: 'Credit Note', tab: 'credit_note', actionKey: 'creditNote', color: 'bg-green-50 text-green-700 border-green-200/50 hover:bg-green-100/50', icon: FileText },
+    { label: 'Debit Note', tab: 'debit_note', actionKey: 'debitNote', color: 'bg-red-50 text-red-700 border-red-200/50 hover:bg-red-100/50', icon: FileText },
   ];
 
   const allowed = activeShop?.allowedTabs || [];

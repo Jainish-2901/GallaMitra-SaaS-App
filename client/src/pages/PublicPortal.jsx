@@ -21,11 +21,12 @@ export default function PublicPortal() {
 
   const [portalData, setPortalData] = useState(null);
   const [activeTab, setActiveTab] = useState(
-    ['dash', 'ledger', 'receipts', 'invoices'].includes(urlTab) ? urlTab : 'dash'
+    ['dash', 'ledger', 'receipts', 'invoices', 'notes'].includes(urlTab) ? urlTab : 'dash'
   );
   const [loading, setLoading] = useState(true);
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [selectedNote, setSelectedNote] = useState(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [printLoading, setPrintLoading] = useState(false);
   const [startDate, setStartDate] = useState('');
@@ -35,6 +36,7 @@ export default function PublicPortal() {
   const ledgerReportRef = useRef(null);
   const receiptPrintRef = useRef(null);
   const invoicePrintRef = useRef(null);
+  const notePrintRef = useRef(null);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -66,6 +68,7 @@ export default function PublicPortal() {
   const balance = parseFloat(profile?.balance || 0);
   const isOwed = balance > 0;
   const ledgers = portalData?.ledgers || [];
+  const notes = portalType === 'customer' ? (portalData?.creditNotes || []) : (portalData?.debitNotes || []);
 
   const computedLedgers = React.useMemo(() => {
     if (!ledgers || ledgers.length === 0) return [];
@@ -195,6 +198,7 @@ export default function PublicPortal() {
       const urlParams = new URLSearchParams(window.location.search);
       const docId = urlParams.get('docId');
       const receiptId = urlParams.get('receiptId');
+      const noteId = urlParams.get('noteId');
 
       if (docId) {
         if (portalType === 'customer' && portalData.invoices) {
@@ -214,6 +218,20 @@ export default function PublicPortal() {
         const rec = portalData.receipts.find(r => String(r.id) === String(receiptId));
         if (rec) {
           setSelectedReceipt(rec);
+        }
+      }
+
+      if (noteId) {
+        if (portalType === 'customer' && portalData.creditNotes) {
+          const cn = portalData.creditNotes.find(n => String(n.id) === String(noteId));
+          if (cn) {
+            setSelectedNote(cn);
+          }
+        } else if (portalType === 'supplier' && portalData.debitNotes) {
+          const dn = portalData.debitNotes.find(n => String(n.id) === String(noteId));
+          if (dn) {
+            setSelectedNote(dn);
+          }
         }
       }
     }
@@ -248,12 +266,14 @@ export default function PublicPortal() {
       { id: 'ledger', label: 'Ledger', icon: BookOpen },
       { id: 'receipts', label: 'Payments', icon: Wallet },
       { id: 'invoices', label: 'Invoices', icon: Receipt },
+      { id: 'notes', label: 'Credit Notes', icon: FileText },
     ]
     : [
       { id: 'dash', label: 'Overview', icon: TrendingUp },
       { id: 'ledger', label: 'Ledger', icon: BookOpen },
       { id: 'receipts', label: 'Remitted', icon: Wallet },
       { id: 'invoices', label: 'Slips', icon: Receipt },
+      { id: 'notes', label: 'Debit Notes', icon: FileText },
     ];
 
   // ── CSV Export (rich) ───────────────────────────────────────────────────────
@@ -842,6 +862,119 @@ export default function PublicPortal() {
     );
   };
 
+  // ── NOTE PRINT BODY ────────────────────────────────────────────────────────
+  const NotePrintBody = ({ note }) => {
+    if (!note) return null;
+    const isCreditNote = portalType === 'customer';
+    
+    return (
+      <div ref={notePrintRef} style={{ background: '#fff', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif', width: '420px', border: '1px solid #cbd5e1', borderRadius: '8px', position: 'relative', margin: '0 auto', boxSizing: 'border-box' }}>
+        
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', marginBottom: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', textAlign: 'left' }}>
+            {profile?.logoUrl ? (
+              <img src={profile.logoUrl} alt="Logo" style={{ width: '42px', height: '42px', borderRadius: '6px', objectFit: 'cover', border: '1px solid #e2e8f0', padding: '1px', backgroundColor: '#fff' }} />
+            ) : (
+              <div style={{ width: '42px', height: '42px', borderRadius: '6px', background: '#f8fafc', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ color: '#0f172a', fontWeight: 900, fontSize: '18px' }}>{(profile?.businessName || 'G')[0]}</span>
+              </div>
+            )}
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '13px', color: '#000', lineHeight: '1.2' }}>{profile?.businessName}</div>
+              {profile?.shopAddress && <div style={{ fontSize: '9px', color: '#555', marginTop: '2px', maxWidth: '200px', lineHeight: '1.2', whiteSpace: 'pre-line' }}>{profile.shopAddress}</div>}
+              {(profile?.businessPhone || profile?.shopPhone) && <div style={{ fontSize: '9px', color: '#555', marginTop: '1px' }}>Tel: {profile.businessPhone || profile.shopPhone}</div>}
+              {profile?.shopGstin && (
+                <div style={{ fontSize: '8px', color: '#000', backgroundColor: '#f1f5f9', display: 'inline-block', padding: '1px 4px', borderRadius: '3px', marginTop: '2px', fontFamily: 'monospace', fontWeight: 700, border: '1px solid #cbd5e1' }}>
+                  GSTIN: {profile.shopGstin}
+                </div>
+              )}
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '0.04em', color: '#000', textTransform: 'uppercase', background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '3px 6px', borderRadius: '4px', display: 'inline-block' }}>
+              {isCreditNote ? 'Credit Note' : 'Debit Note'}
+            </span>
+          </div>
+        </div>
+
+        {/* Party Details Card */}
+        <div style={{ background: '#fafafa', border: '1px solid #d1d5db', borderRadius: '8px', padding: '10px', marginBottom: '12px', fontSize: '10px', textAlign: 'left' }}>
+          <div style={{ fontSize: '8px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px', fontFamily: 'monospace' }}>Party Details</div>
+          <div style={{ fontWeight: 800, color: '#000', fontSize: '12px' }}>{profile?.shopName || profile?.name || '—'}</div>
+          {profile?.shopName && <div style={{ color: '#555', marginTop: '2px', fontWeight: 650 }}>Contact: {profile.name}</div>}
+          {profile?.phone && <div style={{ color: '#555', marginTop: '2px', fontWeight: 650 }}>Phone: <span style={{ color: '#000', fontFamily: 'monospace' }}>{profile.phone}</span></div>}
+          {profile?.billingAddress && <div style={{ color: '#555', marginTop: '2px', fontWeight: 650, whiteSpace: 'pre-line' }}>Address: {profile.billingAddress}</div>}
+          {profile?.gstin && (
+            <div style={{ marginTop: '4px' }}>
+              <span style={{ fontSize: '8px', fontWeight: 700, color: '#000', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace', textTransform: 'uppercase' }}>
+                GSTIN: {profile.gstin}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Note Details */}
+        <div style={{ marginBottom: '14px' }}>
+          {[
+            ['Note No.', `#${note.noteNo}`],
+            ['Date', new Date(note.date).toLocaleDateString('en-IN')],
+          ].map(([k, v]) => (
+            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #f1f5f9', fontSize: '10px' }}>
+              <span style={{ color: '#555', fontWeight: 600 }}>{k}</span>
+              <span style={{ fontWeight: 700, color: '#000', marginLeft: 'auto' }}>{v}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Product details display */}
+        <div style={{ marginBottom: '14px', borderTop: '1px solid #cbd5e1', paddingTop: '10px' }}>
+          <div style={{ fontSize: '8px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', fontFamily: 'monospace' }}>Adjustment Items</div>
+          <div style={{ background: '#fafafa', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '8px 10px', fontSize: '9px', textAlign: 'left' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: '#000' }}>
+              <span>{note.productName || 'Adjustment Service/Product'}</span>
+              <span style={{ fontFamily: 'monospace' }}>₹{parseFloat(note.amount).toFixed(2)}</span>
+            </div>
+            <div style={{ fontSize: '8px', color: '#666', marginTop: '4px' }}>
+              <span>Type: <strong style={{ textTransform: 'uppercase', color: '#333' }}>{note.type === 'RETURN' ? 'Inventory Return' : 'Price Adjustment'}</strong></span>
+              {note.type === 'RETURN' && note.qty && (
+                <span style={{ marginLeft: '10px' }}>
+                  Qty: <strong>{parseFloat(note.qty).toFixed(2)}</strong> @ <strong>₹{parseFloat(note.price).toFixed(2)}</strong>
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Amount Card */}
+        <div style={{ background: '#fafafa', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', textAlign: 'center', margin: '12px 0' }}>
+          <div style={{ color: '#555', fontSize: '8px', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 700 }}>Total Adjustment Amount</div>
+          <div style={{ color: '#0f172a', fontWeight: 900, fontSize: '20px', fontFamily: 'monospace', marginTop: '4px' }}>₹{parseFloat(note.amount).toFixed(2)}</div>
+        </div>
+
+        {/* Remarks */}
+        {note.remark && (
+          <div style={{ marginBottom: '14px', fontSize: '9px', textAlign: 'left' }}>
+            <div style={{ fontSize: '8px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px', fontFamily: 'monospace' }}>Remarks</div>
+            <div style={{ background: '#fafafa', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '8px', color: '#555', fontStyle: 'italic' }}>
+              {note.remark}
+            </div>
+          </div>
+        )}
+
+        {/* Signature */}
+        {profile?.shopSignatureUrl && (
+          <div style={{ textAlign: 'right', marginTop: '16px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+            <img src={profile.shopSignatureUrl} alt="Signature" style={{ height: '30px', objectFit: 'contain', marginBottom: '2px' }} />
+            <div style={{ borderTop: '1px solid #000', width: '100px' }} />
+            <div style={{ fontSize: '8px', color: '#666', marginTop: '2px', fontWeight: 700, textTransform: 'uppercase' }}>Authorized Signatory</div>
+          </div>
+        )}
+        <div style={{ textAlign: 'center', marginTop: '24px', paddingTop: '12px', borderTop: '1px solid #f1f5f9', fontSize: '9px', color: '#94a3b8' }}>Powered by GallaMitra</div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen flex flex-col font-sans" style={{ background: '#F1F5F9' }}>
       <style>{`
@@ -869,6 +1002,13 @@ export default function PublicPortal() {
       {selectedDoc && (
         <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '750px', zIndex: -1 }}>
           <InvoicePrintBody doc={selectedDoc} />
+        </div>
+      )}
+
+      {/* Hidden note print body (only when selectedNote active) */}
+      {selectedNote && (
+        <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '420px', zIndex: -1 }}>
+          <NotePrintBody note={selectedNote} />
         </div>
       )}
 
@@ -1434,6 +1574,62 @@ export default function PublicPortal() {
             </div>
           </div>
         )}
+
+        {/* ══ CREDIT / DEBIT NOTES ══ */}
+        {activeTab === 'notes' && (
+          <div className="fade-up bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+              <FileText size={15} className="text-blue-600" />
+              <h3 className="font-black text-sm text-slate-900">
+                {portalType === 'customer' ? 'Credit Notes' : 'Debit Notes'}
+              </h3>
+              <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{notes.length}</span>
+            </div>
+            <div className="p-4 space-y-3">
+              {!notes.length ? (
+                <div className="text-center py-12 text-slate-400 font-mono text-xs">No adjustment notes issued yet.</div>
+              ) : notes.map(n => (
+                <div key={n.id} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 card-hover">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                        <FileText size={16} className="text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-black text-slate-900 text-xs">{portalType === 'customer' ? 'Credit Note' : 'Debit Note'} #{n.noteNo}</p>
+                        <p className="text-slate-400 text-[10px] font-mono mt-0.5 flex items-center gap-1">
+                          <Calendar size={9} /> {new Date(n.date).toLocaleDateString('en-IN')}
+                        </p>
+                        <span className="inline-block mt-1 text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">
+                          {n.type === 'RETURN' ? 'Inventory Return' : 'Price Adjustment'}
+                        </span>
+                        {n.remark && <p className="text-slate-400 text-[10px] italic mt-1">"{n.remark}"</p>}
+                      </div>
+                    </div>
+                    <span className="text-base font-black font-mono text-slate-900">₹{parseFloat(n.amount).toFixed(2)}</span>
+                  </div>
+                  <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                    <button
+                      onClick={() => setSelectedNote(n)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-slate-900 text-[10px] font-bold rounded-xl transition-all font-bold">
+                      <Eye size={11} /> View
+                    </button>
+                    <button
+                      onClick={() => { setSelectedNote(n); setTimeout(() => handlePrintRef(notePrintRef, `${portalType === 'customer' ? 'Credit Note' : 'Debit Note'} #${n.noteNo}`), 300); }}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-50 border border-blue-100 hover:bg-blue-100 text-blue-700 text-[10px] font-bold rounded-xl transition-all font-bold">
+                      <Printer size={11} /> Print
+                    </button>
+                    <button
+                      onClick={() => { setSelectedNote(n); setTimeout(() => handleSaveRefAsPDF(notePrintRef, `${portalType === 'customer' ? 'CreditNote' : 'DebitNote'}_${n.noteNo}.pdf`), 300); }}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-violet-50 border border-violet-100 hover:bg-violet-100 text-violet-700 text-[10px] font-bold rounded-xl transition-all font-bold">
+                      <FileDown size={11} /> PDF
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* ─── Footer ──────────────────────────────────────────────────────────── */}
@@ -1840,6 +2036,136 @@ export default function PublicPortal() {
                     )}
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ─── Note View Modal ─────────────────────────────────────────────────── */}
+      {selectedNote && (() => {
+        const isCreditNote = portalType === 'customer';
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedNote(null)}>
+            <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden flex flex-col max-h-[90vh] relative" onClick={e => e.stopPropagation()}>
+              {/* Subtle accent bar at top */}
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-slate-900" />
+
+              {/* Modal Header */}
+              <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100 mt-1.5">
+                <div>
+                  <span className="text-[9px] font-black tracking-widest text-slate-400 uppercase leading-none font-mono font-bold">
+                    {isCreditNote ? 'Credit Note' : 'Debit Note'}
+                  </span>
+                  <h3 className="font-black text-slate-900 text-base mt-1 font-bold">
+                    Voucher #{selectedNote.noteNo}
+                  </h3>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handlePrintRef(notePrintRef, `${isCreditNote ? 'Credit Note' : 'Debit Note'} #${selectedNote.noteNo}`)}
+                    className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all"
+                    title="Print">
+                    <Printer size={12} />
+                  </button>
+                  <button onClick={() => handleSaveRefAsPDF(notePrintRef, `${isCreditNote ? 'CreditNote' : 'DebitNote'}_${selectedNote.noteNo}.pdf`)}
+                    className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all"
+                    title="Save PDF">
+                    <FileDown size={12} />
+                  </button>
+                  <button onClick={() => setSelectedNote(null)}
+                    className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all">
+                    <X size={12} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 overflow-y-auto flex-1 space-y-4 text-xs">
+                {/* Business */}
+                <div className="text-center pb-4 border-b border-dashed border-slate-200">
+                  {profile?.logoUrl && <img src={profile.logoUrl} alt="Logo" className="w-12 h-12 rounded-xl object-cover mx-auto mb-2 border border-slate-200 shadow-2xs p-0.5 bg-white" />}
+                  <p className="font-black text-slate-900 text-base leading-tight font-bold">{profile?.businessName}</p>
+                  {profile?.shopAddress && <p className="text-slate-400 text-[10px] mt-0.5 leading-relaxed whitespace-pre-line">{profile.shopAddress}</p>}
+                  {(profile?.businessPhone || profile?.shopPhone) && <p className="text-slate-400 text-[10px]">Tel: {profile.businessPhone || profile.shopPhone}</p>}
+                  {profile?.shopGstin && (
+                    <p className="mt-1">
+                      <span className="inline-block bg-slate-100 text-slate-700 border border-slate-200 font-mono text-[9px] font-black px-2 py-0.5 rounded uppercase font-bold">
+                        GSTIN: {profile.shopGstin}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Party Details Card */}
+                <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 text-left space-y-1.5">
+                  <p className="text-[8px] text-slate-400 font-mono font-bold uppercase tracking-wider mb-1">Party Details</p>
+                  <p className="font-black text-slate-900 text-sm leading-snug font-bold">{profile?.shopName || profile?.name || '—'}</p>
+                  {profile?.shopName && <p className="text-slate-500 text-[10px] font-semibold">Contact: {profile.name}</p>}
+                  {profile?.phone && <p className="text-slate-500 text-[10px] font-semibold">Phone: <span className="font-mono text-slate-900">{profile.phone}</span></p>}
+                  {profile?.billingAddress && <p className="text-slate-500 text-[10px] leading-relaxed whitespace-pre-line">Address: {profile.billingAddress}</p>}
+                  {profile?.gstin && (
+                    <p className="mt-1.5">
+                      <span className="inline-block bg-emerald-50 text-emerald-700 border border-emerald-100 font-mono text-[9px] font-black px-1.5 py-0.5 rounded uppercase font-bold">
+                        GSTIN: {profile.gstin}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Details List */}
+                <div className="space-y-2">
+                  {[
+                    ['Date', new Date(selectedNote.date).toLocaleDateString('en-IN'), Calendar],
+                    ['Adjustment Type', selectedNote.type === 'RETURN' ? 'Inventory Return' : 'Price Adjustment', FileText],
+                  ].map(([k, v, Icon]) => (
+                    <div key={k} className="flex items-center justify-between py-2.5 px-3 bg-slate-50/50 rounded-xl border border-slate-100">
+                      <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                        <Icon size={12} className="text-slate-400" /> {k}
+                      </div>
+                      <span className="font-bold text-slate-900 text-xs font-mono">{v}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Product details display inside modal */}
+                <div className="border-t border-slate-150 pt-3">
+                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest font-mono block mb-1.5">Adjustment Details</span>
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] text-slate-655 leading-relaxed font-semibold">
+                    <div className="flex justify-between items-center text-slate-900 font-bold mb-1">
+                      <span>{selectedNote.productName || 'Adjustment Service/Product'}</span>
+                      <span className="font-mono">₹{parseFloat(selectedNote.amount).toFixed(2)}</span>
+                    </div>
+                    {selectedNote.type === 'RETURN' && selectedNote.qty && (
+                      <div className="text-slate-500 text-[9px] mt-1 font-mono">
+                        Qty: {parseFloat(selectedNote.qty).toFixed(2)} @ ₹{parseFloat(selectedNote.price).toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Total Adjustment Amount */}
+                <div className="rounded-2xl p-5 text-center bg-slate-50 border border-slate-200">
+                  <p className="text-slate-500 text-[9px] font-mono uppercase tracking-wider font-bold">Total Adjustment Amount</p>
+                  <p className="text-slate-950 font-black text-3xl font-mono mt-1 font-bold">₹{parseFloat(selectedNote.amount).toFixed(2)}</p>
+                </div>
+
+                {/* Remarks */}
+                {selectedNote.remark && (
+                  <div className="space-y-1">
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest font-mono block">Remarks</span>
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] text-slate-655 leading-relaxed font-semibold">
+                      {selectedNote.remark}
+                    </div>
+                  </div>
+                )}
+
+                {/* Signature */}
+                {profile?.shopSignatureUrl && (
+                  <div className="flex flex-col items-end pt-2">
+                    <p className="text-[8px] font-mono text-slate-400 uppercase tracking-wider">Authorized Signature</p>
+                    <img src={profile.shopSignatureUrl} alt="Signature" className="h-10 object-contain mt-1 border border-slate-100 rounded-lg p-0.5 bg-slate-50" />
+                  </div>
+                )}
               </div>
             </div>
           </div>

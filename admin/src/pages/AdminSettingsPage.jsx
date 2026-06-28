@@ -19,6 +19,8 @@ const TABS_REGISTRY = [
   { id: 'receipt_list', label: 'Payment Voucher List', group: 'Billing' },
   { id: 'purchase_bill', label: 'Purchase Bill Creator', group: 'Billing' },
   { id: 'pbill_list', label: 'Purchase Bill List', group: 'Billing' },
+  { id: 'credit_note', label: 'Credit Note (Sales Return)', group: 'Billing' },
+  { id: 'debit_note', label: 'Debit Note (Purchase Return)', group: 'Billing' },
   { id: 'reports', label: 'Reports & CSV Export', group: 'Intelligence' },
   { id: 'analytics', label: 'Analytics & Charts', group: 'Intelligence' },
   { id: 'user_settings', label: 'Profile Settings', group: 'Settings' },

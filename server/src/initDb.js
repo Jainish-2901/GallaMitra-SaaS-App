@@ -1,5 +1,6 @@
 import { db } from './db.js';
 import bcrypt from 'bcryptjs';
+import { prisma } from './utils/prisma.js';
 
 export const initDatabase = async () => {
   // 🏢 Core Multi-Tenant Tables (Corrected Native PostgreSQL Constraints)
@@ -142,11 +143,6 @@ export const initDatabase = async () => {
       CONSTRAINT "fk_receipt_supplier" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE SET NULL
     );
 
-    CREATE TABLE IF NOT EXISTS "SharedLinks" (
-    "id" VARCHAR(10) PRIMARY KEY,
-    "fullUrl" TEXT NOT NULL,
-    "createdAt" TIMESTAMP DEFAULT NOW()
-    );
 
     CREATE TABLE IF NOT EXISTS "Product" (
       "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -164,14 +160,59 @@ export const initDatabase = async () => {
       "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW(),
       CONSTRAINT "fk_product_shop" FOREIGN KEY ("shopId") REFERENCES "Shop"("id") ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS "CreditNote" (
+      "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      "noteNo" VARCHAR(100) NOT NULL,
+      "shopId" UUID NOT NULL,
+      "customerId" UUID NOT NULL,
+      "invoiceId" UUID,
+      "date" TIMESTAMP NOT NULL DEFAULT NOW(),
+      "invoiceDate" TIMESTAMP,
+      "type" VARCHAR(50) NOT NULL,
+      "productId" UUID,
+      "productName" VARCHAR(255),
+      "qty" DECIMAL(12, 2),
+      "price" DECIMAL(12, 2),
+      "amount" DECIMAL(12, 2) NOT NULL,
+      "remark" TEXT,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      CONSTRAINT "fk_creditnote_shop" FOREIGN KEY ("shopId") REFERENCES "Shop"("id") ON DELETE CASCADE,
+      CONSTRAINT "fk_creditnote_customer" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE CASCADE,
+      CONSTRAINT "fk_creditnote_invoice" FOREIGN KEY ("invoiceId") REFERENCES "Invoice"("id") ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS "DebitNote" (
+      "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      "noteNo" VARCHAR(100) NOT NULL,
+      "shopId" UUID NOT NULL,
+      "supplierId" UUID NOT NULL,
+      "purchaseBillId" UUID,
+      "date" TIMESTAMP NOT NULL DEFAULT NOW(),
+      "invoiceDate" TIMESTAMP,
+      "type" VARCHAR(50) NOT NULL,
+      "productId" UUID,
+      "productName" VARCHAR(255),
+      "qty" DECIMAL(12, 2),
+      "price" DECIMAL(12, 2),
+      "amount" DECIMAL(12, 2) NOT NULL,
+      "remark" TEXT,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+      CONSTRAINT "fk_debitnote_shop" FOREIGN KEY ("shopId") REFERENCES "Shop"("id") ON DELETE CASCADE,
+      CONSTRAINT "fk_debitnote_supplier" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE,
+      CONSTRAINT "fk_debitnote_purchasebill" FOREIGN KEY ("purchaseBillId") REFERENCES "PurchaseBill"("id") ON DELETE SET NULL
+    );
     `;
 
   // Safe column migrations — adds new columns without wiping data
   const migrationsQuery = `
     ALTER TABLE "Customer" ADD COLUMN IF NOT EXISTS "shopName" VARCHAR(255);
     ALTER TABLE "Customer" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT NOW();
+    ALTER TABLE "Customer" ADD COLUMN IF NOT EXISTS "shareId" VARCHAR(50) UNIQUE;
     ALTER TABLE "Supplier" ADD COLUMN IF NOT EXISTS "shopName" VARCHAR(255);
     ALTER TABLE "Supplier" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP DEFAULT NOW();
+    ALTER TABLE "Supplier" ADD COLUMN IF NOT EXISTS "shareId" VARCHAR(50) UNIQUE;
+    DROP TABLE IF EXISTS "SharedLinks";
 
     ALTER TABLE "Shop" ADD COLUMN IF NOT EXISTS "passwordHash" TEXT;
     ALTER TABLE "Shop" ADD COLUMN IF NOT EXISTS "phone" VARCHAR(20);
@@ -313,13 +354,17 @@ export const initDatabase = async () => {
      CREATE INDEX IF NOT EXISTS idx_product_shop       ON "Product" ("shopId");
      `;
 
+  const client = await db.connect();
   try {
-    await db.query(createTablesQuery);
-    await db.query(migrationsQuery);
-    await db.query(createIndexesQuery);
+    // Acquire session-level advisory lock to serialize migrations across concurrent container restarts
+    await client.query('SELECT pg_advisory_lock(714298)');
+
+    await client.query(createTablesQuery);
+    await client.query(migrationsQuery);
+    await client.query(createIndexesQuery);
 
     // 🛡️ INTELLIGENT SEED BLOCK: Check DB first, bypass .env warnings if admin already exists
-    const adminCheck = await db.query('SELECT COUNT(*) FROM "AdminUser"');
+    const adminCheck = await client.query('SELECT COUNT(*) FROM "AdminUser"');
     const adminExists = parseInt(adminCheck.rows[0].count || 0) > 0;
 
     if (!adminExists) {
@@ -330,7 +375,7 @@ export const initDatabase = async () => {
         console.warn('⚠️ No Super Admin found in DB and no ADMIN_PASSWORD set in .env — skipping initial seed.');
       } else {
         const adminPassHash = await bcrypt.hash(adminPassword, 12);
-        await db.query(
+        await client.query(
           `INSERT INTO "AdminUser" ("username", "passwordHash") VALUES ($1, $2) ON CONFLICT DO NOTHING`,
           [adminUsername, adminPassHash]
         );
@@ -341,7 +386,7 @@ export const initDatabase = async () => {
     }
 
     // Seed default plans if empty
-    const planCheck = await db.query('SELECT COUNT(*) FROM "Plan"');
+    const planCheck = await client.query('SELECT COUNT(*) FROM "Plan"');
     if (parseInt(planCheck.rows[0].count || 0) === 0) {
       const seedPlansQuery = `
             INSERT INTO "Plan" ("id", "name", "price", "billingCycle", "allowedTabs", "features", "requiresApproval", "allowMultiBusiness")
@@ -351,45 +396,99 @@ export const initDatabase = async () => {
              '["Core ledger management", "Customers & suppliers", "Sale & purchase ledgers", "Payment receipts"]', 
              FALSE, FALSE),
             ('growth', 'Growth', 149.00, 'monthly', 
-             '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "user_settings", "business_settings"]',
+             '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "credit_note", "debit_note", "user_settings", "business_settings"]',
              '["Starter plan features", "Invoice builder & purchase bills", "Voucher listings & history", "Business profile config"]', 
              TRUE, FALSE),
             ('professional', 'Professional', 299.00, 'monthly', 
-             '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "user_settings", "business_settings"]',
+             '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "credit_note", "debit_note", "user_settings", "business_settings"]',
              '["Growth plan features", "Export PDF & CSV reports", "Deep financial analytics", "Unlimited entries"]', 
              TRUE, TRUE),
             ('trial', '15 Days Free Trial', 0.00, 'trial', 
-             '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "user_settings", "business_settings"]',
+             '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "credit_note", "debit_note", "user_settings", "business_settings"]',
              '["Professional plan features", "Export PDF & CSV reports", "Deep financial analytics", "15 days free trial"]', 
              FALSE, TRUE)
             ON CONFLICT ("id") DO NOTHING;
             `;
-      await db.query(seedPlansQuery);
+      await client.query(seedPlansQuery);
       console.log('🌱 Seeded default subscription matrices (starter, growth, professional) safely.');
     } else {
-      // Ensure existing default plans have the product_list tab
-      await db.query(`
+      // Ensure existing default plans have the product_list, credit_note and debit_note tabs
+      await client.query(`
         UPDATE "Plan"
         SET "allowedTabs" = '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "purchase_ledger", "payment_receipt", "receipt_list", "user_settings"]'
         WHERE id = 'starter' AND NOT "allowedTabs"::jsonb @> '["product_list"]';
 
         UPDATE "Plan"
-        SET "allowedTabs" = '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "user_settings", "business_settings"]'
-        WHERE id = 'growth' AND NOT "allowedTabs"::jsonb @> '["product_list"]';
+        SET "allowedTabs" = '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "credit_note", "debit_note", "user_settings", "business_settings"]'
+        WHERE id = 'growth';
 
         UPDATE "Plan"
-        SET "allowedTabs" = '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "user_settings", "business_settings"]'
-        WHERE id = 'professional' AND NOT "allowedTabs"::jsonb @> '["product_list"]';
+        SET "allowedTabs" = '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "credit_note", "debit_note", "user_settings", "business_settings"]'
+        WHERE id = 'professional';
 
         UPDATE "Plan"
-        SET "allowedTabs" = '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "user_settings", "business_settings"]'
-        WHERE id = 'trial' AND NOT "allowedTabs"::jsonb @> '["product_list"]';
+        SET "allowedTabs" = '["dashboard", "cust_list", "supp_list", "product_list", "sale_ledger", "sales_list", "purchase_ledger", "purchase_list", "invoice_builder", "invoice_list", "payment_receipt", "receipt_list", "purchase_bill", "pbill_list", "reports", "analytics", "credit_note", "debit_note", "user_settings", "business_settings"]'
+        WHERE id = 'trial';
       `);
       console.log('🔄 Checked and updated core plans to include Products & Services permissions.');
+    }
+
+    // Backfill empty shareId for Customers and Suppliers
+    try {
+      const customersWithoutShareId = await prisma.customer.findMany({
+        where: { shareId: null }
+      });
+      if (customersWithoutShareId.length > 0) {
+        console.log(`🔄 Backfilling shareId for ${customersWithoutShareId.length} customers...`);
+        for (const cust of customersWithoutShareId) {
+          let uniqueShareId = '';
+          while (true) {
+            const shortId = Math.random().toString(36).substring(2, 9);
+            const exists = await prisma.customer.findFirst({ where: { shareId: shortId } }) || await prisma.supplier.findFirst({ where: { shareId: shortId } });
+            if (!exists) {
+              uniqueShareId = shortId;
+              break;
+            }
+          }
+          await prisma.customer.update({
+            where: { id: cust.id },
+            data: { shareId: uniqueShareId }
+          });
+        }
+      }
+
+      const suppliersWithoutShareId = await prisma.supplier.findMany({
+        where: { shareId: null }
+      });
+      if (suppliersWithoutShareId.length > 0) {
+        console.log(`🔄 Backfilling shareId for ${suppliersWithoutShareId.length} suppliers...`);
+        for (const supp of suppliersWithoutShareId) {
+          let uniqueShareId = '';
+          while (true) {
+            const shortId = Math.random().toString(36).substring(2, 9);
+            const exists = await prisma.customer.findFirst({ where: { shareId: shortId } }) || await prisma.supplier.findFirst({ where: { shareId: shortId } });
+            if (!exists) {
+              uniqueShareId = shortId;
+              break;
+            }
+          }
+          await prisma.supplier.update({
+            where: { id: supp.id },
+            data: { shareId: uniqueShareId }
+          });
+        }
+      }
+    } catch (backfillError) {
+      console.error('⚠️ Error backfilling shareId columns:', backfillError);
     }
 
     console.log('📚 GallaMitra Database schemas & migrations verified with 0% data loss loops.');
   } catch (error) {
     console.error('🚨 Error initializing database schema layers:', error);
+  } finally {
+    try {
+      await client.query('SELECT pg_advisory_unlock(714298)');
+    } catch (_) {}
+    client.release();
   }
 };

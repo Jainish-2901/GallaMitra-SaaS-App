@@ -9,12 +9,14 @@ import dns from 'dns';
 dns.setDefaultResultOrder('ipv4first');
 import { initDatabase } from './initDb.js';
 import { prisma } from './utils/prisma.js';
+import { signPortalToken } from './utils/tokens.js';
 import shopRoutes from './routes/shopRoutes.js';
 import partyRoutes from './routes/partyRoutes.js';
 import ledgerRoutes from './routes/ledgerRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
 import transactionalRoutes from './routes/transactionalRoutes.js';
 import productRoutes from './routes/productRoutes.js';
+import noteRoutes from './routes/noteRoutes.js';
 import { processSubscriptionChecks } from './controllers/shopController.js';
 
 import { requestLogger } from './middleware/requestLogger.js';
@@ -75,15 +77,36 @@ app.use('/api/ledgers', ledgerRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/transactions', transactionalRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/notes', noteRoutes);
 
 app.get('/s/:id', async (req, res) => {
     const { id } = req.params;
+    const queryParams = new URLSearchParams(req.query).toString();
     try {
-        const link = await prisma.sharedLinks.findUnique({
-            where: { id }
+        // 1. Search Customer table
+        let party = await prisma.customer.findUnique({
+            where: { shareId: id, isDeleted: false },
+            select: { id: true, shopId: true }
         });
-        if (link) {
-            res.redirect(link.fullUrl);
+        let role = 'customer';
+
+        // 2. If not found, search Supplier table
+        if (!party) {
+            party = await prisma.supplier.findUnique({
+                where: { shareId: id, isDeleted: false },
+                select: { id: true, shopId: true }
+            });
+            role = 'supplier';
+        }
+
+        if (party) {
+            const portalToken = signPortalToken(party.id, role, party.shopId);
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            let redirectUrl = `${frontendUrl}/public-portal?type=${role}&id=${party.id}&token=${portalToken}`;
+            if (queryParams) {
+                redirectUrl += `&${queryParams}`;
+            }
+            res.redirect(redirectUrl);
         } else {
             const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
             res.redirect(`${frontendUrl}/not-found?reason=invalid-link`);
@@ -92,30 +115,6 @@ app.get('/s/:id', async (req, res) => {
         console.error('Error in short link redirect:', err);
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
         res.redirect(`${frontendUrl}/not-found?reason=invalid-link`);
-    }
-});
-
-app.post('/api/share/create', async (req, res) => {
-    const { id, fullUrl } = req.body;
-    if (!id || !fullUrl) {
-        return res.status(400).json({ error: 'ID and fullUrl are required' });
-    }
-    try {
-        const existing = await prisma.sharedLinks.findFirst({
-            where: { fullUrl }
-        });
-        if (existing) {
-            return res.json({ success: true, id: existing.id });
-        }
-        await prisma.sharedLinks.upsert({
-            where: { id },
-            update: { fullUrl },
-            create: { id, fullUrl }
-        });
-        res.json({ success: true, id });
-    } catch (err) {
-        console.error('Error saving short link:', err);
-        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 

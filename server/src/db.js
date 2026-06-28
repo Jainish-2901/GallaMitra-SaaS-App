@@ -13,7 +13,9 @@ if (!dbUrl) {
 
 export const db = new Pool({
   connectionString: dbUrl,
-
+  max: 5, // Limit raw pg pool size to prevent database connection exhaustion
+  connectionTimeoutMillis: 30000, // Wait up to 30s for Neon wakeups
+  idleTimeoutMillis: 15000, // Close idle clients faster (15s)
   ssl: dbUrl && dbUrl.includes('localhost') ? false : { rejectUnauthorized: false }
 });
 

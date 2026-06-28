@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Users, UserCheck, History, Scroll, FileSpreadsheet,
     FileCheck, FileDigit, PlusCircle, Layers, Receipt, Landmark,
-    BarChart3, Settings, Lock, Package
+    BarChart3, Settings, Lock, Package, FileText
 } from 'lucide-react';
 
 // ─── PLAN DEFINITIONS (DEFAULT FALLBACKS) ──────────────────────────────────────
@@ -46,6 +46,7 @@ const DEFAULT_PLAN_TABS = {
         'invoice_builder', 'invoice_list',
         'payment_receipt', 'receipt_list',
         'purchase_bill', 'pbill_list',
+        'credit_note', 'debit_note',
         'user_settings', 'business_settings'
     ],
     professional: [
@@ -55,6 +56,7 @@ const DEFAULT_PLAN_TABS = {
         'invoice_builder', 'invoice_list',
         'payment_receipt', 'receipt_list',
         'purchase_bill', 'pbill_list',
+        'credit_note', 'debit_note',
         'reports', 'analytics',
         'user_settings', 'business_settings'
     ],
@@ -124,6 +126,8 @@ export const ownerTabs = [
     { id: 'receipt_list', label: 'Payment Voucher List', icon: Layers, group: 'Billing', plan: 'starter' },
     { id: 'purchase_bill', label: 'Purchase Bill Creator', icon: PlusCircle, group: 'Billing', plan: 'growth' },
     { id: 'pbill_list', label: 'Purchase Bill List', icon: Layers, group: 'Billing', plan: 'growth' },
+    { id: 'credit_note', label: 'Credit Note (Sales Return)', icon: FileText, group: 'Billing', plan: 'growth' },
+    { id: 'debit_note', label: 'Debit Note (Purchase Return)', icon: FileText, group: 'Billing', plan: 'growth' },
 
     // ── Reports & Analytics ─────────────────────────────────────────────────
     { id: 'reports', label: 'Reports & CSV Export', icon: FileDigit, group: 'Intelligence', plan: 'professional' },
@@ -140,6 +144,7 @@ export const customerTabs = [
     { id: 'cust_portal_ledger', label: 'My Purchase Ledger', icon: History },
     { id: 'cust_portal_receipts', label: 'Payment History', icon: Receipt },
     { id: 'cust_portal_invoices', label: 'Invoices Copies', icon: Layers },
+    { id: 'cust_portal_credit_notes', label: 'Credit Notes', icon: FileText },
 ];
 
 export const supplierTabs = [
@@ -147,4 +152,5 @@ export const supplierTabs = [
     { id: 'supp_portal_ledger', label: 'My Sales Ledger', icon: History },
     { id: 'supp_portal_receipts', label: 'Payments Remitted', icon: Receipt },
     { id: 'supp_portal_invoices', label: 'Inventory Receipts', icon: Layers },
+    { id: 'supp_portal_debit_notes', label: 'Debit Notes', icon: FileText },
 ];

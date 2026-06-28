@@ -2157,7 +2157,7 @@ export const getWorkspaceData = async (req, res) => {
     const { shopId } = req.params;
 
     try {
-        const [customers, suppliers, ledgers, invoices, purchaseBills, receipts, products] = await Promise.all([
+        const [customers, suppliers, ledgers, invoices, purchaseBills, receipts, products, creditNotes, debitNotes] = await Promise.all([
             // Customers (Optimized: LEFT JOIN aggregated balances instead of row-by-row subquery)
             prisma.$queryRaw`
                 SELECT c.*, COALESCE(b.balance, 0.00) AS balance
@@ -2211,6 +2211,24 @@ export const getWorkspaceData = async (req, res) => {
             prisma.product.findMany({
                 where: { shopId },
                 orderBy: { createdAt: 'desc' }
+            }),
+            // Credit Notes
+            prisma.creditNote.findMany({
+                where: { shopId },
+                include: {
+                    customer: { select: { name: true, phone: true } },
+                    invoice: { select: { invoiceNo: true } }
+                },
+                orderBy: { date: 'desc' }
+            }),
+            // Debit Notes
+            prisma.debitNote.findMany({
+                where: { shopId },
+                include: {
+                    supplier: { select: { name: true, phone: true } },
+                    purchaseBill: { select: { billNo: true } }
+                },
+                orderBy: { date: 'desc' }
             })
         ]);
 
@@ -2221,7 +2239,9 @@ export const getWorkspaceData = async (req, res) => {
             invoices,
             purchaseBills,
             receipts,
-            products
+            products,
+            creditNotes,
+            debitNotes
         });
     } catch (error) {
         console.error('🚨 Error fetching consolidated workspace data:', error);

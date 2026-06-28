@@ -30,6 +30,8 @@ export const AppProvider = ({ children }) => {
     const [plans, setPlans] = useState([]);
     const [workspaces, setWorkspaces] = useState([]);
     const [products, setProducts] = useState([]);
+    const [creditNotes, setCreditNotes] = useState([]);
+    const [debitNotes, setDebitNotes] = useState([]);
     const [loading, setLoading] = useState(false);
 
     const [backendApiUrl, setBackendApiUrl] = useState(import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api');
@@ -209,6 +211,8 @@ export const AppProvider = ({ children }) => {
                 setPurchaseBills(data.purchaseBills || []);
                 setReceipts(data.receipts || []);
                 setProducts(data.products || []);
+                setCreditNotes(data.creditNotes || []);
+                setDebitNotes(data.debitNotes || []);
             }
         } catch (error) {
             console.error('🚨 Workspace sync crash:', error);
@@ -518,6 +522,115 @@ export const AppProvider = ({ children }) => {
         }
     };
 
+    // 12.5. Credit/Debit Notes Operations
+    const postCreditNote = async (noteData) => {
+        try {
+            const response = await fetch(`${BACKEND_URL}/notes/credit/create`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ shopId: activeShop.id, ...noteData })
+            });
+            if (response.ok) {
+                await fetchAllWorkspaceData(activeShop.id);
+                return { success: true };
+            }
+            const err = await response.json();
+            return { success: false, error: err.error };
+        } catch (error) {
+            return { success: false, error: 'Credit Note save failed' };
+        }
+    };
+
+    const deleteCreditNote = async (id) => {
+        try {
+            const response = await fetch(`${BACKEND_URL}/notes/credit/remove/${id}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            handleSessionExpiry(response);
+            if (response.ok) {
+                await fetchAllWorkspaceData(activeShop.id);
+                return { success: true };
+            }
+            return { success: false };
+        } catch (error) {
+            return { success: false };
+        }
+    };
+
+    const postDebitNote = async (noteData) => {
+        try {
+            const response = await fetch(`${BACKEND_URL}/notes/debit/create`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ shopId: activeShop.id, ...noteData })
+            });
+            if (response.ok) {
+                await fetchAllWorkspaceData(activeShop.id);
+                return { success: true };
+            }
+            const err = await response.json();
+            return { success: false, error: err.error };
+        } catch (error) {
+            return { success: false, error: 'Debit Note save failed' };
+        }
+    };
+
+    const deleteDebitNote = async (id) => {
+        try {
+            const response = await fetch(`${BACKEND_URL}/notes/debit/remove/${id}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            handleSessionExpiry(response);
+            if (response.ok) {
+                await fetchAllWorkspaceData(activeShop.id);
+                return { success: true };
+            }
+            return { success: false };
+        } catch (error) {
+            return { success: false };
+        }
+    };
+
+    const updateCreditNote = async (id, noteData) => {
+        try {
+            const response = await fetch(`${BACKEND_URL}/notes/credit/update/${id}`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ shopId: activeShop.id, ...noteData })
+            });
+            handleSessionExpiry(response);
+            if (response.ok) {
+                await fetchAllWorkspaceData(activeShop.id);
+                return { success: true };
+            }
+            const err = await response.json();
+            return { success: false, error: err.error };
+        } catch (error) {
+            return { success: false, error: 'Credit Note update failed' };
+        }
+    };
+
+    const updateDebitNote = async (id, noteData) => {
+        try {
+            const response = await fetch(`${BACKEND_URL}/notes/debit/update/${id}`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ shopId: activeShop.id, ...noteData })
+            });
+            handleSessionExpiry(response);
+            if (response.ok) {
+                await fetchAllWorkspaceData(activeShop.id);
+                return { success: true };
+            }
+            const err = await response.json();
+            return { success: false, error: err.error };
+        } catch (error) {
+            return { success: false, error: 'Debit Note update failed' };
+        }
+    };
+
     // 13. Update Shop Settings
     const updateShopSettings = async (settings) => {
         // Optimistic UI state sync with 0 Buffering Delay
@@ -585,36 +698,25 @@ export const AppProvider = ({ children }) => {
                 return { success: false, error: data.error || 'Failed to generate portal link.' };
             }
 
-            let fullUrl = data.portalUrl;
-            try {
-                const parsedUrl = new URL(fullUrl);
-                const currentOrigin = window.location.origin;
-                fullUrl = `${currentOrigin}${parsedUrl.pathname}${parsedUrl.search}`;
-            } catch (e) {
-                console.error("Error patching portal URL domain:", e);
+            const shareId = data.shareId;
+            const frontendBase = window.location.origin;
+            let shortUrl = `${frontendBase}/s/${shareId}`;
+
+            const params = [];
+            if (tab) params.push(`tab=${tab}`);
+            if (docId) params.push(`docId=${docId}`);
+            if (receiptId) params.push(`receiptId=${receiptId}`);
+
+            if (params.length > 0) {
+                shortUrl += `?${params.join('&')}`;
             }
 
+            let fullUrl = data.portalUrl;
             if (tab) fullUrl += `&tab=${tab}`;
             if (docId) fullUrl += `&docId=${docId}`;
             if (receiptId) fullUrl += `&receiptId=${receiptId}`;
 
-            const shortId = Math.random().toString(36).substring(2, 9);
-            const apiBase = BACKEND_URL.replace('/api', '');
-
-            const createRes = await fetch(`${apiBase}/api/share/create`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: shortId, fullUrl })
-            });
-
-            if (createRes.ok) {
-                const resData = await createRes.json();
-                const actualShortId = resData.id || shortId;
-                const frontendBase = window.location.origin;
-                const shortUrl = `${frontendBase}/s/${actualShortId}`;
-                return { success: true, shortUrl, fullUrl };
-            }
-            return { success: true, shortUrl: fullUrl, fullUrl };
+            return { success: true, shortUrl, fullUrl };
         } catch (error) {
             console.error('Error generating short share link:', error);
             return { success: false, error: 'Network error generating share link.' };
@@ -910,7 +1012,8 @@ export const AppProvider = ({ children }) => {
             requestPlanChange, installApp, isInstallable: !!installPrompt, editPurchaseBill, editManualLedgerEntry, deleteManualLedgerEntry,
             editPaymentReceipt, triggerReload: () => fetchAllWorkspaceData(activeShop?.id),
             deleteBusinessWorkspace, platformUrls, switchWorkspace,
-            addProductRecord, updateProductRecord, removeProductRecord
+            addProductRecord, updateProductRecord, removeProductRecord,
+            creditNotes, debitNotes, postCreditNote, deleteCreditNote, postDebitNote, deleteDebitNote, updateCreditNote, updateDebitNote
         }}>
             {children}
         </AppContext.Provider>

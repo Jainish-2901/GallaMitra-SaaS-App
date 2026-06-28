@@ -292,7 +292,11 @@ export const processEmailQueue = async () => {
       }
     }
   } catch (err) {
-    console.error('🚨 processEmailQueue crashed:', err);
+    if (err.code === 'ETIMEDOUT' || err.message?.includes('timeout') || err.message?.includes('timed out') || err.code === '57P01') {
+      console.warn('📡 Database connection timeout/handshake failure during email queue processing. Will retry in the next scan cycle.');
+    } else {
+      console.error('🚨 processEmailQueue crashed:', err);
+    }
   }
 };
 

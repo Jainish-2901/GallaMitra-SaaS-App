@@ -35,6 +35,7 @@ import DocumentListsView from './pages/DocumentListsView.jsx';
 import PaymentReceiptGen from './pages/PaymentReceiptGen.jsx';
 import PurchaseBillCreator from './pages/PurchaseBillCreator.jsx';
 import TransactionModal from './components/TransactionModal.jsx';
+import NoteManagement from './pages/NoteManagement.jsx';
 
 // Icons Bundle
 import {
@@ -256,6 +257,8 @@ export default function App() {
               {activeTab === 'receipt_list' && <DocumentListsView mode="receipts" t={t} />}
               {activeTab === 'purchase_bill' && <PurchaseBillCreator t={t} />}
               {activeTab === 'pbill_list' && <DocumentListsView mode="purchase_bills" t={t} />}
+              {activeTab === 'credit_note' && <NoteManagement mode="credit" />}
+              {activeTab === 'debit_note' && <NoteManagement mode="debit" />}
               {activeTab === 'reports' && <ReportsExport />}
               {activeTab === 'analytics' && <AnalyticsPage />}
               {activeTab === 'user_settings' && <UserSettings />}
