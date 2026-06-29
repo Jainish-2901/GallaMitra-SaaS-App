@@ -57,10 +57,10 @@ async function retryQuery(queryFn, args, retries = 0) {
 
 export const prisma = rawPrisma.$extends({
   query: {
-    async $allOperations({ model, operation, args, query }) {
+    async $allOperations({ model, operation, args, query, __internalParams }) {
       // If executing inside an interactive transaction, bypass retry wrapper
       // since failed transaction queries cannot be retried on the same transaction context.
-      const isTxClient = !this || typeof this.$transaction !== 'function';
+      const isTxClient = !!__internalParams?.transaction;
       if (isTxClient) {
         return query(args);
       }
