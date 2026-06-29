@@ -418,7 +418,119 @@ export default function InvoiceBuilder({ t = {} }) {
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block font-mono border-b pb-1.5">
               LINE ITEMS DESCRIPTION
             </span>
-            <div className="overflow-x-auto min-w-full">
+
+            {/* ── Mobile Card Layout (xs/sm) ─────────────────── */}
+            <div className="block md:hidden space-y-3">
+              {items.map((item, index) => {
+                const lineTot = lineTotal(item);
+                return (
+                  <div key={index} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider font-mono">Item {index + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeItemRow(index)}
+                        disabled={items.length <= 1}
+                        className="text-slate-400 hover:text-rose-600 transition-colors disabled:opacity-30"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                    {/* Description */}
+                    {useProduct ? (
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={item.name}
+                          onFocus={() => setFocusedRowIndex(index)}
+                          onBlur={() => setTimeout(() => setFocusedRowIndex(null), 250)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const updated = [...items];
+                            const exactMatch = products.find(p => p.name.trim().toLowerCase() === val.trim().toLowerCase());
+                            if (exactMatch) {
+                              updated[index] = { ...updated[index], name: val, productId: String(exactMatch.id), rate: exactMatch.price || 0 };
+                            } else {
+                              updated[index] = { ...updated[index], name: val, productId: '' };
+                            }
+                            setItems(updated);
+                          }}
+                          placeholder="Type product name or select..."
+                          className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                        />
+                        {focusedRowIndex === index && (
+                          <div className="absolute z-[9999] left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-52 overflow-y-auto divide-y divide-slate-100 text-left">
+                            {(() => {
+                              const searchStr = item.name.toLowerCase();
+                              const filtered = products.filter(p =>
+                                p.name.toLowerCase().includes(searchStr) ||
+                                (p.hsnCode && p.hsnCode.toLowerCase().includes(searchStr)) ||
+                                (p.sacCode && p.sacCode.toLowerCase().includes(searchStr))
+                              );
+                              return filtered.length > 0 ? filtered.map(p => {
+                                const code = p.hsnCode ? `HSN: ${p.hsnCode}` : p.sacCode ? `SAC: ${p.sacCode}` : 'No Code';
+                                const stockText = p.sacCode ? 'Service' : `Stock: ${parseFloat(p.currentStock || 0)} ${p.uqc || 'NOS'}`;
+                                return (
+                                  <button key={p.id} type="button" onMouseDown={() => {
+                                    const updated = [...items];
+                                    updated[index] = { ...updated[index], productId: String(p.id), name: p.name, rate: p.price || 0 };
+                                    setItems(updated);
+                                    setFocusedRowIndex(null);
+                                  }} className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex justify-between items-center">
+                                    <div>
+                                      <span className="font-bold text-slate-800 block">{p.name}</span>
+                                      <span className="text-[10px] text-slate-400">{code} • {stockText}</span>
+                                    </div>
+                                    <span className="font-bold text-slate-900">₹{parseFloat(p.price || 0).toFixed(2)}</span>
+                                  </button>
+                                );
+                              }) : <div className="px-3 py-2 text-xs text-slate-400 text-center font-mono">No products found (will auto-create)</div>;
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        value={item.name}
+                        onChange={e => handleItemRowChange(index, 'name', e.target.value)}
+                        required
+                        placeholder={t.itemDescPlaceholder || 'Item/Service Description'}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-slate-400"
+                      />
+                    )}
+                    {/* Qty / Rate / Amount row */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Qty</label>
+                        <input
+                          type="number" min="0" step="any" value={item.qty}
+                          onChange={e => handleItemRowChange(index, 'qty', e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-center font-mono font-bold text-slate-900 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Rate (₹)</label>
+                        <input
+                          type="number" step="any" min="0" value={item.rate}
+                          onChange={e => handleItemRowChange(index, 'rate', e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-right font-mono font-bold text-slate-900 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Amount</label>
+                        <div className="bg-blue-50 border border-blue-100 rounded-lg px-2 py-1.5 text-xs text-right font-mono font-black text-slate-800">
+                          ₹{lineTot.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* ── Desktop Table Layout (md+) ─────────────────── */}
+            <div className="hidden md:block" style={{ overflowX: 'visible' }}>
               <table className="w-full border-collapse text-left">
                 <thead>
                   <tr className="border-b border-slate-200 text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono">
@@ -435,9 +547,9 @@ export default function InvoiceBuilder({ t = {} }) {
                     return (
                       <tr key={index} className="bg-transparent hover:bg-slate-50/55 transition-colors">
                         {/* Description */}
-                        <td className="py-2 pl-1.5 pr-2.5 relative">
+                        <td className="py-2 pl-1.5 pr-2.5" style={{ position: 'relative', overflow: 'visible' }}>
                           {useProduct ? (
-                            <div className="relative">
+                            <div style={{ position: 'relative' }}>
                               <input
                                 type="text"
                                 value={item.name}
@@ -458,7 +570,7 @@ export default function InvoiceBuilder({ t = {} }) {
                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 transition-all focus:outline-none focus:border-blue-500 focus:bg-white"
                               />
                               {focusedRowIndex === index && (
-                                <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto divide-y divide-slate-100 text-left">
+                                <div style={{ position: 'absolute', zIndex: 9999, left: 0, right: 0, top: '100%', marginTop: '4px' }} className="bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto divide-y divide-slate-100 text-left">
                                   {(() => {
                                     const searchStr = item.name.toLowerCase();
                                     const filtered = products.filter(p => 
@@ -523,10 +635,7 @@ export default function InvoiceBuilder({ t = {} }) {
                         {/* Qty */}
                         <td className="py-2 pr-2.5 text-center">
                           <input
-                            type="number"
-                            min="0"
-                            step="any"
-                            value={item.qty}
+                            type="number" min="0" step="any" value={item.qty}
                             onChange={e => handleItemRowChange(index, 'qty', e.target.value)}
                             placeholder="Qty"
                             className="w-full bg-transparent border-b border-transparent hover:border-slate-200 focus:border-slate-400 focus:bg-white rounded py-1 text-xs text-center font-mono font-bold text-slate-900 transition-all focus:outline-none"
@@ -535,14 +644,9 @@ export default function InvoiceBuilder({ t = {} }) {
 
                         {/* Rate */}
                         <td className="py-2 pr-2.5 relative">
-                          <span className="absolute left-2 top-3 text-[10px] font-black pointer-events-none text-slate-400">
-                            ₹
-                          </span>
+                          <span className="absolute left-2 top-3 text-[10px] font-black pointer-events-none text-slate-400">₹</span>
                           <input
-                            type="number"
-                            step="any"
-                            min="0"
-                            value={item.rate}
+                            type="number" step="any" min="0" value={item.rate}
                             onChange={e => handleItemRowChange(index, 'rate', e.target.value)}
                             placeholder="0.00"
                             className="w-full bg-transparent border-b border-transparent hover:border-slate-200 focus:border-slate-400 focus:bg-white rounded pl-6 pr-2 py-1 text-xs text-right font-mono font-bold transition-all focus:outline-none text-slate-900"

@@ -37,7 +37,7 @@ export default function TermsOfService() {
               <AlertCircle size={18} className="text-blue-600" /> 2. Live Smart-Fetch Calculation & Stock Tracking Policy
             </h3>
             <p className="text-slate-500 text-xs md:text-sm">
-              GallaMitra processes values, taxes, stock levels, and dynamic accounting totals based on raw inputs provided by the operator. Stock quantities are decremented on sales invoices and incremented on purchase bills, with average unit costs recalculated dynamically using moving average formulas. HSN/SAC codes, Unique Quantity Codes (UQC), and prices serve as templates for autofilling bills/invoices. It is the sole responsibility of the operator to verify that the final invoice/bill values, classifications, and stock levels are correct and comply with standard GST regulations. These modules serve as tools for internal business optimization and do not substitute for official certified accounting records.
+              GallaMitra processes values, taxes, stock levels, and dynamic accounting totals based on raw inputs provided by the operator. Stock quantities are decremented on sales invoices (reverted/incremented on credit notes) and incremented on purchase bills (reverted/decremented on debit notes), with average unit costs recalculated dynamically using moving average formulas. HSN/SAC codes, Unique Quantity Codes (UQC), and prices serve as templates for autofilling bills/invoices. It is the sole responsibility of the operator to verify that the final invoice/bill/adjustment values, classifications, and stock levels are correct and comply with standard GST regulations. These modules serve as tools for internal business optimization and do not substitute for official certified accounting records.
             </p>
           </div>
 
@@ -47,7 +47,7 @@ export default function TermsOfService() {
               <Smartphone size={18} className="text-blue-600" /> 3. Progressive Web App (PWA) Sync & Portal Shortcuts
             </h3>
             <p className="text-slate-505 text-xs md:text-sm font-semibold">
-              Our PWA provides quick-action shortcuts and stores structural asset frames locally to speed up rendering. We also offer dynamic PWA installation prompts for customers and suppliers inside their public portal. By assigning a unique, parameterized start URL and web manifest, the browser installs each portal as a separate standalone application, allowing fast future reference to that specific statement directly on launching the app. All active balance adjustments, voucher generations, and invoice builds are strictly online operations and require active internet handshakes to commit edits safely to central database clusters.
+              Our PWA provides quick-action shortcuts and stores structural asset frames locally to speed up rendering. We also offer dynamic PWA installation prompts for customers and suppliers inside their public portal. By assigning a unique, parameterized start URL and web manifest, the browser installs each portal as a separate standalone application, allowing fast future reference to that specific statement directly on launching the app. All active balance adjustments, credit/debit notes generation, voucher generations, and invoice builds are strictly online operations and require active internet handshakes to commit edits safely to central database clusters.
             </p>
           </div>
 

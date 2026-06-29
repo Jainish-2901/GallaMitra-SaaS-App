@@ -43,13 +43,13 @@ export default function TopBar({ activeTab, setActiveTab, setSearchTerm, isMobil
   };
 
   const quickActions = [
+    { label: 'Add Customer', tab: 'cust_list', actionKey: 'addCustomer', icon: Users },
+    { label: 'Add Supplier', tab: 'supp_list', actionKey: 'addSupplier', icon: UserCheck },
+    { label: 'Products & Services', tab: 'product_list', actionKey: 'product_list', icon: Package },
+    { label: 'Sales List', tab: 'sales_list', actionKey: 'salesList', icon: Scroll },
     { label: 'Create Invoice', tab: 'invoice_builder', actionKey: 'newInvoice', icon: PlusCircle },
     { label: 'Collect Cash', tab: 'payment_receipt', actionKey: 'collectCash', icon: Receipt },
     { label: 'Add Purchase', tab: 'purchase_bill', actionKey: 'addPurchase', icon: FileCheck },
-    { label: 'Add Customer', tab: 'cust_list', actionKey: 'addCustomer', icon: Users },
-    { label: 'Add Supplier', tab: 'supp_list', actionKey: 'addSupplier', icon: UserCheck },
-    { label: 'Sales List', tab: 'sales_list', actionKey: 'salesList', icon: Scroll },
-    { label: 'Products & Services', tab: 'product_list', actionKey: 'product_list', icon: Package },
   ];
 
   const allowed = activeShop?.allowedTabs || [];

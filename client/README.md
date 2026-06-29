@@ -22,7 +22,7 @@ The client dashboard has been updated with premium UI components and functional 
 GallaMitra features a tiered ERP subscription and module plan architecture. Available workspace tabs and features dynamically adapt based on the active shop's plan. Subscription plans can be dynamically configured by Super Admins with custom pricing and flexible billing cycles (supporting Free/Forever, Trial, Monthly, 3-Month, 6-Month, and Yearly configurations), supporting:
 * **Starter** (₹0 Free): Core ledger management, Customer/Supplier lists, Products & Services list, Sale/Purchase ledgers, Payment receipts.
 * **15-Day Free Trial** (₹0 Free Trial): Grants 15 days of full Professional features, including Reports, Export, and Deep Analytics.
-* **Growth** (₹299/mo): Starter features + Invoice builder, Purchase bills, Voucher list, Item registry, Logo upload.
+* **Growth** (₹299/mo): Starter features + Invoice builder, Purchase bills, Credit & Debit Notes, Voucher list, Item registry, Logo upload.
 * **Scale** (₹799/3mo): Growth features + Reports & CSV exports, PDF exports, Deep Analytics, Unlimited entries.
 * **Enterprise** (₹1749/6mo): Growth features + Reports & CSV exports, PDF exports, Deep Analytics, Unlimited entries, Multi-Business workspace management.
 * **Professional** (₹3499/yr): Growth features + Reports & CSV exports, PDF exports, Deep Analytics, Unlimited entries, Multi-Business workspace management.
@@ -51,6 +51,8 @@ Newly registered shop owners can test GallaMitra using the 15-day Free Trial. Th
 * **Purchase Item Registry (`purchase_list`)**: Inventory tracking for purchased catalog components.
 * **Purchase Bill Creator (`purchase_bill`)**: Create vendor bills with precise tax and balance adjustments.
 * **Purchase Bill List (`pbill_list`)**: Manage historical purchase entries and vendor ledger balance logs.
+* **Credit Note (`credit_note`)**: Sales Return slips that adjust customer balances and return stock.
+* **Debit Note (`debit_note`)**: Purchase Return slips that adjust supplier balances and write off stock.
 * **Business Settings (`business_settings`)**: Upload business logo, manage workspace settings, toggle sub-options.
 
 ### 🥇 Scale & Enterprise & Professional Plans (₹799/3mo, ₹1749/6mo, ₹3499/yr) (Includes Growth features plus:)

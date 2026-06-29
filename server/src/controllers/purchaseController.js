@@ -4,7 +4,7 @@ import { deleteFromCloudinary } from '../utils/cloudinary.js';
 
 // 1. Action: Log a Fresh Supplier Purchase Bill and Append to Ledgers
 export const createPurchaseBill = async (req, res) => {
-    const { billNo, shopId, supplierId, itemsArray, attachedImgUrl, slipDetails, totalAmount, advancePayment, paymentMode } = req.body;
+    const { billNo, shopId, supplierId, itemsArray, attachedImgUrl, slipDetails, totalAmount, advancePayment, paymentMode, date, billDate } = req.body;
 
     if (!shopId || !supplierId || !totalAmount) {
         return res.status(400).json({ error: "Missing required parameters for purchase liability mapping!" });
@@ -14,6 +14,7 @@ export const createPurchaseBill = async (req, res) => {
         const parsedAmount = parseFloat(totalAmount);
         const parsedAdvancePayment = parseFloat(advancePayment || 0);
         const parsedPaymentMode = paymentMode || 'CASH';
+        const billDateObj = (date || billDate) ? new Date(date || billDate) : new Date();
         let createdBill = null;
 
         await prisma.$transaction(async (tx) => {
@@ -23,6 +24,7 @@ export const createPurchaseBill = async (req, res) => {
                     billNo: billNo || null,
                     shopId,
                     supplierId,
+                    date: billDateObj,
                     itemsJson: itemsArray || [],
                     attachedImgUrl: attachedImgUrl || null,
                     slipDetails: slipDetails || null,
@@ -81,6 +83,7 @@ export const createPurchaseBill = async (req, res) => {
                         receiptNo,
                         shopId,
                         supplierId,
+                        date: billDateObj,
                         amount: parsedAdvancePayment,
                         paymentMode: parsedPaymentMode,
                         remark: `Advance payment remitted for Purchase Bill #${billNo || 'N/A'}`,
@@ -94,6 +97,7 @@ export const createPurchaseBill = async (req, res) => {
                     data: {
                         shopId,
                         supplierId,
+                        date: billDateObj,
                         particulars: `Purchase Bill logged code #${billNo || 'N/A'}`,
                         type: 'CREDIT',
                         amount: parsedAmount,
@@ -108,6 +112,7 @@ export const createPurchaseBill = async (req, res) => {
                     data: {
                         shopId,
                         supplierId,
+                        date: billDateObj,
                         particulars: `Advance Payment remitted via ${parsedPaymentMode} for Purchase Bill #${billNo || 'N/A'}`,
                         type: 'DEBIT',
                         amount: parsedAdvancePayment,
@@ -121,6 +126,7 @@ export const createPurchaseBill = async (req, res) => {
                     data: {
                         shopId,
                         supplierId,
+                        date: billDateObj,
                         particulars: `Purchase Bill logged code #${billNo || 'N/A'}`,
                         type: 'CREDIT',
                         amount: parsedAmount,

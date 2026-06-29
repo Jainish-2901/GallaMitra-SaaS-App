@@ -6,7 +6,8 @@ import { deleteFromCloudinary } from '../utils/cloudinary.js';
 export const createInvoice = async (req, res) => {
     const {
         invoiceNo, shopId, customerId, itemsArray,
-        subTotal, taxAmount, miscCharges, taxRate, grandTotal, description, discount, attachedImgUrl, advancePayment, paymentMode
+        subTotal, taxAmount, miscCharges, taxRate, grandTotal, description, discount, attachedImgUrl, advancePayment, paymentMode,
+        date, invoiceDate
     } = req.body;
 
     if (!invoiceNo || !shopId || !customerId || !itemsArray || subTotal === undefined || grandTotal === undefined) {
@@ -22,6 +23,7 @@ export const createInvoice = async (req, res) => {
         const parsedDiscount = parseFloat(discount || 0);
         const parsedAdvancePayment = parseFloat(advancePayment || 0);
         const parsedPaymentMode = paymentMode || 'CASH';
+        const invoiceDateObj = (date || invoiceDate) ? new Date(date || invoiceDate) : new Date();
 
         let createdInvoice = null;
 
@@ -32,6 +34,7 @@ export const createInvoice = async (req, res) => {
                     invoiceNo,
                     shopId,
                     customerId,
+                    date: invoiceDateObj,
                     itemsJson: itemsArray,
                     subTotal: parsedSubTotal,
                     taxAmount: parsedTaxAmount,
@@ -85,6 +88,7 @@ export const createInvoice = async (req, res) => {
                         receiptNo,
                         shopId,
                         customerId,
+                        date: invoiceDateObj,
                         amount: parsedAdvancePayment,
                         paymentMode: parsedPaymentMode,
                         remark: `Advance payment received for Invoice #${invoiceNo}`,
@@ -98,6 +102,7 @@ export const createInvoice = async (req, res) => {
                     data: {
                         shopId,
                         customerId,
+                        date: invoiceDateObj,
                         particulars: `Sales Invoice generated reference tracking code #${invoiceNo}`,
                         type: 'DEBIT',
                         amount: parsedGrandTotal,
@@ -112,6 +117,7 @@ export const createInvoice = async (req, res) => {
                     data: {
                         shopId,
                         customerId,
+                        date: invoiceDateObj,
                         particulars: `Advance Payment received via ${parsedPaymentMode} for Invoice #${invoiceNo}`,
                         type: 'CREDIT',
                         amount: parsedAdvancePayment,
@@ -125,6 +131,7 @@ export const createInvoice = async (req, res) => {
                     data: {
                         shopId,
                         customerId,
+                        date: invoiceDateObj,
                         particulars: `Sales Invoice generated reference tracking code #${invoiceNo}`,
                         type: 'DEBIT',
                         amount: parsedGrandTotal,

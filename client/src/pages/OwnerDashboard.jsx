@@ -137,25 +137,34 @@ export default function OwnerDashboard({ setActiveTab, setSearchTerm }) {
   }
 
   const quickBtns = [
-    { label: 'New Invoice', tab: 'invoice_builder', actionKey: 'newInvoice', color: 'bg-blue-50 text-blue-600 border-blue-200/50 hover:bg-blue-100/50', icon: PlusCircle },
-    { label: 'Collect Cash', tab: 'payment_receipt', actionKey: 'collectCash', color: 'bg-emerald-50 text-emerald-700 border-emerald-200/50 hover:bg-emerald-100/50', icon: Receipt },
-    { label: 'Add Purchase', tab: 'purchase_bill', actionKey: 'addPurchase', color: 'bg-indigo-50 text-indigo-700 border-indigo-200/50 hover:bg-indigo-100/50', icon: FileCheck },
+    // Parties Group
     { label: 'Add Customer', tab: 'cust_list', actionKey: 'addCustomer', color: 'bg-cyan-50 text-cyan-700 border-cyan-200/50 hover:bg-cyan-100/50', icon: Users },
     { label: 'Add Supplier', tab: 'supp_list', actionKey: 'addSupplier', color: 'bg-amber-50 text-amber-700 border-amber-200/50 hover:bg-amber-100/50', icon: UserCheck },
-    { label: 'Sales List', tab: 'sales_list', actionKey: 'salesList', color: 'bg-rose-50 text-rose-700 border-rose-200/50 hover:bg-rose-100/50', icon: Scroll },
-    { label: 'Sale Ledger', tab: 'sale_ledger', actionKey: 'saleLedger', color: 'bg-amber-50 text-amber-800 border-amber-200/50 hover:bg-amber-100/50', icon: History },
-    { label: 'Purchase Ledger', tab: 'purchase_ledger', actionKey: 'purchaseLedger', color: 'bg-emerald-50 text-emerald-800 border-emerald-200/50 hover:bg-emerald-100/50', icon: FileSpreadsheet },
-    { label: 'Invoice History', tab: 'invoice_list', actionKey: 'invoiceHistory', color: 'bg-sky-50 text-sky-800 border-sky-200/50 hover:bg-sky-100/50', icon: Layers },
-    { label: 'Receipt History', tab: 'receipt_list', actionKey: 'receiptHistory', color: 'bg-violet-50 text-violet-850 border-violet-200/50 hover:bg-violet-100/50', icon: Layers },
-    { label: 'Purchase Bills', tab: 'pbill_list', actionKey: 'purchaseBills', color: 'bg-purple-50 text-purple-800 border-purple-200/50 hover:bg-purple-100/50', icon: Layers },
-    { label: 'Purchases List', tab: 'purchase_list', actionKey: 'purchasesList', color: 'bg-orange-50 text-orange-850 border-orange-200/50 hover:bg-orange-100/50', icon: Scroll },
-    { label: 'CSV Reports', tab: 'reports', actionKey: 'csvReports', color: 'bg-orange-50 text-orange-850 border-orange-200/50 hover:bg-orange-100/50', icon: FileDigit },
-    { label: 'Analytics', tab: 'analytics', actionKey: 'analytics', color: 'bg-pink-50 text-pink-850 border-pink-200/50 hover:bg-pink-100/50', icon: BarChart3 },
     { label: 'Products & Services', tab: 'product_list', actionKey: 'product_list', color: 'bg-emerald-50 text-emerald-850 border-emerald-200/50 hover:bg-emerald-100/50', icon: Package },
-    { label: 'Profile', tab: 'user_settings', actionKey: 'profile', color: 'bg-slate-50 text-slate-800 border-slate-200/50 hover:bg-slate-100/50', icon: Settings },
-    { label: 'Business Config', tab: 'business_settings', actionKey: 'businessConfig', color: 'bg-teal-50 text-teal-800 border-teal-200/50 hover:bg-teal-100/50', icon: Settings },
+
+    // Ledgers Group
+    { label: 'Sale Ledger', tab: 'sale_ledger', actionKey: 'saleLedger', color: 'bg-amber-50 text-amber-800 border-amber-200/50 hover:bg-amber-100/50', icon: History },
+    { label: 'Sales List', tab: 'sales_list', actionKey: 'salesList', color: 'bg-rose-50 text-rose-700 border-rose-200/50 hover:bg-rose-100/50', icon: Scroll },
+    { label: 'Purchase Ledger', tab: 'purchase_ledger', actionKey: 'purchaseLedger', color: 'bg-emerald-50 text-emerald-800 border-emerald-200/50 hover:bg-emerald-100/50', icon: FileSpreadsheet },
+    { label: 'Purchases List', tab: 'purchase_list', actionKey: 'purchasesList', color: 'bg-orange-50 text-orange-850 border-orange-200/50 hover:bg-orange-100/50', icon: Scroll },
+
+    // Billing Group
+    { label: 'New Invoice', tab: 'invoice_builder', actionKey: 'newInvoice', color: 'bg-blue-50 text-blue-600 border-blue-200/50 hover:bg-blue-100/50', icon: PlusCircle },
+    { label: 'Invoice History', tab: 'invoice_list', actionKey: 'invoiceHistory', color: 'bg-sky-50 text-sky-800 border-sky-200/50 hover:bg-sky-100/50', icon: Layers },
+    { label: 'Collect Cash', tab: 'payment_receipt', actionKey: 'collectCash', color: 'bg-emerald-50 text-emerald-700 border-emerald-200/50 hover:bg-emerald-100/50', icon: Receipt },
+    { label: 'Receipt History', tab: 'receipt_list', actionKey: 'receiptHistory', color: 'bg-violet-50 text-violet-850 border-violet-200/50 hover:bg-violet-100/50', icon: Layers },
+    { label: 'Add Purchase', tab: 'purchase_bill', actionKey: 'addPurchase', color: 'bg-indigo-50 text-indigo-700 border-indigo-200/50 hover:bg-indigo-100/50', icon: FileCheck },
+    { label: 'Purchase Bills', tab: 'pbill_list', actionKey: 'purchaseBills', color: 'bg-purple-50 text-purple-800 border-purple-200/50 hover:bg-purple-100/50', icon: Layers },
     { label: 'Credit Note', tab: 'credit_note', actionKey: 'creditNote', color: 'bg-green-50 text-green-700 border-green-200/50 hover:bg-green-100/50', icon: FileText },
     { label: 'Debit Note', tab: 'debit_note', actionKey: 'debitNote', color: 'bg-red-50 text-red-700 border-red-200/50 hover:bg-red-100/50', icon: FileText },
+
+    // Intelligence Group
+    { label: 'CSV Reports', tab: 'reports', actionKey: 'csvReports', color: 'bg-orange-50 text-orange-850 border-orange-200/50 hover:bg-orange-100/50', icon: FileDigit },
+    { label: 'Analytics', tab: 'analytics', actionKey: 'analytics', color: 'bg-pink-50 text-pink-850 border-pink-200/50 hover:bg-pink-100/50', icon: BarChart3 },
+
+    // Settings Group
+    { label: 'Profile', tab: 'user_settings', actionKey: 'profile', color: 'bg-slate-50 text-slate-800 border-slate-200/50 hover:bg-slate-100/50', icon: Settings },
+    { label: 'Business Config', tab: 'business_settings', actionKey: 'businessConfig', color: 'bg-teal-50 text-teal-800 border-teal-200/50 hover:bg-teal-100/50', icon: Settings }
   ];
 
   const allowed = activeShop?.allowedTabs || [];

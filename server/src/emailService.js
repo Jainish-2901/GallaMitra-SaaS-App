@@ -292,8 +292,19 @@ export const processEmailQueue = async () => {
       }
     }
   } catch (err) {
-    if (err.code === 'ETIMEDOUT' || err.message?.includes('timeout') || err.message?.includes('timed out') || err.code === '57P01') {
-      console.warn('📡 Database connection timeout/handshake failure during email queue processing. Will retry in the next scan cycle.');
+    const isTransient =
+      err.code === 'ETIMEDOUT' ||
+      err.code === 'EAI_AGAIN' ||      // DNS resolution failure (temporary)
+      err.code === 'ENOTFOUND' ||      // DNS host not found (temporary)
+      err.code === 'ECONNREFUSED' ||   // DB not yet accepting connections
+      err.code === 'ECONNRESET' ||     // Connection reset mid-query
+      err.code === '57P01' ||          // PostgreSQL admin_shutdown
+      err.message?.includes('timeout') ||
+      err.message?.includes('timed out') ||
+      err.message?.includes('getaddrinfo');
+
+    if (isTransient) {
+      console.warn('📡 Transient network/DB issue during email queue processing (will retry next cycle):', err.code || err.message?.slice(0, 80));
     } else {
       console.error('🚨 processEmailQueue crashed:', err);
     }
