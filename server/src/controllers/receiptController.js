@@ -63,7 +63,7 @@ export const createPaymentReceipt = async (req, res) => {
                     date: date ? new Date(date) : undefined
                 }
             });
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(shopId, 'PAYMENT_RECEIPT_CREATED', 'Owner', `Receipt #${receiptNo} (₹${parsedAmount})`);
         res.status(201).json({ message: "Voucher processed cleanly", receipt: createdReceipt });
@@ -111,7 +111,7 @@ export const deletePaymentReceipt = async (req, res) => {
                     data: { runningBalance: rollingBalance }
                 });
             }
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(shopId, 'PAYMENT_RECEIPT_DELETED', 'Owner', `Receipt #${receiptCheck.receiptNo} deleted`);
         res.json({ message: "Payment voucher deleted and audit balances synced safely!" });
@@ -210,7 +210,7 @@ export const editPaymentReceipt = async (req, res) => {
                     data: { runningBalance: rollingBalance }
                 });
             }
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(shopId, 'PAYMENT_RECEIPT_EDITED', 'Owner', `Receipt #${receiptNo || originalReceipt.receiptNo} updated (New Amount: ₹${parsedAmount})`);
         res.json({ message: "Payment receipt updated and ledgers synced!", receipt: updatedReceipt });

@@ -92,7 +92,7 @@ export const createCreditNote = async (req, res) => {
 
             // 4. Recalculate ledger balances
             await recalculateShopLedger(tx, shopId);
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(shopId, 'CREDIT_NOTE_CREATED', 'Owner', `Credit Note #${noteNo} (₹${amount}) created for customer.`);
         res.status(201).json({ success: true, note: createdNote });
@@ -156,7 +156,7 @@ export const deleteCreditNote = async (req, res) => {
 
             // 4. Recalculate ledger balances
             await recalculateShopLedger(tx, note.shopId);
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(note.shopId, 'CREDIT_NOTE_DELETED', 'Owner', `Credit Note #${note.noteNo} deleted.`);
         res.json({ success: true, message: "Credit Note deleted successfully." });
@@ -231,7 +231,7 @@ export const createDebitNote = async (req, res) => {
 
             // 4. Recalculate ledger balances
             await recalculateShopLedger(tx, shopId);
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(shopId, 'DEBIT_NOTE_CREATED', 'Owner', `Debit Note #${noteNo} (₹${amount}) created for supplier.`);
         res.status(201).json({ success: true, note: createdNote });
@@ -295,7 +295,7 @@ export const deleteDebitNote = async (req, res) => {
 
             // 4. Recalculate ledger balances
             await recalculateShopLedger(tx, note.shopId);
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(note.shopId, 'DEBIT_NOTE_DELETED', 'Owner', `Debit Note #${note.noteNo} deleted.`);
         res.json({ success: true, message: "Debit Note deleted successfully." });
@@ -382,7 +382,7 @@ export const updateCreditNote = async (req, res) => {
 
             // 5. Recalculate ledger balances
             await recalculateShopLedger(tx, oldNote.shopId);
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(oldNote.shopId, 'CREDIT_NOTE_UPDATED', 'Owner', `Credit Note #${noteNo} (₹${amount}) updated.`);
         res.json({ success: true, note: updatedNote });
@@ -469,7 +469,7 @@ export const updateDebitNote = async (req, res) => {
 
             // 5. Recalculate ledger balances
             await recalculateShopLedger(tx, oldNote.shopId);
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(oldNote.shopId, 'DEBIT_NOTE_UPDATED', 'Owner', `Debit Note #${noteNo} (₹${amount}) updated.`);
         res.json({ success: true, note: updatedNote });

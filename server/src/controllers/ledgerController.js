@@ -55,7 +55,7 @@ export const createLedgerEntry = async (req, res) => {
                     createdEntryWithRecalculatedBalance = { ...row, runningBalance: rollingBalance };
                 }
             }
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(shopId, 'LEDGER_ENTRY_CREATED', 'Owner', `Manual entry: ${particulars} (${type} ₹${amount})`);
         res.status(201).json(createdEntryWithRecalculatedBalance);
@@ -117,7 +117,7 @@ export const editLedgerEntry = async (req, res) => {
                     data: { runningBalance: rollingBalance }
                 });
             }
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(shopId, 'LEDGER_ENTRY_EDITED', 'Owner', `Ledger entry edited: ${particulars || originalRow.particulars}`);
         res.json({ message: "Ledger updated & cascading recalculation completed!", entry: updatedEntry });
@@ -170,7 +170,7 @@ export const deleteLedgerEntry = async (req, res) => {
                     data: { runningBalance: rollingBalance }
                 });
             }
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(shopId, 'LEDGER_ENTRY_DELETED', 'Owner', `Ledger entry deleted: ${targetRow.particulars}`);
         res.json({ message: "Entry permanently expunged. Audit balances successfully self-healed!" });

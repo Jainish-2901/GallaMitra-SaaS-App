@@ -140,7 +140,7 @@ export const createInvoice = async (req, res) => {
                     }
                 });
             }
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(shopId, 'INVOICE_CREATED', 'Owner', `Sales Invoice #${invoiceNo} (₹${parsedGrandTotal})`);
         res.status(201).json({ message: "Invoice processed smoothly", invoice: createdInvoice });
@@ -347,7 +347,7 @@ export const editInvoice = async (req, res) => {
                     data: { runningBalance: rollingBalance }
                 });
             }
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(shopId, 'INVOICE_EDITED', 'Owner', `Sales Invoice #${originalInvoice.invoiceNo} updated (New Total: ₹${parsedGrandTotal})`);
         res.json({ message: "Invoice metadata modified and ledgers synced!", invoice: updatedInvoice });
@@ -441,7 +441,7 @@ export const deleteInvoice = async (req, res) => {
                     data: { runningBalance: rollingBalance }
                 });
             }
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(shopId, 'INVOICE_DELETED', 'Owner', `Sales Invoice #${invoiceCheck.invoiceNo} deleted`);
         res.json({ message: "Invoice permanently expunged. Financial dues recalculated automatically!" });

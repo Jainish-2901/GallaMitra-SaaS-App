@@ -135,7 +135,7 @@ export const createPurchaseBill = async (req, res) => {
                     }
                 });
             }
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(shopId, 'PURCHASE_BILL_CREATED', 'Owner', `Purchase Bill #${billNo || 'N/A'} (₹${parsedAmount})`);
         res.status(201).json({ message: "Purchase bill logged safely", purchaseBill: createdBill });
@@ -226,7 +226,7 @@ export const deletePurchaseBill = async (req, res) => {
                     data: { runningBalance: rollingBalance }
                 });
             }
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(shopId, 'PURCHASE_BILL_DELETED', 'Owner', `Purchase Bill #${billCheck.billNo || 'N/A'} deleted`);
         res.json({ message: "Purchase bill removed and ledger files re-calculated successfully!" });
@@ -447,7 +447,7 @@ export const editPurchaseBill = async (req, res) => {
                     data: { runningBalance: rollingBalance }
                 });
             }
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         await logActivity(shopId, 'PURCHASE_BILL_EDITED', 'Owner', `Purchase Bill #${billNo || originalBill.billNo || 'N/A'} updated (New Total: ₹${parsedAmount})`);
         res.json({ message: "Purchase bill updated and ledgers synced!", purchaseBill: updatedBill });
