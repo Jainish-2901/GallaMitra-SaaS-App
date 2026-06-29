@@ -760,14 +760,39 @@ export default function PublicPortal() {
                 </div>
               </div>
             )}
-            {profile?.shopBankDetails && (
-              <div style={{ marginBottom: '12px' }}>
-                <span style={{ fontWeight: 800, color: '#475569', textTransform: 'uppercase', display: 'block', fontSize: '9px', marginBottom: '3px' }}>Bank Details</span>
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '8px 12px', borderRadius: '8px', fontFamily: 'monospace', color: '#334155', whiteSpace: 'pre-wrap' }}>
-                  {profile.shopBankDetails}
-                </div>
-              </div>
-            )}
+             {isInvoice && (profile?.shopBankDetails || profile?.vpa) && (
+               <div style={{ marginBottom: '12px', background: '#f8fafc', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '12px', display: 'flex', gap: '16px', alignItems: 'center' }}>
+                 <div style={{ flex: 1 }}>
+                   <span style={{ fontWeight: 800, color: '#475569', textTransform: 'uppercase', display: 'block', fontSize: '9px', marginBottom: '4px' }}>Payment Details</span>
+                   {profile?.vpa && (
+                     <div style={{ marginBottom: '6px' }}>
+                       <span style={{ color: '#64748b', fontSize: '8px', fontWeight: 700, textTransform: 'uppercase', display: 'block' }}>UPI ID</span>
+                       <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0f172a', fontSize: '10px' }}>{profile.vpa}</span>
+                     </div>
+                   )}
+                   {profile?.shopBankDetails && (
+                     <div>
+                       <span style={{ color: '#64748b', fontSize: '8px', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Bank Transfer</span>
+                       <div style={{ fontFamily: 'monospace', color: '#334155', whiteSpace: 'pre-wrap', fontSize: '9px', lineHeight: '1.4' }}>
+                         {profile.shopBankDetails}
+                       </div>
+                     </div>
+                   )}
+                 </div>
+                 {profile?.vpa && (
+                   <div style={{ textAlign: 'center', background: '#fff', border: '1px solid #cbd5e1', padding: '6px', borderRadius: '8px', shrink: 0 }}>
+                     <img
+                       src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(
+                         `upi://pay?pa=${profile.vpa}&pn=${encodeURIComponent(profile.businessName || 'Merchant')}&am=${balanceDueVal.toFixed(2)}&cu=INR&tn=Invoice+Payment`
+                       )}`}
+                       alt="UPI QR Code"
+                       style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+                     />
+                     <div style={{ fontSize: '7px', color: '#64748b', marginTop: '4px', fontFamily: 'monospace', fontWeight: 700 }}>Scan to Pay ₹{balanceDueVal.toFixed(2)}</div>
+                   </div>
+                 )}
+               </div>
+             )}
             {profile?.shopInvoiceTerms && (
               <div>
                 <span style={{ fontWeight: 800, color: '#475569', textTransform: 'uppercase', display: 'block', fontSize: '9px', marginBottom: '3px' }}>Terms &amp; Conditions</span>
@@ -1941,11 +1966,36 @@ export default function PublicPortal() {
                         </div>
                       </div>
                     )}
-                    {profile.shopBankDetails && (
+                    {isInvoice && (profile?.shopBankDetails || profile?.vpa) && (
                       <div className="space-y-1">
-                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest font-mono block">Bank Details</span>
-                        <div className="bg-slate-50 border border-slate-150 rounded-xl p-3 text-[10px] text-slate-655 leading-relaxed font-semibold whitespace-pre-wrap font-mono font-bold">
-                          {profile.shopBankDetails}
+                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest font-mono block">Payment Details</span>
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                          <div className="flex-1 space-y-2 text-[10px] text-slate-655 leading-relaxed font-semibold">
+                            {profile?.vpa && (
+                              <div>
+                                <span className="text-[8px] text-slate-400 font-mono font-bold uppercase tracking-wider block">UPI VPA</span>
+                                <span className="font-mono text-slate-900 font-bold">{profile.vpa}</span>
+                              </div>
+                            )}
+                            {profile?.shopBankDetails && (
+                              <div className="pt-1">
+                                <span className="text-[8px] text-slate-400 font-mono font-bold uppercase tracking-wider block">Bank Transfer</span>
+                                <div className="whitespace-pre-wrap font-mono font-bold text-slate-700 leading-normal">{profile.shopBankDetails}</div>
+                              </div>
+                            )}
+                          </div>
+                          {profile?.vpa && (
+                            <div className="shrink-0 flex flex-col items-center justify-center p-2 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                              <img
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
+                                  `upi://pay?pa=${profile.vpa}&pn=${encodeURIComponent(profile.businessName || 'Merchant')}&am=${balanceDueVal.toFixed(2)}&cu=INR&tn=Invoice+Payment`
+                                )}`}
+                                alt="UPI QR Code"
+                                className="w-24 h-24 object-contain"
+                              />
+                              <span className="text-[7px] text-slate-400 mt-1 font-mono tracking-wider">Pay ₹{balanceDueVal.toFixed(2)}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

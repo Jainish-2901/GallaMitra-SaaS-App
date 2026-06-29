@@ -395,11 +395,10 @@ export default function DocumentListsView({ mode, t = {} }) {
             ['Voucher No.', `#${receipt?.receiptNo}`],
             ['Date & Time', receipt ? new Date(receipt.date).toLocaleString('en-IN') : ''],
             ['Payment Mode', receipt?.paymentMode],
-            receipt?.remark ? ['Remark', receipt.remark] : null,
           ].filter(Boolean).map(([k, v]) => (
             <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #f1f5f9', fontSize: '10px' }}>
               <span style={{ color: '#555', fontWeight: 600 }}>{k}</span>
-              <span style={{ fontWeight: 700, color: '#000', marginLeft: 'auto', fontFamily: k.includes('No.') ? 'monospace' : 'inherit' }}>{v}</span>
+              <span style={{ fontWeight: 700, color: '#0f172a', marginLeft: 'auto', fontFamily: k.includes('No.') ? 'monospace' : 'inherit' }}>{v}</span>
             </div>
           ))}
         </div>
@@ -409,6 +408,16 @@ export default function DocumentListsView({ mode, t = {} }) {
           <div style={{ color: '#555', fontSize: '8px', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 700 }}>Amount Received</div>
           <div style={{ color: '#000', fontWeight: 800, fontSize: '20px', fontFamily: 'monospace', marginTop: '2px' }}>₹{receipt ? parseFloat(receipt.amount).toFixed(2) : '0.00'}</div>
         </div>
+
+        {/* Remarks */}
+        {receipt?.remark && (
+          <div style={{ marginTop: '12px', fontSize: '9px', textAlign: 'left' }}>
+            <span style={{ fontWeight: 800, color: '#475569', textTransform: 'uppercase', display: 'block', fontSize: '8px', marginBottom: '3px', fontFamily: 'monospace', letterSpacing: '0.04em' }}>Remarks</span>
+            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', padding: '8px 12px', borderRadius: '8px', color: '#334155', fontStyle: 'italic' }}>
+              {receipt.remark}
+            </div>
+          </div>
+        )}
 
         {/* Signature */}
         {activeShop?.signatureUrl && (
@@ -560,22 +569,47 @@ export default function DocumentListsView({ mode, t = {} }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '24px' }}>
           {/* Notes, Bank Details and Terms */}
           <div style={{ flex: 1, fontSize: '10px', color: '#64748b' }}>
-            {doc.description && (
+            {(doc.description || doc.slipDetails) && (
               <div style={{ marginBottom: '12px' }}>
                 <span style={{ fontWeight: 800, color: '#475569', textTransform: 'uppercase', display: 'block', fontSize: '9px', marginBottom: '3px' }}>Remarks</span>
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '8px 12px', borderRadius: '8px', color: '#334155' }}>
-                  {doc.description}
+                  {doc.description || doc.slipDetails}
                 </div>
               </div>
             )}
-            {activeShop?.bankDetails && (
-              <div style={{ marginBottom: '12px' }}>
-                <span style={{ fontWeight: 800, color: '#475569', textTransform: 'uppercase', display: 'block', fontSize: '9px', marginBottom: '3px' }}>Bank Details</span>
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '8px 12px', borderRadius: '8px', fontFamily: 'monospace', color: '#334155', whiteSpace: 'pre-wrap' }}>
-                  {activeShop.bankDetails}
-                </div>
-              </div>
-            )}
+             {isInvoice && (activeShop?.bankDetails || activeShop?.vpa) && (
+               <div style={{ marginBottom: '12px', background: '#f8fafc', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '12px', display: 'flex', gap: '16px', alignItems: 'center' }}>
+                 <div style={{ flex: 1 }}>
+                   <span style={{ fontWeight: 800, color: '#475569', textTransform: 'uppercase', display: 'block', fontSize: '9px', marginBottom: '4px' }}>Payment Details</span>
+                   {activeShop?.vpa && (
+                     <div style={{ marginBottom: '6px' }}>
+                       <span style={{ color: '#64748b', fontSize: '8px', fontWeight: 700, textTransform: 'uppercase', display: 'block' }}>UPI ID</span>
+                       <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0f172a', fontSize: '10px' }}>{activeShop.vpa}</span>
+                     </div>
+                   )}
+                   {activeShop?.bankDetails && (
+                     <div>
+                       <span style={{ color: '#64748b', fontSize: '8px', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Bank Transfer</span>
+                       <div style={{ fontFamily: 'monospace', color: '#334155', whiteSpace: 'pre-wrap', fontSize: '9px', lineHeight: '1.4' }}>
+                         {activeShop.bankDetails}
+                       </div>
+                     </div>
+                   )}
+                 </div>
+                 {activeShop?.vpa && (
+                   <div style={{ textAlign: 'center', background: '#fff', border: '1px solid #cbd5e1', padding: '6px', borderRadius: '8px', shrink: 0 }}>
+                     <img
+                       src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(
+                         `upi://pay?pa=${activeShop.vpa}&pn=${encodeURIComponent(activeShop.businessName || 'Merchant')}&am=${balanceDueVal.toFixed(2)}&cu=INR&tn=Invoice+Payment`
+                       )}`}
+                       alt="UPI QR Code"
+                       style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+                     />
+                     <div style={{ fontSize: '7px', color: '#64748b', marginTop: '4px', fontFamily: 'monospace', fontWeight: 700 }}>Scan to Pay ₹{balanceDueVal.toFixed(2)}</div>
+                   </div>
+                 )}
+               </div>
+             )}
             {activeShop?.invoiceTerms && (
               <div>
                 <span style={{ fontWeight: 800, color: '#475569', textTransform: 'uppercase', display: 'block', fontSize: '9px', marginBottom: '3px' }}>Terms &amp; Conditions</span>
@@ -1871,7 +1905,6 @@ export default function DocumentListsView({ mode, t = {} }) {
                 {[
                   ['Date', new Date(selectedReceipt.date).toLocaleString('en-IN'), Calendar],
                   ['Payment Mode', selectedReceipt.paymentMode, CreditCard],
-                  selectedReceipt.remark ? ['Remark', selectedReceipt.remark, FileText] : null,
                 ].filter(Boolean).map(([k, v, Icon]) => (
                   <div key={k} className="flex items-center justify-between py-2.5 px-3 bg-slate-50/50 rounded-xl border border-slate-100">
                     <div className="flex items-center gap-2 text-[10px] text-slate-500">
@@ -1887,6 +1920,16 @@ export default function DocumentListsView({ mode, t = {} }) {
                 <p className="text-slate-500 text-[9px] font-mono uppercase tracking-wider font-bold">Amount Received</p>
                 <p className="text-slate-955 font-black text-3xl font-mono mt-1 font-bold">₹{parseFloat(selectedReceipt.amount).toFixed(2)}</p>
               </div>
+
+              {/* Remarks */}
+              {selectedReceipt.remark && (
+                <div className="space-y-1 text-left">
+                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest font-mono block">Remarks</span>
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] text-slate-600 leading-relaxed font-semibold italic">
+                    {selectedReceipt.remark}
+                  </div>
+                </div>
+              )}
 
               {/* Signature */}
               {activeShop?.signatureUrl && (
@@ -2057,11 +2100,11 @@ export default function DocumentListsView({ mode, t = {} }) {
                 <div className="flex flex-col md:flex-row justify-between items-start gap-6 pt-2">
                   {/* Left Column: Remarks / Bank / Terms */}
                   <div className="flex-1 w-full space-y-4">
-                    {selectedDoc.description && (
+                    {(selectedDoc.description || selectedDoc.slipDetails) && (
                       <div className="space-y-1">
                         <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest font-mono block">Remarks</span>
                         <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] text-slate-655 leading-relaxed font-semibold">
-                          {selectedDoc.description}
+                          {selectedDoc.description || selectedDoc.slipDetails}
                         </div>
                       </div>
                     )}
@@ -2090,11 +2133,36 @@ export default function DocumentListsView({ mode, t = {} }) {
                         </div>
                       </div>
                     )}
-                    {activeShop?.bankDetails && (
+                    {isInvoice && (activeShop?.bankDetails || activeShop?.vpa) && (
                       <div className="space-y-1">
-                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest font-mono block">Bank Details</span>
-                        <div className="bg-slate-50 border border-slate-155 rounded-xl p-3 text-[10px] text-slate-655 leading-relaxed font-semibold whitespace-pre-wrap font-mono font-bold">
-                          {activeShop.bankDetails}
+                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest font-mono block">Payment Details</span>
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                          <div className="flex-1 space-y-2 text-[10px] text-slate-655 leading-relaxed font-semibold">
+                            {activeShop?.vpa && (
+                              <div>
+                                <span className="text-[8px] text-slate-400 font-mono font-bold uppercase tracking-wider block">UPI VPA</span>
+                                <span className="font-mono text-slate-900 font-bold">{activeShop.vpa}</span>
+                              </div>
+                            )}
+                            {activeShop?.bankDetails && (
+                              <div className="pt-1">
+                                <span className="text-[8px] text-slate-400 font-mono font-bold uppercase tracking-wider block">Bank Transfer</span>
+                                <div className="whitespace-pre-wrap font-mono font-bold text-slate-700 leading-normal">{activeShop.bankDetails}</div>
+                              </div>
+                            )}
+                          </div>
+                          {activeShop?.vpa && (
+                            <div className="shrink-0 flex flex-col items-center justify-center p-2 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                              <img
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
+                                  `upi://pay?pa=${activeShop.vpa}&pn=${encodeURIComponent(activeShop.businessName || 'Merchant')}&am=${balanceDueVal.toFixed(2)}&cu=INR&tn=Invoice+Payment`
+                                )}`}
+                                alt="UPI QR Code"
+                                className="w-24 h-24 object-contain"
+                              />
+                              <span className="text-[7px] text-slate-400 mt-1 font-mono tracking-wider">Pay ₹{balanceDueVal.toFixed(2)}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
